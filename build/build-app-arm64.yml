@@ -1,0 +1,23 @@
+# To build the failed deployment version set SHOULD_FAIL=true in the environment
+# Define $BUCKET as where you want to store the build artifact
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      dotnet: 8.0
+      
+  pre_build:
+    commands:
+      - cd app-src
+      - mkdir -p output
+      - mkdir -p output/src
+
+  build:
+    commands:
+      - echo Build started on `date`
+      - if [ $SHOULD_FAIL == "true" ]; then dotnet publish --configuration Release --runtime linux-arm64 --output $CODEBUILD_SRC_DIR/app-src/output/src -p:DefineConstants="FAIL" -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained; else dotnet publish --configuration Release --runtime linux-arm64 --output $CODEBUILD_SRC_DIR/app-src/output/src -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained; fi
+      - cd $CODEBUILD_SRC_DIR/app-src/output
+      - zip -r ../app.zip src/ 
+      - cd $CODEBUILD_SRC_DIR/app-src
+      - zip -r app.zip apache/ scripts/ appspec.yml
+      - if [ $SHOULD_FAIL == "true" ]; then aws s3 cp app.zip s3://$BUCKET/app_arm64_fail.zip --sse aws:kms; else aws s3 cp app.zip s3://$BUCKET/app_arm64.zip --sse aws:kms; fi
