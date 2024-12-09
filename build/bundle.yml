@@ -2,6 +2,15 @@
 # Remove the x64 downloads if you are only building for arm64
 version: 0.2
 phases:
+  pre_build:
+    commands:
+      - mkdir -p assets/helm
+      - aws s3 cp s3://$BUCKET/helm assets/helm/ --recursive
+      - aws s3 cp s3://$BUCKET/app_x64.zip assets/app_x64.zip
+      - aws s3 cp s3://$BUCKET/app_arm64.zip assets/app_arm64.zip
+      - aws s3 cp s3://$BUCKET/app_arm64_fail.zip assets/app_arm64_fail.zip
+      - aws s3 cp s3://$BUCKET/app_x64_fail.zip assets/app_x64_fail.zip
+      - aws s3 cp s3://$BUCKET/container.tar.gz assets/container.tar.gz
   build:
     commands:
       - echo Build started on `date`
@@ -13,12 +22,3 @@ phases:
       - mv content.zip assets/content.zip
       - zip -r workshop.zip assets/ content/ static/ contentspec.yaml
       - aws s3 cp workshop.zip s3://$BUCKET/workshop.zip --sse aws:kms
-  pre_build:
-    commands:
-      - mkdir -p assets/helm
-      - aws s3 cp s3://$BUCKET/helm assets/helm/ --recursive
-      - aws s3 cp s3://$BUCKET/app_x64.zip assets/app_x64.zip
-      - aws s3 cp s3://$BUCKET/app_arm64.zip assets/app_arm64.zip
-      - aws s3 cp s3://$BUCKET/app_arm64_fail.zip assets/app_arm64_fail.zip
-      - aws s3 cp s3://$BUCKET/app_x64_fail.zip assets/app_x64_fail.zip
-      - aws s3 cp s3://$BUCKET/container.tar.gz assets/container.tar.gz
