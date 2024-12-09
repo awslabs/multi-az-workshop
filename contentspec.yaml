@@ -1,0 +1,54 @@
+version: 2.0
+defaultLocaleCode: en-US
+localeCodes:
+  - en-US
+additionalLinks:
+  - title: Advanced Multi-AZ Resilience Patterns Whitepaper
+    link: https://docs.aws.amazon.com/whitepapers/latest/advanced-multi-az-resilience-patterns/advanced-multi-az-resilience-patterns.html
+  - title: Fault-isolated, zonal deployments with AWS CodeDeploy
+    link: https://aws.amazon.com/blogs/devops/fault-isolated-zonal-deployments-with-aws-codedeploy/
+  - title: Detecting gray failures with outlier detection in Amazon CloudWatch Contributor Insights
+    link: https://aws.amazon.com/blogs/mt/detecting-gray-failures-with-outlier-detection-in-amazon-cloudwatch-contributor-insights/
+  - title: Rapidly recover from application failures in a single AZ
+    link: https://aws.amazon.com/blogs/networking-and-content-delivery/rapidly-recover-from-application-failures-in-a-single-az/
+  - title: Zonal autoshift - Automatically shift your traffic away from Availability Zones when we detect potential issues
+    link: https://aws.amazon.com/blogs/aws/zonal-autoshift-automatically-shift-your-traffic-away-from-availability-zones-when-we-detect-potential-issues/
+  - title: Using zonal shift with Amazon EC2 Auto Scaling
+    link: https://aws.amazon.com/blogs/compute/using-zonal-shift-with-amazon-ec2-auto-scaling/
+  - title: Using cross-zone load balancing with zonal shift
+    link: https://aws.amazon.com/blogs/networking-and-content-delivery/using-cross-zone-load-balancing-with-zonal-shift/
+  - title: Multi-AZ Observability CDK Construct
+    link: https://github.com/bamcis-io/multi-az-observability/
+awsAccountConfig:
+  accountSources:
+    - WorkshopStudio
+    - CustomerProvided
+  serviceLinkedRoles:
+    - fis.amazonaws.com
+    - eks.amazonaws.com
+    - autoscaling.amazonaws.com
+  participantRole:
+    iamPolicies:
+      - static/iam_policy.json
+  regionConfiguration:
+    minAccessibleRegions: 1
+    maxAccessibleRegions: 1
+    deployableRegions:
+      recommended:
+        - us-east-1
+        - us-east-2
+        - us-west-2
+        - eu-west-1
+        - ap-southeast-1
+        - ap-southeast-2
+infrastructure:
+  cloudformationTemplates:
+    - templateLocation: static/multi-az-workshop.json
+      label: multi-az-workshop
+      parameters:
+        - templateParameter: AssetsBucket
+          defaultValue: "{{.AssetsBucketName}}"
+        - templateParameter: AssetsBucketPrefix
+          defaultValue: "{{.AssetsBucketPrefix}}"
+        - templateParameter: AdminRoleName
+          defaultValue: "{{.ParticipantRoleName}}"
