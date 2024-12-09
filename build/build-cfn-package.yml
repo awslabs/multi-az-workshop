@@ -1,0 +1,132 @@
+# You must provide environment variables for
+# $PROJECT_NAME = "multi-az-workshop"
+# $BUCKET = the pipeline assets bucket, somewhere to retrieve and store build assets
+version: 0.2
+phases:
+  install:
+    commands:
+      - npm install aws-cdk -g
+      - cdk --version
+      - echo $PWD
+      - mkdir -p $CODEBUILD_SRC_DIR/assets
+  build:
+    commands:
+      - aws s3 cp $PACKAGE_SCRIPT package.py
+      - chmod +x package.py
+      - cd $CODEBUILD_SRC_DIR/$CDK_LOCATION
+      - cdk synth --quiet
+      - ./package.py $PROJECT_NAME $ASSETS_BUCKET_NAME $ASSETS_BUCKET_PREFIX_NAME
+      - aws s3 rm s3://$BUCKET --recursive --exclude "$PROJECT_NAME/*" --exclude "workshop.zip" --exclude "helm/*"
+      - aws s3 cp $CODEBUILD_SRC_DIR/assets/ s3://$BUCKET --recursive --sse aws:kms
+  pre_build:
+    commands:
+      - curl --location https://get.helm.sh/helm-v3.15.1-linux-arm64.tar.gz --output helm-v3.15.1-linux-arm64.tar.gz
+      - tar -zxvf helm-v3.15.1-linux-arm64.tar.gz
+      - mkdir -p layer/helm
+      - cp linux-arm64/helm layer/helm/
+      - chmod 0755 layer/helm/helm
+      - cd layer
+      - zip -r $CODEBUILD_SRC_DIR/cdk/helm-layer.zip .
+      - mkdir -p $CODEBUILD_SRC_DIR/tmp
+      - cd $CODEBUILD_SRC_DIR/tmp
+      - aws s3api head-object --bucket $BUCKET --key helm/kubectl; EXITCODE=$?
+      - |
+        if [ $EXITCODE -ne 0 ]; then
+          curl --location  https://s3.us-west-2.amazonaws.com/amazon-eks/1.30.0/2024-05-12/bin/linux/arm64/kubectl --output kubectl
+          aws s3 cp kubectl s3://$BUCKET/helm/kubectl --sse aws:kms
+        fi
+      - HELM_BASE=https://istio-release.storage.googleapis.com/charts
+      - aws s3api head-object --bucket $BUCKET --key helm/base-1.22.0.tgz; EXITCODE=$?
+      - |
+        if [ $EXITCODE -ne 0 ]; then
+          curl --location $HELM_BASE/base-1.22.0.tgz --output base-1.22.0.tgz
+          aws s3 cp base-1.22.0.tgz s3://$BUCKET/helm/base-1.22.0.tgz --sse aws:kms
+        fi
+      - aws s3api head-object --bucket $BUCKET --key helm/istiod-1.22.0.tgz; EXITCODE=$?
+      - |
+        if [ $EXITCODE -ne 0 ]; then
+          curl --location $HELM_BASE/istiod-1.22.0.tgz --output istiod-1.22.0.tgz
+          aws s3 cp istiod-1.22.0.tgz s3://$BUCKET/helm/istiod-1.22.0.tgz --sse aws:kms
+        fi
+      - aws s3api head-object --bucket $BUCKET --key helm/gateway-1.22.0.tgz; EXITCODE=$?
+      - |
+        if [ $EXITCODE -ne 0 ]; then
+          curl --location $HELM_BASE/gateway-1.22.0.tgz --output gateway-1.22.0.tgz
+          aws s3 cp gateway-1.22.0.tgz s3://$BUCKET/helm/gateway-1.22.0.tgz --sse aws:kms
+        fi
+      - aws s3api head-object --bucket $BUCKET --key helm/cni-1.22.0.tgz; EXITCODE=$?
+      - |
+        if [ $EXITCODE -ne 0 ]; then
+          curl --location $HELM_BASE/cni-1.22.0.tgz --output cni-1.22.0.tgz
+          aws s3 cp cni-1.22.0.tgz s3://$BUCKET/helm/cni-1.22.0.tgz --sse aws:kms
+        fi
+      - aws s3api head-object --bucket $BUCKET --key helm/cert-manager-v1.15.0.tgz; EXITCODE=$?
+      - |
+        if [ $EXITCODE -ne 0 ]; then
+          curl --location https://charts.jetstack.io/charts/cert-manager-v1.15.0.tgz --output cert-manager-v1.15.0.tgz
+          aws s3 cp cert-manager-v1.15.0.tgz s3://$BUCKET/helm/cert-manager-v1.15.0.tgz --sse aws:kms
+        fi
+      - aws s3api head-object --bucket $BUCKET --key helm/aws-load-balancer-controller-1.8.1.tgz; EXITCODE=$?
+      - |
+        if [ $EXITCODE -ne 0 ]; then
+          curl --location https://aws.github.io/eks-charts/aws-load-balancer-controller-1.8.1.tgz --output aws-load-balancer-controller-1.8.1.tgz
+          aws s3 cp aws-load-balancer-controller-1.8.1.tgz s3://$BUCKET/helm/aws-load-balancer-controller-1.8.1.tgz --sse aws:kms
+        fi
+      - aws s3api head-object --bucket $BUCKET --key helm/install-cni.tar.gz; EXITCODE=$?
+      - |
+        if [ $EXITCODE -ne 0 ]; then
+          docker pull istio/install-cni:1.22.0
+          docker save istio/install-cni:1.22.0 | gzip > install-cni.tar.gz
+          aws s3 cp install-cni.tar.gz s3://$BUCKET/helm/install-cni.tar.gz --sse aws:kms
+        fi
+      - aws s3api head-object --bucket $BUCKET --key helm/pilot.tar.gz; EXITCODE=$?
+      - |
+        if [ $EXITCODE -ne 0 ]; then
+          docker pull istio/pilot:1.22.0
+          docker save istio/pilot:1.22.0 | gzip > pilot.tar.gz
+          aws s3 cp pilot.tar.gz s3://$BUCKET/helm/pilot.tar.gz --sse aws:kms
+        fi
+      - aws s3api head-object --bucket $BUCKET --key helm/proxyv2.tar.gz; EXITCODE=$?
+      - |
+        if [ $EXITCODE -ne 0 ]; then
+          docker pull istio/proxyv2:1.22.0
+          docker save istio/proxyv2:1.22.0 | gzip > proxyv2.tar.gz
+          aws s3 cp proxyv2.tar.gz s3://$BUCKET/helm/proxyv2.tar.gz --sse aws:kms
+        fi
+      - aws s3api head-object --bucket $BUCKET --key helm/aws-load-balancer-controller.tar.gz; EXITCODE=$?
+      - |
+        if [ $EXITCODE -ne 0 ]; then
+          docker pull public.ecr.aws/eks/aws-load-balancer-controller:v2.8.1-linux_arm64
+          docker save public.ecr.aws/eks/aws-load-balancer-controller:v2.8.1-linux_arm64 | gzip > aws-load-balancer-controller.tar.gz
+          aws s3 cp aws-load-balancer-controller.tar.gz s3://$BUCKET/helm/aws-load-balancer-controller.tar.gz --sse aws:kms
+        fi
+      - aws s3api head-object --bucket $BUCKET --key helm/cert-manager-controller.tar.gz; EXITCODE=$?
+      - |
+        if [ $EXITCODE -ne 0 ]; then
+          docker pull quay.io/jetstack/cert-manager-controller:v1.15.0
+          docker save quay.io/jetstack/cert-manager-controller:v1.15.0 | gzip > cert-manager-controller.tar.gz
+          aws s3 cp cert-manager-controller.tar.gz s3://$BUCKET/helm/cert-manager-controller.tar.gz --sse aws:kms
+        fi
+      - aws s3api head-object --bucket $BUCKET --key helm/cloudwatch-agent.tar.gz; EXITCODE=$?
+      - |
+        if [ $EXITCODE -ne 0 ]; then
+          docker pull public.ecr.aws/cloudwatch-agent/cloudwatch-agent:latest
+          docker save public.ecr.aws/cloudwatch-agent/cloudwatch-agent:latest | gzip > cloudwatch-agent.tar.gz
+          aws s3 cp cloudwatch-agent.tar.gz s3://$BUCKET/helm/cloudwatch-agent.tar.gz --sse aws:kms
+        fi
+artifacts:
+  secondary-artifacts:
+    BuildArtifact:
+      base-directory: $CODEBUILD_SRC_DIR
+      files:
+        - static/$PROJECT_NAME.json
+      discard-paths: "yes"
+      name: BuildArtifact
+    CDKArtifact:
+      base-directory: $CODEBUILD_SRC_DIR
+      files:
+        - assets/**/*
+        - static/**/*
+        - content/**/*
+        - contentspec.yaml
+      name: CDKArtifact
