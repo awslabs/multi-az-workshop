@@ -8,9 +8,9 @@ You can access the workshop through [Workshop Studio](https://catalog.workshops.
 The build process for the workshop is complex and uses CodePipeline to generate the builds. If you'd like to build from source, there is a linked CDK construct to build a pipeline. The steps are generally:
 
 1. Synthesize the content in the `./cdk` directory and upload asset content to S3. [This is an example CodeBuild project buildspec.](https://github.com/awslabs/multi-az-workshop/blob/main/build/build-cfn-package.yml).
-2. Build the web application. [This is an example CodeBuild project buildspec.](https://github.com/awslabs/multi-az-workshop/blob/main/build/build-app-arm64.yml)
-3. Build the failing deployment version of the web application.
-4. Build the EKS container package. [This is an example CodeBuild project buildspec.](https://github.com/awslabs/multi-az-workshop/blob/main/build/build-container.yml)
+2. Build the web application for your desired CPU architecture(s) (there is an included `buildspec.yml` for this).
+3. Build the failing deployment version of the web application for your desired CPU architecture(s) (there is an included `buildspec.yml` for this).
+4. Build the EKS container package (there is an included `buildspec.yml` for this).
 5. Package the content. [This is an example CodeBuild project buildspec.](https://github.com/awslabs/multi-az-workshop/blob/main/build/build-container.yml)
 6. Download the `workshop.zip` file produced in the bundle stage. This contains the workshop content, static assets, application binaries, and CloudFormation templates.
 
