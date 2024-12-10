@@ -11,7 +11,7 @@ The build process for the workshop is complex and uses CodePipeline to generate 
 2. Build the web application for your desired CPU architecture(s) (there is an included `buildspec.yml` for this).
 3. Build the failing deployment version of the web application for your desired CPU architecture(s) (there is an included `buildspec.yml` for this).
 4. Build the EKS container package (there is an included `buildspec.yml` for this).
-5. Package the content. [This is an example CodeBuild project buildspec.](https://github.com/awslabs/multi-az-workshop/blob/main/build/build-container.yml)
+5. Package the content. [This is an example CodeBuild project buildspec.](https://github.com/awslabs/multi-az-workshop/blob/main/build/bundle.yml). It calls a script, [pacakage.py](https://github.com/awslabs/multi-az-workshop/blob/main/build/package.py) that does much of the heavy lifting in updating nested stack files to use the bucket and prefix provided by Workshop Studio.
 6. Download the `workshop.zip` file produced in the bundle stage. This contains the workshop content, static assets, application binaries, and CloudFormation templates.
 
 ## Security
