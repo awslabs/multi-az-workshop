@@ -2,6 +2,7 @@ version: 2.0
 defaultLocaleCode: en-US
 localeCodes:
   - en-US
+  - ja
 additionalLinks:
   - title: Advanced Multi-AZ Resilience Patterns Whitepaper
     link: https://docs.aws.amazon.com/whitepapers/latest/advanced-multi-az-resilience-patterns/advanced-multi-az-resilience-patterns.html
