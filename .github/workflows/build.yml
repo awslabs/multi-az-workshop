@@ -143,6 +143,7 @@ jobs:
         run: |
           cd ${{ github.workspace }}/$CDK_LOCATION
           cdk synth --quiet
+          chmod +x ${{ github.workspace }}/build/package.py
           ${{ github.workspace }}/build/package.py $PROJECT_NAME ${{ github.workspace }} $CDK_LOCATION
           cd ${{ github.workspace }}/assets
           zip -r ${{ github.workspace }}/content.zip .
