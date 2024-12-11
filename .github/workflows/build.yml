@@ -132,7 +132,7 @@ jobs:
           cd ${{ github.workspace }}/app-src
           dotnet publish --configuration Release --runtime linux-musl-arm64 --output  ${{ github.workspace }}/app-src/output/src -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained
           cd ${{ github.workspace }}/app-src/output
-          docker build --tag $PROJECT_NAME/app:latest --platform linux/arm64 --build-arg SRC=${{ github.workspace }}/app-src/output/src .
+          docker build --tag $PROJECT_NAME/app:latest --platform linux/arm64 --build-arg SRC=${{ github.workspace }}/app-src/output/src --file ${{ github.workspace }}/build/dockerfile .
           docker save $PROJECT_NAME/app:latest | gzip > ${{ github.workspace }}/assets/container.tar.gz
           rm -rf ${{ github.workspace }}/app-src/output
 
