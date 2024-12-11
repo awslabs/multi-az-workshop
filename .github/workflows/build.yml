@@ -200,7 +200,7 @@ jobs:
 
       - name: Deploy change set
         run: |
-          date=$(date --utc +"%Y-%m-%dT%H:%M:%SZ")
+          date=$(date --utc +"%Y-%m-%dT%H-%M-%SZ")
           aws cloudformation create-change-set --stack-name $PROJECT_NAME --change-set-name $date --template-url https://$BUCKET.s3.amazonaws.com/$PROJECT_NAME.template --parameters ParameterKey=AssetsBucketName,ParameterValue=$BUCKET ParameterKey=AssetsBucketPrefix,ParameterValue="" ParameterKey=ParticipantRoleName,ParameterValue=Admin --capabilities CAPABILITY_IAM --region $AWS_REGION
           aws cloudformation execute-change-set --stack-name $PROJECT_NAME --change-set-name $date --region $AWS_REGION
     
