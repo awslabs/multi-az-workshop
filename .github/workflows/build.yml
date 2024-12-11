@@ -202,7 +202,7 @@ jobs:
         run: |
           date=$(date --utc +"%Y-%m-%dT%H-%M-%SZ")
           aws cloudformation create-change-set --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --template-url https://$BUCKET.s3.amazonaws.com/$PROJECT_NAME.template --parameters ParameterKey=AssetsBucketName,ParameterValue=$BUCKET ParameterKey=AssetsBucketPrefix,ParameterValue="" ParameterKey=ParticipantRoleName,ParameterValue=Admin --capabilities CAPABILITY_IAM --region $AWS_REGION
-          aws cloudformation change-set-create-complete --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --region $AWS_REGION
+          aws cloudformation wait change-set-create-complete --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --region $AWS_REGION
           aws cloudformation execute-change-set --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --region $AWS_REGION
     
   wait_for_stack:
