@@ -10,7 +10,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      BUCKET: ""
       HELM_VERSION: "3.16.3"
       KUBECTL_VERSION: "1.31.0"
       ISTIO_VERSION: "1.24.1"
@@ -138,7 +137,7 @@ jobs:
         run: |
           cd ${{ github.workspace }}/$CDK_LOCATION
           cdk synth --quiet
-          ${{ github.workspace }}/build/package.py $PROJECT_NAME ${{ github.workspace }}/$CDK_LOCATION/cdk.out
+          ${{ github.workspace }}/build/package.py $PROJECT_NAME ${{ github.workspace }} $CDK_LOCATION
           cp -r ${{ github.workspace }}/tmp/* ${{ github.workspace }}/assets 
           cd ${{ github.workspace }}/assets
           zip -r ../content.zip .

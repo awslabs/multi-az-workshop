@@ -6,10 +6,12 @@ import shutil
 import sys
 
 stack_name = sys.argv[1]
-assets_bucket_variable_name = sys.argv[2]
-assets_bucket_prefix_variable_name = sys.argv[3]
-src_dir = os.environ.get("CODEBUILD_SRC_DIR")
-cdk_relative_path = os.environ.get("CDK_LOCATION")
+src_dir = sys.argv[2]
+cdk_relative_path = sys.argv[3]
+
+assets_bucket_variable_name = "AssetsBucketName"
+assets_bucket_prefix_variable_name = "AssetsBucketPrefix"
+
 cdk_location = os.path.join(src_dir, cdk_relative_path)
 assets_folder = os.path.join(src_dir, "assets")
 cdk_out = os.path.join(cdk_location, "cdk.out")
