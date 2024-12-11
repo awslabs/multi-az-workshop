@@ -71,13 +71,13 @@ jobs:
           BASE=https://istio-release.storage.googleapis.com/charts
           istio_deps=("base-$ISTIO_VERSION.tgz" "istiod-$ISTIO_VERSION.tgz" "gateway-$ISTIO_VERSION.tgz" "cni-$ISTIO_VERSION.tgz")
           for file in ${istio_deps[@]}; do
-            curl --location $BASE/$file --output ${{ github.workspace }}/assets/$file
+            curl --location $BASE/$file --output ${{ github.workspace }}/assets/${file%%-*}.tgz
           done
 
       - name: Get AWS load balancer controller
         run: |
           file=aws-load-balancer-controller-$LB_CONTROLLER_HELM_VERSION.tgz
-          curl --location https://aws.github.io/eks-charts/$file --output ${{ github.workspace }}/assets/$file
+          curl --location https://aws.github.io/eks-charts/$file --output ${{ github.workspace }}/assets/${file%%-*}.tgz
 
       - name: Pull istio container images
         run: |
@@ -192,7 +192,7 @@ jobs:
 
       - name: Deploy change set
         run: |
-          date=$(date +"%Y-%m-%dT%H:%M:%S%z")
+          date=$(date --utc +"%Y-%m-%dT%H:%M:%SZ")
           aws cloudformation create-change-set --stack-name $PROJECT_NAME --change-set-name $date --template-url https://$BUCKET.s3.amazonaws.com/$PROJECT_NAME.template --parameters ParameterKey=AssetsBucketName,ParameterValue=$BUCKET ParameterKey=AssetsBucketPrefix,ParameterValue="" ParameterKey=ParticipantRoleName,ParameterValue=Admin --capabilities CAPABILITY_IAM --region $AWS_REGION
           aws cloudformation execute-change-set --stack-name $PROJECT_NAME --change-set-name $date --region $AWS_REGION
     

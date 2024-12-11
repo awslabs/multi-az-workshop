@@ -34,13 +34,13 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
 
         public Istio(Construct scope, string id, IIstioProps props) : base(scope, id)
         {
-            var istioBaseHelmChartRepo = CreateHelmRepoAndChart("base", "1.22.0", props.UploaderFunction);
+            var istioBaseHelmChartRepo = CreateHelmRepoAndChart("base", props.UploaderFunction);
 
-            var istiodHelmChartRepo = CreateHelmRepoAndChart("istiod", "1.22.0", props.UploaderFunction);
+            var istiodHelmChartRepo = CreateHelmRepoAndChart("istiod", props.UploaderFunction);
 
-            //var istioGatewayHelmChartRepo = CreateHelmRepoAndChart("gateway", "1.22.0", uploader);
+            //var istioGatewayHelmChartRepo = CreateHelmRepoAndChart("gateway", uploader);
 
-            var istioCniHelmChartRepo = CreateHelmRepoAndChart("cni", "1.22.0", props.UploaderFunction);
+            var istioCniHelmChartRepo = CreateHelmRepoAndChart("cni", props.UploaderFunction);
 
             // Used by the istiod helm chart
             Repository cniPilotContainerImageRepo = new Repository(this, "CniPilotContainerImageRepo", new RepositoryProps() {

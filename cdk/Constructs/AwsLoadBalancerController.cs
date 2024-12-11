@@ -20,6 +20,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
         public ICluster Cluster {get; set;}
         public IFunction UploaderFunction {get; set;}
         public IProject ContainerBuildProject {get; set;}
+        public string Version {get; set;}
     }
 
     public class AwsLoadBalancerControllerProps : IAwsLoadBalancerControllerProps
@@ -27,6 +28,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
         public ICluster Cluster {get; set;}
         public IFunction UploaderFunction {get; set;}
         public IProject ContainerBuildProject {get; set;}
+        public string Version {get; set;} = "v2.8.1";
     }
 
     public class AwsLoadBalancerController : HelmRepoAndChartConstruct
@@ -40,7 +42,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 AssumedBy = new ServicePrincipal("pods.eks.amazonaws.com").WithSessionTags()
             });
 
-            ManagedPolicy loadBalancerControllerManagedPolicy = Task.Run(() => this.CreateAwsLoadBalancerControllerIAMPolicy()).Result;
+            ManagedPolicy loadBalancerControllerManagedPolicy = Task.Run(() => this.CreateAwsLoadBalancerControllerIAMPolicy(props.Version)).Result;
             lbControllerRole.AddManagedPolicy(loadBalancerControllerManagedPolicy);
 
             KubernetesManifest loadBalancerServiceAccount = new KubernetesManifest(this, "LoadBalancerServiceAccount", new KubernetesManifestProps() {
@@ -66,7 +68,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
 
             loadBalancerContollerPodIdentityAssociation.Node.AddDependency(loadBalancerServiceAccount);
 
-            var loadBalancerControllerHelmChartRepo = CreateHelmRepoAndChart("aws-load-balancer-controller", "1.8.1", props.UploaderFunction);
+            var loadBalancerControllerHelmChartRepo = CreateHelmRepoAndChart("aws-load-balancer-controller", props.UploaderFunction);
 
             // Used by the aws-load-balancer-controller helm chart
             Repository loadBalancerControllerContainerImageRepo = new Repository(this, "LoadBalancerControllerContainerImageRepo", new RepositoryProps() {
@@ -88,7 +90,6 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             // Uses the aws-load-balancer-controller image
             HelmChart loadBalancerController = props.Cluster.AddHelmChart("AwsLoadBalancerController", new HelmChartOptions() {
                 Chart = "aws-load-balancer-controller",
-                Version = "1.8.1",
                 Repository = "oci://" + loadBalancerControllerHelmChartRepo.RepositoryUri,
                 Namespace = "kube-system",
                 Wait = true,
@@ -96,7 +97,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                     {"clusterName", props.Cluster.ClusterName },
                     { "image", new Dictionary<string, object>() {
                         {"repository", Fn.Sub("${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/eks/aws-load-balancer-controller")},
-                        {"tag", "v2.8.1-linux_arm64"}
+                        {"tag", props.Version + "-linux_arm64"}
                     }},
                     {"enableCertManager", false},
                     {"replicaCount", 1},
@@ -116,11 +117,11 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             this.WaitableNode = loadBalancerController;
         }
 
-        private async Task<ManagedPolicy> CreateAwsLoadBalancerControllerIAMPolicy()
+        private async Task<ManagedPolicy> CreateAwsLoadBalancerControllerIAMPolicy(string version)
         {
             using (HttpClient client = new HttpClient())
             {
-                using (Stream stream = await client.GetStreamAsync("https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.8.1/docs/install/iam_policy.json"))
+                using (Stream stream = await client.GetStreamAsync($"https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/{version}/docs/install/iam_policy.json"))
                 {
                     using (StreamReader reader = new StreamReader(stream))
                     {
