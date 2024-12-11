@@ -98,7 +98,7 @@ jobs:
 
       - name: Pull AWS container images
         run: |
-          aws_containers=("eks/aws-load-balancer-controller:v$LB_CONTROLLER_CONTAINER-linux_arm64" "cloudwatch-agent/cloudwatch-agent:latest")
+          aws_containers=("eks/aws-load-balancer-controller:$LB_CONTROLLER_CONTAINER-linux_arm64" "cloudwatch-agent/cloudwatch-agent:latest")
           BASE=public.ecr.aws
           for file in ${aws_containers[@]}; do
             docker pull $BASE/$file
