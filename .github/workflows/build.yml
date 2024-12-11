@@ -70,7 +70,7 @@ jobs:
           zip -r ${{ github.workspace }}/$CDK_LOCATION/helm-layer.zip .
 
       - name: Copy destination rule
-        run: 
+        run: |
           file=destination-rule.yaml
           cp ${{ github.workspace }}/$CDK_LOCATION/Configs/$file ${{ github.workspace }}/assets/$file
 
