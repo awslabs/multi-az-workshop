@@ -172,30 +172,7 @@ jobs:
         with:
           name: ContentArtifact
           path: ${{ github.workspace }}/content.zip
-  test:
-    needs: [ "build" ]
-    runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
-    env:
-      BUCKET: codepipeline-us-east-2-386526219917
-      PROJECT_NAME: multi-az-workshop
-    steps:
-      - name: Get workshop content
-        uses: actions/download-artifact@v4
-        with:
-          name: ContentArtifact
-
-      - name: Upload to S3
-        run: |
-          mkdir -p ${{ github.workspace }}/content
-          unzip content.zip -d ${{ github.workspace }}/content
-          aws s3 cp ${{ github.workspace }}/content s3://$BUCKET/ --recursive
-
-      - name: Deploy change set
-        run: |
-          date=$(date +"%Y-%m-%dT%H:%M:%S%z")
-          aws cloudformation create-change-set --stack-name $PROJECT_NAME --change-set-name $date --template-url https://$BUCKET.s3.amazonaws.com/$PROJECT_NAME.template --parameters AssetsBucketName=$BUCKET AssetsBucketPrefix="" ParticipantRoleName=Admin --capabilities CAPABILITY_IAM --region $AWS_REGION
-          aws cloudformation execute-change-set --stack-name $PROJECT_NAME --change-set-name $date --region $AWS_REGION
-
+  
 
           
           

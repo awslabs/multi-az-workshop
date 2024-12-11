@@ -65,7 +65,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
         {
             #region Parameters
 
-            Amazon.CDK.CfnParameter assetsBucket = new Amazon.CDK.CfnParameter(this, "AssetsBucket", new Amazon.CDK.CfnParameterProps() {
+            Amazon.CDK.CfnParameter assetsBucket = new Amazon.CDK.CfnParameter(this, "AssetsBucketName", new Amazon.CDK.CfnParameterProps() {
                 Type = "String",
                 MinLength = 1,
                 Default = "{{.AssetsBucketName}}"
@@ -76,7 +76,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 Default = "{{.AssetsBucketPrefix}}"
             }); 
 
-            Amazon.CDK.CfnParameter participantRole = new Amazon.CDK.CfnParameter(this, "AdminRoleName", new Amazon.CDK.CfnParameterProps() {
+            Amazon.CDK.CfnParameter participantRole = new Amazon.CDK.CfnParameter(this, "ParticipantRoleName", new Amazon.CDK.CfnParameterProps() {
                 Type = "String",
                 Default = "{{.ParticipantRoleName}}"
             }); 
