@@ -328,19 +328,19 @@ jobs:
   cleanup:
     runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
     needs: [ wait_for_stack, test ]
-    if: ${{ needs.test.outputs.S3_STATUS }}
+    if: ${{ needs.test.outputs.S3_STATUS == 'success' }}
     env:
       DATE: ${{ needs.test.outputs.DATE }}
       BUCKET: workshop-pipeline-wspipelineartifactsbucket5608ec1-xqbqfqtepjdl
       PROJECT_NAME: ${{ github.event.repository.name }}
     steps: 
       - name: Cleanup Old S3 Content
-        if: needs.wait_for_stack.result == 'success'
+        if: ${{ needs.wait_for_stack.result == 'success' }}
         run: |
           echo Deleting old S3 content due to deployment success
           aws s3 rm s3://$BUCKET/ --recursive --exclude "$DATE/*"
       - name: Cleanup New S3 Content
-        if: needs.wait_for_stack.result != 'success'
+        if: ${{ needs.wait_for_stack.result != 'success' }}
         run: |
           echo Deleting new S3 content because deployment did not succeed
           aws s3 rm s3://$BUCKET/ --recursive --exclude "*" --include "$DATE/*"
