@@ -58,7 +58,7 @@ jobs:
           mkdir -p ${{ github.workspace }}/$CDK_LOCATION/layer/helm
           cp /tmp/linux-arm64/helm ${{ github.workspace }}/$CDK_LOCATION/layer/helm/
           chmod 0755 ${{ github.workspace }}/$CDK_LOCATION/layer/helm/helm
-          cd ${{ github.workspace }}/$CDK_LOCATION/layer/layer
+          cd ${{ github.workspace }}/$CDK_LOCATION/layer
           zip -r ${{ github.workspace }}/$CDK_LOCATION/helm-layer.zip .
 
       - name: Get kubectl
