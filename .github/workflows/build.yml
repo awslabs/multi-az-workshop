@@ -50,12 +50,12 @@ jobs:
       - name: Create helm lambda layer
         run: |
           file=helm-v$HELM_VERSION-linux-arm64.tar.gz
-          curl --location https://get.helm.sh/$file --output  ${{ github.workspace }}/tmp/$file
-          tar -zxvf  ${{ github.workspace }}/tmp/$file
+          curl --location https://get.helm.sh/$file --output /tmp/$file
+          tar -zxvf /tmp/$file
           mkdir -p ${{ github.workspace }}/$CDK_LOCATION/layer/helm
-          cp linux-arm64/helm layer/helm/
-          chmod 0755 layer/helm/helm
-          cd layer
+          cp  /tmp/linux-arm64/helm ${{ github.workspace }}/$CDK_LOCATION/layer/helm/
+          chmod 0755 ${{ github.workspace }}/$CDK_LOCATION/layer/helm/helm
+          cd ${{ github.workspace }}/$CDK_LOCATION/layer/layer
           zip -r ${{ github.workspace }}/$CDK_LOCATION/helm-layer.zip .
 
       - name: Get kubectl
