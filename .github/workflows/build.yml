@@ -211,7 +211,7 @@ jobs:
         id: changeset
         run: |
           date=${{ steps.s3.outputs.DATE }}
-          aws cloudformation create-change-set --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --template-url https://$BUCKET.s3.amazonaws.com/$PROJECT_NAME.template --parameters ParameterKey=AssetsBucketName,ParameterValue=$BUCKET ParameterKey=AssetsBucketPrefix,ParameterValue=$date ParameterKey=ParticipantRoleName,ParameterValue=Admin --capabilities CAPABILITY_IAM --region $AWS_REGION
+          aws cloudformation create-change-set --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --template-url https://$BUCKET.s3.amazonaws.com/$date/$PROJECT_NAME.template --parameters ParameterKey=AssetsBucketName,ParameterValue=$BUCKET ParameterKey=AssetsBucketPrefix,ParameterValue=$date ParameterKey=ParticipantRoleName,ParameterValue=Admin --capabilities CAPABILITY_IAM --region $AWS_REGION
           aws cloudformation wait change-set-create-complete --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --region $AWS_REGION
           aws cloudformation execute-change-set --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --region $AWS_REGION
           echo "CHANGE_SET=$PROJECT_NAME-$date" >> "$GITHUB_OUTPUT"
