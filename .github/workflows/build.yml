@@ -10,11 +10,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      HELM_VERSION: "3.16.3"
-      KUBECTL_VERSION: "1.31.0"
-      ISTIO_VERSION: "1.24.1"
-      LB_CONTROLLER_HELM_VERSION: "1.10.1"
-      LB_CONTROLLER_CONTAINER_VERSION: "2.8.1"
       CDK_LOCATION: "cdk"
       PROJECT_NAME: ${{ github.event.repository.name }}
     steps:
@@ -50,9 +45,22 @@ jobs:
       - name: Create assets
         run: mkdir -p ${{ github.workspace }}/assets
 
+      - name: Set versions
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+          # Read the JSON file and iterate over each key-value pair
+          for key in $(jq -r 'keys[]' ${{ github.workspace }}/build/versions.json); do
+            value=$(jq -r ".\"$key\"" ${{ github.workspace }}/build/versions.json)
+            echo "Setting environment variable for $key with value $value"
+            # Set the environment variable
+            echo "$key=$value" >> $GITHUB_ENV
+          done
+
       - name: Create helm lambda layer
         run: |
-          file=helm-v$HELM_VERSION-linux-arm64.tar.gz
+          file=helm-v$HELM-linux-arm64.tar.gz
           curl --location https://get.helm.sh/$file --output /tmp/$file
           tar -zxvf /tmp/$file --directory /tmp
           mkdir -p ${{ github.workspace }}/$CDK_LOCATION/layer/helm
@@ -64,24 +72,24 @@ jobs:
       - name: Get kubectl
         run: |
           file=kubectl
-          curl --location https://dl.k8s.io/release/v$KUBECTL_VERSION/bin/linux/arm64/$file --output ${{ github.workspace }}/assets/$file
+          curl --location https://dl.k8s.io/release/v$KUBECTL/bin/linux/arm64/$file --output ${{ github.workspace }}/assets/$file
           
       - name: Get istio
         run: |
           BASE=https://istio-release.storage.googleapis.com/charts
-          istio_deps=("base-$ISTIO_VERSION.tgz" "istiod-$ISTIO_VERSION.tgz" "gateway-$ISTIO_VERSION.tgz" "cni-$ISTIO_VERSION.tgz")
+          istio_deps=("base-$ISTIO.tgz" "istiod-$ISTIO.tgz" "gateway-$ISTIO.tgz" "cni-$ISTIO.tgz")
           for file in ${istio_deps[@]}; do
             curl --location $BASE/$file --output ${{ github.workspace }}/assets/${file%%-*}.tgz
           done
 
       - name: Get AWS load balancer controller
         run: |
-          file=aws-load-balancer-controller-$LB_CONTROLLER_HELM_VERSION.tgz
+          file=aws-load-balancer-controller-$LB_CONTROLLER_HELM.tgz
           curl --location https://aws.github.io/eks-charts/$file --output ${{ github.workspace }}/assets/${file%%-*}.tgz
 
       - name: Pull istio container images
         run: |
-          istio_containers=("istio/install-cni:$ISTIO_VERSION" "istio/pilot:$ISTIO_VERSION" "istio/proxyv2:$ISTIO_VERSION")
+          istio_containers=("istio/install-cni:$ISTIO" "istio/pilot:$ISTIO" "istio/proxyv2:$ISTIO")
           for file in ${istio_containers[@]}; do
             docker pull $file
             name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
@@ -90,7 +98,7 @@ jobs:
 
       - name: Pull AWS container images
         run: |
-          aws_containers=("eks/aws-load-balancer-controller:v$LB_CONTROLLER_CONTAINER_VERSION-linux_arm64" "cloudwatch-agent/cloudwatch-agent:latest")
+          aws_containers=("eks/aws-load-balancer-controller:v$LB_CONTROLLER_CONTAINER-linux_arm64" "cloudwatch-agent/cloudwatch-agent:latest")
           BASE=public.ecr.aws
           for file in ${aws_containers[@]}; do
             docker pull $BASE/$file
