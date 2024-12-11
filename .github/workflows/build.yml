@@ -235,7 +235,6 @@ jobs:
             get_change_set_status() {
               aws cloudformation describe-stacks \
               --stack-name "$STACK_NAME" \
-              --change-set-name "$CHANGE_SET" \
               --query "Stacks[0].StackStatus" \
               --region $AWS_REGION \
               --output text
