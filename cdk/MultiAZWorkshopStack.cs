@@ -346,7 +346,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
 
             StringParameter deploymentAsset = new StringParameter(this, "DeploymentParameter", new StringParameterProps() {
                 ParameterName = "DeploymentAsset",
-                StringValue = Fn.Sub("s3://${AssetsBucket}/${AssetsBucketPrefix}") + (arch == InstanceArchitecture.ARM_64 ? "app_arm64_fail.zip" : "app_x64_fail.zip")
+                StringValue = Fn.Sub("s3://${AssetsBucketName}/${AssetsBucketPrefix}") + (arch == InstanceArchitecture.ARM_64 ? "app_arm64_fail.zip" : "app_x64_fail.zip")
             });
 
             #endregion
