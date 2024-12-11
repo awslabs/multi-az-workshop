@@ -13,7 +13,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
         public HelmRepoAndChartConstruct(Construct scope, string id) : base(scope, id)
         {}
 
-        public Repository CreateHelmRepoAndChart(string name, IFunction function)
+        public Repository CreateHelmRepoAndChart(string name, string version, IFunction function)
         {
             Repository repo = new Repository(this, name + "HelmRepo", new RepositoryProps() {
                 EmptyOnDelete = true,
@@ -26,7 +26,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 Properties = new Dictionary<string, object> {
                     { "Type", "Helm" },
                     { "Bucket", Fn.Ref("AssetsBucketName") },
-                    { "Key", Fn.Ref("AssetsBucketPrefix") + "helm/" + name + ".tgz" },
+                    { "Key", Fn.Ref("AssetsBucketPrefix") + "helm/" + name + "-" + version + ".tgz" },
                     { "Repository", repo.RepositoryName }
                 }
             });

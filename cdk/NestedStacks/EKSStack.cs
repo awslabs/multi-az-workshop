@@ -13,6 +13,7 @@ using Amazon.CDK.AWS.Logs;
 using Amazon.CDK.AWS.RDS;
 using Constructs;
 using Amazon.AWSLabs.MultiAZWorkshop.Constructs;
+using Newtonsoft.Json;
 
 #if NET8_0_OR_GREATER
 using System.Formats.Tar;
@@ -59,6 +60,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
         
         public EKSStack(Stack scope, string id, IEKSStackProps props) : base(scope, id, props)
         { 
+            Dictionary<string, string> versions = JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText("../build/versions.json"));
+
             //BuildHelmLayer().Wait(); // No available to do in .NET 6
             IFunction uploader = this.SetupUploader();
 
@@ -167,13 +170,15 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
             Istio istio = new Istio(this, "Istio", new IstioProps() {
                 Cluster = cluster.Cluster,
                 ContainerBuildProject = containerBuild,
-                UploaderFunction = uploader
+                UploaderFunction = uploader,
+                Version = versions["ISTIO"]
             });
 
             AwsLoadBalancerController lbController = new AwsLoadBalancerController(this, "AwsLoadBalancerController", new AwsLoadBalancerControllerProps() {
                 Cluster = cluster.Cluster,
                 ContainerBuildProject = containerBuild,
-                UploaderFunction = uploader
+                UploaderFunction = uploader,
+                ContainerVersion = versions["LB_CONTROLLER_HELM"]
             });
             lbController.Node.AddDependency(istio.WaitableNode);
 

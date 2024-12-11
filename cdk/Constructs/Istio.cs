@@ -17,6 +17,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
         public IFunction UploaderFunction {get; set;}
 
         public IProject ContainerBuildProject {get; set;}
+
+        public string Version {get; set;}
     }
 
     public class IstioProps : IIstioProps
@@ -26,6 +28,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
         public IFunction UploaderFunction {get; set;}
 
         public IProject ContainerBuildProject {get; set;}
+
+        public string Version {get; set;} = "1.24.1";
     }
     
     public class Istio : HelmRepoAndChartConstruct
@@ -34,13 +38,13 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
 
         public Istio(Construct scope, string id, IIstioProps props) : base(scope, id)
         {
-            var istioBaseHelmChartRepo = CreateHelmRepoAndChart("base", props.UploaderFunction);
+            var istioBaseHelmChartRepo = CreateHelmRepoAndChart("base", props.Version, props.UploaderFunction);
 
-            var istiodHelmChartRepo = CreateHelmRepoAndChart("istiod", props.UploaderFunction);
+            var istiodHelmChartRepo = CreateHelmRepoAndChart("istiod", props.Version, props.UploaderFunction);
 
             //var istioGatewayHelmChartRepo = CreateHelmRepoAndChart("gateway", uploader);
 
-            var istioCniHelmChartRepo = CreateHelmRepoAndChart("cni", props.UploaderFunction);
+            var istioCniHelmChartRepo = CreateHelmRepoAndChart("cni", props.Version, props.UploaderFunction);
 
             // Used by the istiod helm chart
             Repository cniPilotContainerImageRepo = new Repository(this, "CniPilotContainerImageRepo", new RepositoryProps() {
@@ -96,7 +100,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             // No image required
             HelmChart baseChart = props.Cluster.AddHelmChart("IstioBaseHelmChart", new HelmChartOptions() {
                 Chart = "base",
-                Version = "1.22.0",
+                Version = props.Version,
                 Repository = "oci://" + istioBaseHelmChartRepo.RepositoryUri,
                 Namespace = "istio-system",
                 Wait = true
@@ -105,7 +109,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             // Uses the pilot container image
             HelmChart istiod = props.Cluster.AddHelmChart("Istiod", new HelmChartOptions() {
                 Chart = "istiod",
-                Version = "1.22.0",
+                Version = props.Version,
                 Repository = "oci://" + istiodHelmChartRepo.RepositoryUri,
                 Namespace = "istio-system",
                 Wait = true,
@@ -125,7 +129,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             /*
             HelmChart gateway = eksCluster.AddHelmChart("IstioGateway", new HelmChartOptions() {
                 Chart = "gateway",
-                Version = "1.22.0",
+                Version = props.Version,
                 Repository = "oci://" + istioGatewayHelmChartRepo.RepositoryUri,
                 Namespace = "istio-system",
                 Values = new Dictionary<string, object>() {
@@ -144,7 +148,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             // Uses the install-cni image
             HelmChart cni = props.Cluster.AddHelmChart("IstioCNI", new HelmChartOptions() {
                 Chart = "cni",
-                Version = "1.22.0",
+                Version = props.Version,
                 Repository = "oci://" + istioCniHelmChartRepo.RepositoryUri,
                 Namespace = "istio-system",
                 Wait = true,
