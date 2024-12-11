@@ -83,7 +83,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 Properties = new Dictionary<string, object> {
                     { "Type", "Docker" },
                     { "Bucket", Fn.Ref("AssetsBucketName") },
-                    { "Key", Fn.Ref("AssetsBucketPrefix") + "helm/aws-load-balancer-controller.tar.gz" },
+                    { "Key", Fn.Ref("AssetsBucketPrefix") + "aws-load-balancer-controller.tar.gz" },
                     { "ProjectName", props.ContainerBuildProject.ProjectName },
                     { "Repository", loadBalancerControllerContainerImageRepo.RepositoryName }
                 }

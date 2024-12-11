@@ -112,7 +112,7 @@ If not directed to the *`Session Manager`* tab on the *`Connect to instance`* ta
 
 ```bash
 BUCKET_PATH=$(aws ssm get-parameter --name BucketPath --query 'Parameter.Value' | tr -d '"')
-aws s3 cp ${BUCKET_PATH}helm/kubectl /tmp/kubectl
+aws s3 cp ${BUCKET_PATH}kubectl /tmp/kubectl
 chmod +x /tmp/kubectl
 CLUSTER=$(aws ssm get-parameter --name ClusterName --query 'Parameter.Value' | tr -d '"')
 aws eks update-kubeconfig --name $CLUSTER --region <region>
@@ -121,7 +121,7 @@ aws eks update-kubeconfig --name $CLUSTER --region <region>
 Next, download the manifest we'll use to apply the change (or feel free to create it yourself).
 
 ```bash
-aws s3 cp ${BUCKET_PATH}helm/destination-rule.yaml /tmp/destination-rule.yaml
+aws s3 cp ${BUCKET_PATH}destination-rule.yaml /tmp/destination-rule.yaml
 ```
 
 If you're running the workshop in a Region other than `us-east-1`, you'll need to update the destination rule routing policies with the region and AZ names for the Region. Open your favorite editor and change the rules. 

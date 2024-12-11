@@ -112,7 +112,7 @@ spec:
 
 ```bash
 BUCKET_PATH=$(aws ssm get-parameter --name BucketPath --query 'Parameter.Value' | tr -d '"')
-aws s3 cp ${BUCKET_PATH}helm/kubectl /tmp/kubectl
+aws s3 cp ${BUCKET_PATH}kubectl /tmp/kubectl
 chmod +x /tmp/kubectl
 CLUSTER=$(aws ssm get-parameter --name ClusterName --query 'Parameter.Value' | tr -d '"')
 aws eks update-kubeconfig --name $CLUSTER --region <region>
@@ -121,7 +121,7 @@ aws eks update-kubeconfig --name $CLUSTER --region <region>
 次に、変更を適用するために使用するマニフェストをダウンロードします（または自分で作成しても構いません）。
 
 ```bash
-aws s3 cp ${BUCKET_PATH}helm/destination-rule.yaml /tmp/destination-rule.yaml
+aws s3 cp ${BUCKET_PATH}destination-rule.yaml /tmp/destination-rule.yaml
 ```
 
 `us-east-1`以外のリージョンでワークショップを実行している場合は、そのリージョンのリージョン名とAZ名を使用してデスティネーションルールのルーティングポリシーを更新する必要があります。お好みのエディタを開いてルールを変更してください。

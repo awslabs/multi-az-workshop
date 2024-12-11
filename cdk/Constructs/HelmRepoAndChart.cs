@@ -26,7 +26,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 Properties = new Dictionary<string, object> {
                     { "Type", "Helm" },
                     { "Bucket", Fn.Ref("AssetsBucketName") },
-                    { "Key", Fn.Ref("AssetsBucketPrefix") + "helm/" + name + "-" + version + ".tgz" },
+                    { "Key", Fn.Ref("AssetsBucketPrefix") + name + "-" + version + ".tgz" },
                     { "Repository", repo.RepositoryName }
                 }
             });

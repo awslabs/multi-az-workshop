@@ -57,7 +57,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 Properties = new Dictionary<string, object> {
                     { "Type", "Docker" },
                     { "Bucket", Fn.Ref("AssetsBucketName") },
-                    { "Key", Fn.Ref("AssetsBucketPrefix") + "helm/pilot.tar.gz" },
+                    { "Key", Fn.Ref("AssetsBucketPrefix") + "pilot.tar.gz" },
                     { "ProjectName", props.ContainerBuildProject.ProjectName },
                     { "Repository", cniPilotContainerImageRepo.RepositoryName }
                 }
@@ -74,7 +74,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 Properties = new Dictionary<string, object> {
                     { "Type", "Docker" },
                     { "Bucket", Fn.Ref("AssetsBucketName") },
-                    { "Key", Fn.Ref("AssetsBucketPrefix") + "helm/proxyv2.tar.gz" },
+                    { "Key", Fn.Ref("AssetsBucketPrefix") + "proxyv2.tar.gz" },
                     { "ProjectName", props.ContainerBuildProject.ProjectName },
                     { "Repository", proxyContainerImageRepo.RepositoryName }
                 }
@@ -91,7 +91,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 Properties = new Dictionary<string, object> {
                     { "Type", "Docker" },
                     { "Bucket", Fn.Ref("AssetsBucketName") },
-                    { "Key", Fn.Ref("AssetsBucketPrefix") + "helm/install-cni.tar.gz" },
+                    { "Key", Fn.Ref("AssetsBucketPrefix") + "install-cni.tar.gz" },
                     { "ProjectName", props.ContainerBuildProject.ProjectName },
                     { "Repository", cniInstallContainerImageRepo.RepositoryName }
                 }
