@@ -190,7 +190,7 @@ jobs:
     needs: [ build ]
     runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
     env:
-      BUCKET: workshop-pipeline-wspipelineartifactsbucket5608ec1-xqbqfqtepjdl
+      BUCKET: ${{ secrets.BUCKET }}
       PROJECT_NAME: ${{ github.event.repository.name }}
     steps:
       - name: Get workshop content
@@ -331,7 +331,7 @@ jobs:
     if: ${{ always() && needs.test.outputs.S3_STATUS == 'success' }}
     env:
       DATE: ${{ needs.test.outputs.DATE }}
-      BUCKET: workshop-pipeline-wspipelineartifactsbucket5608ec1-xqbqfqtepjdl
+      BUCKET: ${{ secrets.BUCKET }}
       PROJECT_NAME: ${{ github.event.repository.name }}
     steps: 
       - name: Cleanup Old S3 Content
