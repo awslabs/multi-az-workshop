@@ -178,7 +178,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                 Cluster = cluster.Cluster,
                 ContainerBuildProject = containerBuild,
                 UploaderFunction = uploader,
-                ContainerVersion = versions["LB_CONTROLLER_HELM"]
+                ContainerVersion = versions["LB_CONTROLLER_CONTAINER"],
+                HelmVersion = versions["LB_CONTROLLER_HELM"]
             });
             lbController.Node.AddDependency(istio.WaitableNode);
 
