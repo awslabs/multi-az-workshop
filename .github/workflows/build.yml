@@ -47,13 +47,16 @@ jobs:
       - name: Create tmp
         run: mkdir -p ${{ github.workspace }}/tmp
 
+      - name: Create assets
+        run: mkdir -p ${{ github.workspace }}/assets
+
       - name: Create helm lambda layer
         run: |
           file=helm-v$HELM_VERSION-linux-arm64.tar.gz
           curl --location https://get.helm.sh/$file --output /tmp/$file
-          tar -zxvf /tmp/$file
+          tar -zxvf /tmp/$file --directory /tmp
           mkdir -p ${{ github.workspace }}/$CDK_LOCATION/layer/helm
-          cp  /tmp/linux-arm64/helm ${{ github.workspace }}/$CDK_LOCATION/layer/helm/
+          cp /tmp/linux-arm64/helm ${{ github.workspace }}/$CDK_LOCATION/layer/helm/
           chmod 0755 ${{ github.workspace }}/$CDK_LOCATION/layer/helm/helm
           cd ${{ github.workspace }}/$CDK_LOCATION/layer/layer
           zip -r ${{ github.workspace }}/$CDK_LOCATION/helm-layer.zip .
@@ -61,20 +64,20 @@ jobs:
       - name: Get kubectl
         run: |
           $file=kubectl
-          curl --location https://dl.k8s.io/release/v$KUBECTL_VERSION/bin/linux/arm64/$file --output ${{ github.workspace }}/tmp/$file
+          curl --location https://dl.k8s.io/release/v$KUBECTL_VERSION/bin/linux/arm64/$file --output ${{ github.workspace }}/assets/$file
           
       - name: Get istio
         run: |
           BASE=https://istio-release.storage.googleapis.com/charts
           istio_deps=$("base-$ISTIO_VERSION.tgz" "istiod-$ISTIO_VERSION.tgz" "gateway-$ISTIO_VERSION.tgz" "cni-$ISTIO_VERSION.tgz")
           for file in ${istio_deps[@]}; do
-            curl --location $BASE/$file --output ${{ github.workspace }}/tmp/$file
+            curl --location $BASE/$file --output ${{ github.workspace }}/assets/$file
           done
 
       - name: Get AWS load balancer controller
         run: |
           $file=aws-load-balancer-controller-$LB_CONTROLLER_HELM_VERSION.tgz
-          curl --location https://aws.github.io/eks-charts/$file --output ${{ github.workspace }}/tmp/$file
+          curl --location https://aws.github.io/eks-charts/$file --output ${{ github.workspace }}/assets/$file
 
       - name: Pull istio container images
         run: |
@@ -82,7 +85,7 @@ jobs:
           for file in ${istio_containers[@]}; do
             docker pull $file
             name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
-            docker save $file | gzip > $name.tar.gz
+            docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
           done
 
       - name: Pull AWS container images
@@ -92,7 +95,7 @@ jobs:
           for file in ${aws_containers[@]}; do
             docker pull $BASE/$file
             name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
-            docker save $file | gzip > $name.tar.gz
+            docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
           done
 
       - name: Build arm64 web app
@@ -103,9 +106,9 @@ jobs:
           cd ${{ github.workspace }}/app-src
           dotnet publish --configuration Release --runtime linux-arm64 --output ${{ github.workspace }}/app-src/output/src -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained
           cd ${{ github.workspace }}/app-src/output
-          zip -r ${{ github.workspace }}/tmp/app_arm64.zip src/
+          zip -r ${{ github.workspace }}/assets/app_arm64.zip src/
           cd ${{ github.workspace }}/app-src
-          zip -r ${{ github.workspace }}/tmp/app_arm64.zip apache/ scripts/ appspec.yml
+          zip -r ${{ github.workspace }}/assets/app_arm64.zip apache/ scripts/ appspec.yml
           rm -rf ${{ github.workspace }}/app-src/output
 
       - name: Build failing arm64 web app
@@ -116,9 +119,9 @@ jobs:
           cd ${{ github.workspace }}/app-src
           dotnet publish --configuration Release --runtime linux-arm64 --output ${{ github.workspace }}/app-src/output/src -p:DefineConstants="FAIL" -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained
           cd ${{ github.workspace }}/app-src/output
-          zip -r ${{ github.workspace }}/tmp/app_arm64_fail.zip src/
+          zip -r ${{ github.workspace }}/assets/app_arm64_fail.zip src/
           cd ${{ github.workspace }}/app-src
-          zip -r ${{ github.workspace }}/tmp/app_arm64_fail.zip apache/ scripts/ appspec.yml
+          zip -r ${{ github.workspace }}/assets/app_arm64_fail.zip apache/ scripts/ appspec.yml
           rm -rf ${{ github.workspace }}/app-src/output
 
       - name: Build arm64 container
@@ -130,7 +133,7 @@ jobs:
           dotnet publish --configuration Release --runtime linux-musl-arm64 --output  ${{ github.workspace }}/app-src/output/src -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained
           cd ${{ github.workspace }}/app-src/output
           docker build --tag $PROJECT_NAME/app:latest --platform linux/arm64 --build-arg SRC=${{ github.workspace }}/app-src/output/src .
-          docker save $PROJECT_NAME/app:latest | gzip > ${{ github.workspace }}/tmp/container.tar.gz
+          docker save $PROJECT_NAME/app:latest | gzip > ${{ github.workspace }}/assets/container.tar.gz
           rm -rf ${{ github.workspace }}/app-src/output
 
       - name: Build assets
@@ -138,13 +141,12 @@ jobs:
           cd ${{ github.workspace }}/$CDK_LOCATION
           cdk synth --quiet
           ${{ github.workspace }}/build/package.py $PROJECT_NAME ${{ github.workspace }} $CDK_LOCATION
-          cp -r ${{ github.workspace }}/tmp/* ${{ github.workspace }}/assets 
           cd ${{ github.workspace }}/assets
-          zip -r ../content.zip .
-          cd ..
-          cp static/$PROJECT_NAME.json $PROJECT_NAME.template
-          zip content.zip $PROJECT_NAME.template
-          cp content.zip ${{ github.workspace }}/assets
+          zip -r ${{ github.workspace }}/content.zip .
+          cp ${{ github.workspace }}/static/$PROJECT_NAME.json ${{ github.workspace }}/$PROJECT_NAME.template
+          cd ${{ github.workspace }}
+          zip ${{ github.workspace }}/content.zip $PROJECT_NAME.template
+          cp ${{ github.workspace }}/content.zip ${{ github.workspace }}/assets
           
       - name: Upload workshop artifact
         uses: actions/upload-artifact@v4

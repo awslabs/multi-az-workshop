@@ -18,10 +18,7 @@ cdk_out = os.path.join(cdk_location, "cdk.out")
 manifest = os.path.join(cdk_out, f"{stack_name}.assets.json")
 static = os.path.join(src_dir, "static")
 
-if os.path.exists(assets_folder):
-    for entry in os.listdir(assets_folder):
-        os.remove(os.path.join(assets_folder, entry))
-else:
+if not os.path.exists(assets_folder):
     os.mkdir(assets_folder)
 
 f = open(manifest)
