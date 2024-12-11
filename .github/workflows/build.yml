@@ -165,8 +165,8 @@ jobs:
         with:
           name: WorkshopArtifact
           path: |
-            ${{ github.workspace }}/static/**/* \
-            ${{ github.workspace }}/content/**/* \
+            ${{ github.workspace }}/static
+            ${{ github.workspace }}/content
             ${{ github.workspace }}/contentspec.yaml
 
       - name: Upload assets artifact
