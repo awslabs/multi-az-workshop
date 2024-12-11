@@ -7,7 +7,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
 {
     public class NestedStackWithSource : NestedStack
     {
-        public CfnParameter AssetsBucket {get;}
+        public CfnParameter AssetsBucketName {get;}
 
         public CfnParameter AssetsBucketPrefix {get;}
 
@@ -15,7 +15,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
         {
             // This creates the parameters in the nested stack, but does
             // not yet assign them calues from the parent stack
-            this.AssetsBucket = new CfnParameter(this, "AssetsBucket", new CfnParameterProps() {
+            this.AssetsBucketName = new CfnParameter(this, "AssetsBucketName", new CfnParameterProps() {
                 MinLength = 1,
                 Type = "String"
             });
@@ -34,21 +34,21 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 props = new NestedStackProps();
             }
 
-            CfnParameter assetsBucket = scope.Node.FindChild("AssetsBucket") as CfnParameter;
+            CfnParameter assetsBucketName = scope.Node.FindChild("AssetsBucketName") as CfnParameter;
             CfnParameter assetsBucketPrefix = scope.Node.FindChild("AssetsBucketPrefix") as CfnParameter;
 
             if (props.Parameters == null)
             {
                 NestedStackProps tmp = props as NestedStackProps;
                 tmp.Parameters = new Dictionary<string, string>() {
-                    {"AssetsBucket", assetsBucket.ValueAsString},
+                    {"AssetsBucketName", assetsBucketName.ValueAsString},
                     {"AssetsBucketPrefix", assetsBucketPrefix.ValueAsString}
                 };
                 props = tmp;
             }
             else
             {
-                props.Parameters.TryAdd("AssetsBucket", assetsBucket.ValueAsString);
+                props.Parameters.TryAdd("AssetsBucketName", assetsBucketName.ValueAsString);
                 props.Parameters.TryAdd("AssetsBucketPrefix", assetsBucketPrefix.ValueAsString);
             }
 

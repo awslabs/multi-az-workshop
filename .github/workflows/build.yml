@@ -16,7 +16,7 @@ jobs:
       LB_CONTROLLER_HELM_VERSION: "1.10.1"
       LB_CONTROLLER_CONTAINER_VERSION: "2.8.1"
       CDK_LOCATION: "cdk"
-      PROJECT_NAME: "multi-az-workshop"
+      PROJECT_NAME: ${{ github.event.repository.name }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -177,7 +177,7 @@ jobs:
     runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
     env:
       BUCKET: codepipeline-us-east-2-386526219917
-      PROJECT_NAME: multi-az-workshop
+      PROJECT_NAME: ${{ github.event.repository.name }}
     steps:
       - name: Get workshop content
         uses: actions/download-artifact@v4
@@ -200,7 +200,7 @@ jobs:
       runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
       needs: [ test ]
       env:
-        PROJECT_NAME: "multi-az-workshop"
+        PROJECT_NAME: ${{ github.event.repository.name }}
       steps:
         - name: Wait for CloudFormation Stack to complete
           run: |

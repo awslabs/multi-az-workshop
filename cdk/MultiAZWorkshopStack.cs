@@ -65,7 +65,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
         {
             #region Parameters
 
-            Amazon.CDK.CfnParameter assetsBucket = new Amazon.CDK.CfnParameter(this, "AssetsBucketName", new Amazon.CDK.CfnParameterProps() {
+            Amazon.CDK.CfnParameter assetsBucketName = new Amazon.CDK.CfnParameter(this, "AssetsBucketName", new Amazon.CDK.CfnParameterProps() {
                 Type = "String",
                 MinLength = 1,
                 Default = "{{.AssetsBucketName}}"
