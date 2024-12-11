@@ -69,7 +69,7 @@ jobs:
       - name: Get istio
         run: |
           BASE=https://istio-release.storage.googleapis.com/charts
-          istio_deps=$("base-$ISTIO_VERSION.tgz" "istiod-$ISTIO_VERSION.tgz" "gateway-$ISTIO_VERSION.tgz" "cni-$ISTIO_VERSION.tgz")
+          istio_deps=("base-$ISTIO_VERSION.tgz" "istiod-$ISTIO_VERSION.tgz" "gateway-$ISTIO_VERSION.tgz" "cni-$ISTIO_VERSION.tgz")
           for file in ${istio_deps[@]}; do
             curl --location $BASE/$file --output ${{ github.workspace }}/assets/$file
           done
@@ -81,7 +81,7 @@ jobs:
 
       - name: Pull istio container images
         run: |
-          istio_containers=$("istio/install-cni:$ISTIO_VERSION" "istio/pilot:$ISTIO_VERSION" "istio/proxyv2:$ISTIO_VERSION")
+          istio_containers=("istio/install-cni:$ISTIO_VERSION" "istio/pilot:$ISTIO_VERSION" "istio/proxyv2:$ISTIO_VERSION")
           for file in ${istio_containers[@]}; do
             docker pull $file
             name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
@@ -90,7 +90,7 @@ jobs:
 
       - name: Pull AWS container images
         run: |
-          aws_containers=$("eks/aws-load-balancer-controller:v$LB_CONTROLLER_CONTAINER_VERSION-linux_arm64" "cloudwatch-agent/cloudwatch-agent:latest")
+          aws_containers=("eks/aws-load-balancer-controller:v$LB_CONTROLLER_CONTAINER_VERSION-linux_arm64" "cloudwatch-agent/cloudwatch-agent:latest")
           BASE=public.ecr.aws
           for file in ${aws_containers[@]}; do
             docker pull $BASE/$file
@@ -168,6 +168,7 @@ jobs:
         with:
           name: ContentArtifact
           path: ${{ github.workspace }}/content.zip
+  
 
           
           
