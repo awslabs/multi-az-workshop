@@ -335,6 +335,11 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     }),
                     new PolicyStatement(new PolicyStatementProps() {
                         Effect = Effect.ALLOW,
+                        Actions = new string[] { "kms:Decrypt" },
+                        Resources = new string[] { "*" }
+                    }),
+                    new PolicyStatement(new PolicyStatementProps() {
+                        Effect = Effect.ALLOW,
                         Actions = new string[] { 
                             "ecr:CompleteLayerUpload",
                             "ecr:UploadLayerPart",
