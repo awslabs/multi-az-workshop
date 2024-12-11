@@ -99,7 +99,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
 
             StringParameter bucket = new StringParameter(this, "BucketParameter", new StringParameterProps() {
                 ParameterName = "BucketPath",
-                StringValue = Fn.Sub("s3://${AssetsBucket}/${AssetsBucketPrefix}")
+                StringValue = Fn.Sub("s3://${AssetsBucketName}/${AssetsBucketPrefix}")
             });
 
             // Creates the VPC network, subnets, routes, and VPC endpoints
@@ -261,7 +261,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 OutlierThreshold = .70,
                 CreateDashboards = true,
                 Interval = Duration.Minutes(60),
-                AssetsBucketParameterName = "AssetsBucket",
+                AssetsBucketParameterName = "AssetsBucketName",
                 AssetsBucketPrefixParameterName = "AssetsBucketPrefix",
                 OutlierDetectionAlgorithm = OutlierDetectionAlgorithm.STATIC
             });

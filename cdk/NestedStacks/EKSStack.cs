@@ -238,7 +238,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
 
                 if (nestedStack != null)
                 {
-                    nestedStack.Node.Children.Append(new CfnParameter(nestedStack, "AssetsBucket", new CfnParameterProps() {
+                    nestedStack.Node.Children.Append(new CfnParameter(nestedStack, "AssetsBucketName", new CfnParameterProps() {
                         Type = "String"
                     }));
 
@@ -255,14 +255,14 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     Console.WriteLine("Writing new parameters");
 
                     nestedStackResource.Parameters = new Dictionary<string, string>() {
-                        { "AssetsBucket", Fn.Ref("AssetsBucket")},
+                        { "AssetsBucketName", Fn.Ref("AssetsBucketName")},
                         { "AssetsBucketPrefix", Fn.Ref("AssetsBucketPrefix")}
                     };
                 }
                 else {
                     Console.WriteLine("Adding to parameters");
 
-                    (nestedStackResource.Parameters as Dictionary<string, string>).Add("AssetsBucket", Fn.Ref("AssetsBucket"));
+                    (nestedStackResource.Parameters as Dictionary<string, string>).Add("AssetsBucketName", Fn.Ref("AssetsBucketName"));
                     (nestedStackResource.Parameters as Dictionary<string, string>).Add("AssetsBucketPrefix", Fn.Ref("AssetsBucketPrefix"));
                 }
                 */

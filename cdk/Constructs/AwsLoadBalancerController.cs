@@ -78,7 +78,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 ServiceToken = props.UploaderFunction.FunctionArn,
                 Properties = new Dictionary<string, object> {
                     { "Type", "Docker" },
-                    { "Bucket", Fn.Ref("AssetsBucket") },
+                    { "Bucket", Fn.Ref("AssetsBucketName") },
                     { "Key", Fn.Ref("AssetsBucketPrefix") + "helm/aws-load-balancer-controller.tar.gz" },
                     { "ProjectName", props.ContainerBuildProject.ProjectName },
                     { "Repository", loadBalancerControllerContainerImageRepo.RepositoryName }

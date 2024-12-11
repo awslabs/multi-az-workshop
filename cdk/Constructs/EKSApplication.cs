@@ -55,7 +55,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 ServiceToken = props.UploaderFunction.FunctionArn,
                 Properties = new Dictionary<string, object> {
                     { "Type", "Docker" },
-                    { "Bucket", Fn.Ref("AssetsBucket") },
+                    { "Bucket", Fn.Ref("AssetsBucketName") },
                     { "Key", Fn.Ref("AssetsBucketPrefix") + props.ContainerObjectKey },
                     { "ProjectName", props.ContainerBuildProject.ProjectName },
                     { "Repository", repo.RepositoryName },
@@ -72,7 +72,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 ServiceToken = props.UploaderFunction.FunctionArn,
                 Properties = new Dictionary<string, object> {
                     { "Type", "Docker" },
-                    { "Bucket", Fn.Ref("AssetsBucket") },
+                    { "Bucket", Fn.Ref("AssetsBucketName") },
                     { "Key", Fn.Ref("AssetsBucketPrefix") + "helm/cloudwatch-agent.tar.gz" },
                     { "ProjectName", props.ContainerBuildProject.ProjectName },
                     { "Repository", cloudwatchAgentRepo.RepositoryName }
