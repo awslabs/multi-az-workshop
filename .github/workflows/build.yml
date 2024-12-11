@@ -63,7 +63,7 @@ jobs:
 
       - name: Get kubectl
         run: |
-          $file=kubectl
+          file=kubectl
           curl --location https://dl.k8s.io/release/v$KUBECTL_VERSION/bin/linux/arm64/$file --output ${{ github.workspace }}/assets/$file
           
       - name: Get istio
@@ -76,7 +76,7 @@ jobs:
 
       - name: Get AWS load balancer controller
         run: |
-          $file=aws-load-balancer-controller-$LB_CONTROLLER_HELM_VERSION.tgz
+          file=aws-load-balancer-controller-$LB_CONTROLLER_HELM_VERSION.tgz
           curl --location https://aws.github.io/eks-charts/$file --output ${{ github.workspace }}/assets/$file
 
       - name: Pull istio container images
