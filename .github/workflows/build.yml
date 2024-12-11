@@ -173,7 +173,7 @@ jobs:
           name: ContentArtifact
           path: ${{ github.workspace }}/content.zip
   test:
-    needs: [ "build" ]
+    needs: [ build ]
     runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
     env:
       BUCKET: codepipeline-us-east-2-386526219917
@@ -195,7 +195,21 @@ jobs:
           date=$(date +"%Y-%m-%dT%H:%M:%S%z")
           aws cloudformation create-change-set --stack-name $PROJECT_NAME --change-set-name $date --template-url https://$BUCKET.s3.amazonaws.com/$PROJECT_NAME.template --parameters AssetsBucketName=$BUCKET AssetsBucketPrefix="" ParticipantRoleName=Admin --capabilities CAPABILITY_IAM --region $AWS_REGION
           aws cloudformation execute-change-set --stack-name $PROJECT_NAME --change-set-name $date --region $AWS_REGION
-
-
-          
+    
+  wait_for_stack:
+      runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
+      needs: [ test ]
+      env:
+        PROJECT_NAME: "multi-az-workshop"
+      steps:
+        - name: Wait for CloudFormation Stack to complete
+          run: |
+            echo "Waiting for CloudFormation stack to complete..."
+            aws cloudformation wait stack-create-complete --stack-name $PROJECT_NAME --region $AWS_REGION
+            if [ $? -ne 0 ]; then
+              echo "CloudFormation stack deployment failed."
+              exit 1
+            else
+              echo "CloudFormation stack deployed successfully."
+            fi
           

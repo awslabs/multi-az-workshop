@@ -16,7 +16,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                     Region = Aws.REGION
                 },
                 Synthesizer = new DefaultStackSynthesizer(new DefaultStackSynthesizerProps() {
-                    FileAssetsBucketName = "${AssetsBucket}",
+                    FileAssetsBucketName = "${AssetsBucketName}",
                     BucketPrefix = "${AssetsBucketPrefix}",
                     Qualifier = null,
                     GenerateBootstrapVersionRule = false              
