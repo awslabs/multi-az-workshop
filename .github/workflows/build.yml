@@ -176,7 +176,7 @@ jobs:
     needs: [ build ]
     runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
     env:
-      BUCKET: codepipeline-us-east-2-386526219917
+      BUCKET: workshop-pipeline-wspipelineartifactsbucket5608ec1-xqbqfqtepjdl
       PROJECT_NAME: ${{ github.event.repository.name }}
     steps:
       - name: Get workshop content
