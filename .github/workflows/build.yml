@@ -2,10 +2,10 @@ name: build
 on:
   push:
     branches:
-      - main
+      - vNext
   pull_request:
     branches:
-      - main
+      - vNext
 jobs:
   build:
     runs-on: ubuntu-latest
