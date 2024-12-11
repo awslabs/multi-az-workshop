@@ -328,8 +328,7 @@ jobs:
   cleanup:
     runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
     needs: [ wait_for_stack, test ]
-    if: |
-      ${{ needs.test.outputs.S3_STATUS }} == 'success' && (needs.wait_for_stack.result == 'success' || needs.wait_for_stack.result == 'failure' || needs.wait_for_stack.result == 'skipped')
+    if: ${{ needs.test.outputs.S3_STATUS }}
     env:
       DATE: ${{ needs.test.outputs.DATE }}
       BUCKET: workshop-pipeline-wspipelineartifactsbucket5608ec1-xqbqfqtepjdl
