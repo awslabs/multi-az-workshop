@@ -104,7 +104,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
 
             // Creates the VPC network, subnets, routes, and VPC endpoints
             this.NetworkStack = new IpV6NetworkStack(this, "Network", new IPV6NetworkStackProps() {
-                AvailabilityZoneNames = availabilityZoneNames
+                AvailabilityZoneNames = availabilityZoneNames,
+                 
             });
 
             AvailabilityZoneMapper azMapper =new AvailabilityZoneMapper(this, "AZMapper", new AvailabilityZoneMapperProps() {
@@ -121,11 +122,11 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
 
             // Creates the Lambda function that automatically tags new instances with their AZ-ID
             // Can be used to target CodeDeploy deployments
-            this.AZTaggerStack = new AZTaggerStack(this, "AZTagger", new NestedStackProps() {
+            this.AZTaggerStack = new AZTaggerStack(this, "az-tagger-", new NestedStackProps() {
             });
 
             // Create the aurora database
-            this.DatabaseStack = new DatabaseStack(this, "DatabaseStack", new DatabaseStackProps() {
+            this.DatabaseStack = new DatabaseStack(this, "database-", new DatabaseStackProps() {
                 Vpc = this.NetworkStack.Vpc
             });
 
@@ -150,7 +151,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
 
             // Deploys the EC2 auto scaling groups, load balancers, and target groups
             // with accompanying resources like IAM and log groups
-            this.EC2Stack = new EC2FleetStack(this, "EC2", new EC2FleetStackProps() {
+            this.EC2Stack = new EC2FleetStack(this, "ec2-", new EC2FleetStackProps() {
                 Vpc = this.NetworkStack.Vpc,
                 InstanceSize = InstanceSize.NANO,
                 LogGroup = frontEndLogGroup,
@@ -164,8 +165,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
 
             this.EC2Stack.Node.AddDependency(this.AZTaggerStack);   
             this.EC2Stack.Node.AddDependency(frontEndLogGroup);   
-            
-            this.EKSStack = new EKSStack(this, "EKS", new EKSStackProps() {
+
+            this.EKSStack = new EKSStack(this, "eks-", new EKSStackProps() {
                 CpuArch = arch,
                 Vpc = this.NetworkStack.Vpc,
                 Database = this.DatabaseStack.Database,
@@ -193,7 +194,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             // to create both an easy regional endpoint as well as zonal endpoints
             if (evacuationMethod != EvacuationMethod.ZonalShift)
             {
-                this.Route53Stack = new Route53ZonalDnsStack(this, "Route53", new Route53ZonalDnsStackProps() {
+                this.Route53Stack = new Route53ZonalDnsStack(this, "route-53-", new Route53ZonalDnsStackProps() {
                     LoadBalancer = this.LoadBalancer,
                     Vpc = this.NetworkStack.Vpc,         
                     Domain = domain             
@@ -205,12 +206,12 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             {
                 case EvacuationMethod.SelfManagedHttpEndpoint_APIG:
                 {
-                    SelfManagedHttpEndpointApigStack apigStack = new SelfManagedHttpEndpointApigStack(this, "APIG", new SelfManagedHttpEndpointApigStackProps() {
+                    SelfManagedHttpEndpointApigStack apigStack = new SelfManagedHttpEndpointApigStack(this, "apig-", new SelfManagedHttpEndpointApigStackProps() {
                         AvailabilityZoneIds = availabilityZoneIds,
                         FailOpen = true                     
                     });
 
-                    this.HealthCheckStack = new Route53HealthChecksStack(this, "HealthCheckStack", new Route53HealthChecksStackProps() {
+                    this.HealthCheckStack = new Route53HealthChecksStack(this, "health-checks-", new Route53HealthChecksStackProps() {
                         DomainName = Fn.Join(".", new string[] { apigStack.Api.RestApiId, "execute-api", Fn.Sub("${AWS::Region}"), Fn.Sub("${AWS::URLSuffix}") }),
                         ResourcePath = apigStack.ResourcePath,
                         EvacuationMethod = evacuationMethod,
@@ -224,7 +225,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                         AvailabilityZoneIds = availabilityZoneIds
                     });
                     
-                    this.HealthCheckStack = new Route53HealthChecksStack(this, "HealthCheckStack", new Route53HealthChecksStackProps() {
+                    this.HealthCheckStack = new Route53HealthChecksStack(this, "health-checks-", new Route53HealthChecksStackProps() {
                         AvailabilityZoneIdToRoutingControlArns = arcStack.RoutingControlsPerAvailabilityZoneId
                     });
 
@@ -232,11 +233,11 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 }
                 case EvacuationMethod.SelfManagedHttpEndpoint_S3:
                 {
-                    SelfManagedHttpEndpointS3Stack s3Stack = new SelfManagedHttpEndpointS3Stack(this, "S3", new SelfManagedHttpEndpointS3StackProps() {
+                    SelfManagedHttpEndpointS3Stack s3Stack = new SelfManagedHttpEndpointS3Stack(this, "s3-", new SelfManagedHttpEndpointS3StackProps() {
                         AvailabilityZoneIds = availabilityZoneIds                      
                     });
 
-                    this.HealthCheckStack = new Route53HealthChecksStack(this, "HealthCheckStack", new Route53HealthChecksStackProps() {
+                    this.HealthCheckStack = new Route53HealthChecksStack(this, "health-checks-", new Route53HealthChecksStackProps() {
                         DomainName = s3Stack.Bucket.BucketRegionalDomainName,
                         ResourcePath = s3Stack.ResourcePath,
                         EvacuationMethod = evacuationMethod,
@@ -255,7 +256,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
 
             IService wildRydesService = CreateService(this.LoadBalancer, this.NetworkStack.Vpc, new ILogGroup[] {frontEndLogGroup});
 
-            var mazNestedStack = new NestedStackWithSource(this, "MultiAZObservabilityStack");
+            var mazNestedStack = new NestedStackWithSource(this, "multi-az-observability-");
             InstrumentedServiceMultiAZObservability multiAvailabilityZoneObservability = new InstrumentedServiceMultiAZObservability(mazNestedStack, "MultiAZObservability", new InstrumentedServiceMultiAZObservabilityProps() {
                 Service = wildRydesService,
                 OutlierThreshold = .70,
@@ -308,7 +309,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 Listener = listener
             });
   */ 
-            this.FaultInjectionStack = new FaultInjectionStack(this, "FaultInjectionStack", new FaultInjectionStackProps() {
+            this.FaultInjectionStack = new FaultInjectionStack(this, "fault-injection-", new FaultInjectionStackProps() {
                 AZCount = availabilityZoneNames.Length,
                 AZNames = this.NetworkStack.Vpc.AvailabilityZones,
                 Database = this.DatabaseStack.Database,
@@ -319,12 +320,12 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 PacketLossPercent = 30
             });
 
-            SSMRandomFaultStack randomFaultStack = new SSMRandomFaultStack(this, "SSMRandomFaultStack", new SSMRandomFaultStackProps() {
+            SSMRandomFaultStack randomFaultStack = new SSMRandomFaultStack(this, "ssm-random-fault-", new SSMRandomFaultStackProps() {
                 LatencyExperiments = this.FaultInjectionStack.LatencyExperiments,
                 PacketLossExperiments = this.FaultInjectionStack.PacketLossExperiments
             });
         
-            this.LogQueryStack = new LogQueryStack(this, "LogQueryStack", new LogQueryStackProps() {
+            this.LogQueryStack = new LogQueryStack(this, "log-query-", new LogQueryStackProps() {
                 CanaryLogGroup = multiAvailabilityZoneObservability.CanaryLogGroup,
                 ServerSideLogGroup = frontEndLogGroup,
                 Service = wildRydesService,
@@ -333,7 +334,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             
             //Creates the CodeDeploy application that is deployed
             //to the servers
-            this.CodeDeployStack = new CodeDeployApplicationStack(this, "CodeDeploy", new CodeDeployApplicationStackProps() {
+            this.CodeDeployStack = new CodeDeployApplicationStack(this, "codedeploy-", new CodeDeployApplicationStackProps() {
                 EC2Fleet = this.EC2Stack,
                 ApplicationKey = assetsBucketPrefix.ValueAsString + (arch == InstanceArchitecture.ARM_64 ? "app_arm64.zip" : "app_x64.zip"),
                 AvailabilityZoneCount = availabilityZoneIds.Length,
