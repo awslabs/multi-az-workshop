@@ -47,9 +47,6 @@ jobs:
 
       - name: Set versions
         run: |
-          sudo apt-get update
-          sudo apt-get install -y jq
-
           # Read the JSON file and iterate over each key-value pair
           for key in $(jq -r 'keys[]' ${{ github.workspace }}/build/versions.json); do
             value=$(jq -r ".\"$key\"" ${{ github.workspace }}/build/versions.json)
