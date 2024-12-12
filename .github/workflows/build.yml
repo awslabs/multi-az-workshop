@@ -210,11 +210,12 @@ jobs:
       - name: Deploy change set
         id: changeset
         run: |
-          set -e
           echo SET DATE
           date=${{ steps.s3.outputs.DATE }}
           echo DESCRIBE STACKS
+          set +e
           aws cloudformation describe-stacks --stack-name $PROJECT_NAME --region $AWS_REGION >/dev/null 2>&1; EXITCODE=$?
+          set -e
           echo TESTING IF
           if [[ $EXITCODE -eq 0 ]]; then
             echo STACK EXISTS
