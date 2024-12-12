@@ -164,7 +164,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
 
             this.EC2Stack.Node.AddDependency(this.AZTaggerStack);   
             this.EC2Stack.Node.AddDependency(frontEndLogGroup);   
-/*
+            
             this.EKSStack = new EKSStack(this, "EKS", new EKSStackProps() {
                 CpuArch = arch,
                 Vpc = this.NetworkStack.Vpc,
@@ -176,7 +176,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
 
             this.EKSStack.Node.AddDependency(this.AZTaggerStack);
             this.EKSStack.Node.AddDependency(frontEndLogGroup);        
-*/                    
+
             EnhancedApplicationLoadBalancer alb = new EnhancedApplicationLoadBalancer(this, "ALB", new ApplicationLoadBalancerProps() {
                 InternetFacing = false,
                 Vpc = this.NetworkStack.Vpc,
