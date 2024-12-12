@@ -34,6 +34,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
         public ISecurityGroup LoadBalancerSecurityGroup {get; set;}
 
         public string ClusterName {get; set;}
+
+        public string Version {get; set;} = "1.31";
     }
 
     public interface IEKSClusterProps
@@ -53,6 +55,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
         public ISecurityGroup LoadBalancerSecurityGroup {get; set;}
 
         public string ClusterName {get; set;}
+
+        public string Version {get; set;}
     }
 
     public class EKSCluster : Construct
@@ -83,7 +87,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 Vpc = props.Vpc,
                 VpcSubnets = new SubnetSelection[] { new SubnetSelection() { SubnetType = SubnetType.PRIVATE_ISOLATED } },
                 DefaultCapacity = 0,
-                Version =  KubernetesVersion.V1_31,
+                //Version =  KubernetesVersion.V1_31,
+                Version = KubernetesVersion.Of(props.Version),
                 PlaceClusterHandlerInVpc = false,
                 EndpointAccess = EndpointAccess.PUBLIC_AND_PRIVATE,
                 KubectlLayer = kubetctlLayer,

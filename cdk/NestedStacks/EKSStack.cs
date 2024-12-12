@@ -162,7 +162,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                 ContainerBuildProject = containerBuild,
                 UploaderFunction = uploader,
                 LoadBalancerSecurityGroup = props.LoadBalancerSecurityGroup,
-                ClusterName = "multi-az-workshop-eks-cluster"      
+                ClusterName = "multi-az-workshop-eks-cluster",
+                Version = versions["EKS"] 
             });
 
             this.FixUpNestedStacks();

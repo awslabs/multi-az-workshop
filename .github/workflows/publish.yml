@@ -1,0 +1,60 @@
+name: publish
+
+on:
+  workflow_dispatch:
+    inputs:
+        aws_access_key_id:
+          type: string
+        aws_secret_access_key:
+          type: string
+        aws_session_token:
+          type: string
+
+env:
+  AWS_DEFAULT_REGION: us-east-1
+  AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
+  AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
+  AWS_SESSION_TOKEN: ${{ inputs.aws_session_token }}
+  WORKSHOP_ID: e9383b42-6c6f-416b-b50a-9313e476e372
+  USER_NAME: ${{ github.triggering_actor }}
+  EMAIL: ${{ github.actor }}"@noreply.github.com"
+  REMOTE_REPO: advanced-multi-az-resilience-patterns
+
+jobs:
+  
+  assets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: get_assets_artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: AssetsArtifact
+          path: ${{ github.workspace }}/assets
+
+      - name: upload_assets
+        run: aws s3 sync ${{ github.workspace }}/assets s3://ws-assets-us-east-1/$WORKSHOP_ID --delete
+
+  workshop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: get_workshop_artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: WorkshopArtifact
+          path: ${{ github.workspace }}/workshop
+
+      - name: install remote codecommit
+        run: |
+          pip install git-remote-codecommit
+          git config --global user.email $EMAIL
+          git config --global user.name "$USER_NAME"
+
+      - name: push workshop
+        run: |
+          git clone codecommit://$REMOTE_REPO ${{ github.workspace }}/$REMOTE_REPO
+          cd ${{ github.workspace }}/$REMOTE_REPO
+          find . -path ./.git -prune -o ! -name . ! -name .. -exec rm -rf {} + 2> /dev/null
+          cp ${{ github.workspace }}/workshop/* ${{ github.workspace }}/$REMOTE_REPO
+          git add -A
+          git commit -m "New workshop version"
+          git push
