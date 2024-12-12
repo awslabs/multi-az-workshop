@@ -81,9 +81,11 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                                 "echo $ACCOUNT",
                                 "echo $BUCKET",
                                 "echo $KEY",
-                                "aws s3 cp s3://$BUCKET/$KEY $KEY",
+                                "file=${KEY#*/}",
+                                "echo $file",
+                                "aws s3 cp s3://$BUCKET/$KEY $file",
                                 "aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT.dkr.ecr.$AWS_REGION." + Fn.Ref("AWS::URLSuffix"),
-                                "output=$(docker load --input $KEY)",
+                                "output=$(docker load --input $file)",
                                 "echo $output",
                                 "IMAGE=$(echo $output | cut -d':' -f2 | xargs)",
                                 "echo $IMAGE",
@@ -114,6 +116,13 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                                         "ecr:DescribeRepositories",
                                         "ecr:GetAuthorizationToken",
                                         "ecr:BatchGetImage"
+                                    }
+                                }),
+                                new PolicyStatement(new PolicyStatementProps() {
+                                    Effect = Effect.ALLOW,
+                                    Resources = new string[] { "*" },
+                                    Actions = new string[] {
+                                        "kms:Decrypt"
                                     }
                                 }),
                                 new PolicyStatement(new PolicyStatementProps() {
