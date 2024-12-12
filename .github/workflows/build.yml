@@ -292,8 +292,9 @@ jobs:
                       echo "Create failed and rollback failed"
                       exit 1
                       ;;
-                    "ROLLBACK_IN_PROGRES")
+                    "ROLLBACK_IN_PROGRESS")
                       echo "Rollback in progress, waiting"
+                      exit 1
                       ;;
 
                     "UPDATE_COMPLETE")
