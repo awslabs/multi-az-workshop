@@ -210,13 +210,20 @@ jobs:
       - name: Deploy change set
         id: changeset
         run: |
+          set -e
+          echo SET DATE
           date=${{ steps.s3.outputs.DATE }}
-          aws cloudformation describe-stacks --stack-name $PROJECT_NAME --region $AWS_REGION >/dev/null 2>&1
-          if [[ $? -eq 0 ]]; then
+          echo DESCRIBE STACKS
+          aws cloudformation describe-stacks --stack-name $PROJECT_NAME --region $AWS_REGION >/dev/null 2>&1; EXITCODE=$?
+          echo TESTING IF
+          if [[ $EXITCODE -eq 0 ]]; then
+            echo STACK EXISTS
             aws cloudformation create-change-set --change-set-type UPDATE --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --template-url https://$BUCKET.s3.amazonaws.com/$date/$PROJECT_NAME.template --parameters ParameterKey=AssetsBucketName,ParameterValue=$BUCKET ParameterKey=AssetsBucketPrefix,ParameterValue="${date}/" ParameterKey=ParticipantRoleName,ParameterValue=Admin --capabilities CAPABILITY_IAM --region $AWS_REGION
           else
+            echo STACK DOESNT EXIST
             aws cloudformation create-change-set --change-set-type CREATE --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --template-url https://$BUCKET.s3.amazonaws.com/$date/$PROJECT_NAME.template --parameters ParameterKey=AssetsBucketName,ParameterValue=$BUCKET ParameterKey=AssetsBucketPrefix,ParameterValue="${date}/" ParameterKey=ParticipantRoleName,ParameterValue=Admin --capabilities CAPABILITY_IAM --region $AWS_REGION
           fi
+          echo WAITING FOR CHANGE SET
           aws cloudformation wait change-set-create-complete --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --region $AWS_REGION
           aws cloudformation execute-change-set --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --region $AWS_REGION
           echo "CHANGE_SET=$PROJECT_NAME-$date" >> "$GITHUB_OUTPUT"
