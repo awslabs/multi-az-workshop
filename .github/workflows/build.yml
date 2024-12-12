@@ -79,7 +79,7 @@ jobs:
           file=kubectl
           curl --location https://dl.k8s.io/release/v$KUBECTL/bin/linux/arm64/$file --output ${{ github.workspace }}/assets/$file
           
-      - name: Get istio
+      - name: Get istio helm charts
         run: |
           BASE=https://istio-release.storage.googleapis.com/charts
           istio_deps=("base-$ISTIO.tgz" "istiod-$ISTIO.tgz" "gateway-$ISTIO.tgz" "cni-$ISTIO.tgz")
@@ -87,29 +87,66 @@ jobs:
             curl --location $BASE/$file --output ${{ github.workspace }}/assets/$file
           done
 
-      - name: Get AWS load balancer controller
+      - name: Get AWS load balancer controller helm chart
         run: |
           file=aws-load-balancer-controller-$LB_CONTROLLER_HELM.tgz
           curl --location https://aws.github.io/eks-charts/$file --output ${{ github.workspace }}/assets/$file
 
-      - name: Pull istio container images
-        run: |
-          istio_containers=("istio/install-cni:$ISTIO" "istio/pilot:$ISTIO" "istio/proxyv2:$ISTIO")
-          for file in ${istio_containers[@]}; do
-            docker pull $file
-            name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
-            docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
-          done
+      #- name: Pull istio container images
+      #  run: |
+      #    istio_containers=("istio/install-cni:$ISTIO" "istio/pilot:$ISTIO" "istio/proxyv2:$ISTIO")
+      #    for file in ${istio_containers[@]}; do
+      #      docker pull $file
+      #      name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
+      #      docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
+      #    done
 
-      - name: Pull AWS container images
+      - name: Pull install-cni container image
         run: |
-          aws_containers=("eks/aws-load-balancer-controller:$LB_CONTROLLER_CONTAINER-linux_arm64" "cloudwatch-agent/cloudwatch-agent:latest")
+          file="istio/install-cni:$ISTIO"
+          docker pull $file
+          name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
+          docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
+
+      - name: Pull pilot container image
+        run: |
+          file="istio/pilot:$ISTIO"
+          docker pull $file
+          name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
+          docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
+
+      - name: Pull proxy container image
+        run: |
+          file="istio/proxyv2:$ISTIO"
+          docker pull $file
+          name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
+          docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
+
+      - name: Pull load balancer container container image
+        run: |
           BASE=public.ecr.aws
-          for file in ${aws_containers[@]}; do
-            docker pull $BASE/$file
-            name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
-            docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
-          done
+          file="eks/aws-load-balancer-controller:$LB_CONTROLLER_CONTAINER-linux_arm64"
+          docker pull $BASE/$file
+          name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
+          docker save $BASE/$file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
+
+      - name: Pull load balancer container container image
+        run: |
+          BASE=public.ecr.aws
+          file="cloudwatch-agent/cloudwatch-agent:latest"
+          docker pull $BASE/$file
+          name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
+          docker save $BASE/$file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
+
+      #- name: Pull AWS container images
+      #  run: |
+      #    aws_containers=("eks/aws-load-balancer-controller:$LB_CONTROLLER_CONTAINER-linux_arm64" "cloudwatch-agent/cloudwatch-agent:latest")
+      #    BASE=public.ecr.aws
+      #    for file in ${aws_containers[@]}; do
+      #      docker pull $BASE/$file
+      #      name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
+      #      docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
+      #    done
 
       - name: Build arm64 web app
         run: |
@@ -148,7 +185,7 @@ jobs:
           cd ${{ github.workspace }}/app-src
           dotnet publish --configuration Release --runtime linux-musl-arm64 --output ${{ github.workspace }}/app-src/output/src -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained
           cd ${{ github.workspace }}/app-src/output
-          docker buildx build --tag $PROJECT_NAME/app:latest --platform linux/arm64 --build-arg SRC=src --file ${{ github.workspace }}/build/dockerfile .
+          docker buildx build --output type=docker --load --tag $PROJECT_NAME/app:latest --platform linux/arm64 --build-arg SRC=src --file ${{ github.workspace }}/build/dockerfile .
           docker save $PROJECT_NAME/app:latest | gzip > ${{ github.workspace }}/assets/container.tar.gz
           rm -rf ${{ github.workspace }}/app-src/output
 
