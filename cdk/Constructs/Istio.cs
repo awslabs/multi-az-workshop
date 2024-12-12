@@ -29,7 +29,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
 
         public IProject ContainerBuildProject {get; set;}
 
-        public string Version {get; set;} = "1.24.1";
+        public string Version {get; set;} = "1.22.0";
     }
     
     public class Istio : HelmRepoAndChartConstruct

@@ -2,7 +2,7 @@
     "EKS": "1.31",
     "HELM": "3.16.3",
     "KUBECTL": "1.31.0",
-    "ISTIO": "1.23.3",
+    "ISTIO": "1.22.6",
     "LB_CONTROLLER_HELM": "1.10.1",
     "LB_CONTROLLER_CONTAINER": "v2.8.1"
 }

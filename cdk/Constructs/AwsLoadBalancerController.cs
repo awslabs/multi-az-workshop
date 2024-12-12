@@ -95,6 +95,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 Repository = "oci://" + loadBalancerControllerHelmChartRepo.RepositoryUri,
                 Namespace = "kube-system",
                 Wait = true,
+                Version = props.HelmVersion,
                 Values = new Dictionary<string, object>() {
                     {"clusterName", props.Cluster.ClusterName },
                     { "image", new Dictionary<string, object>() {
