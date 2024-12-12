@@ -29,10 +29,10 @@ jobs:
       #  with:
       #    python-version: '3.13'
 
-      #- name: Install dotnet
-      #  uses: actions/setup-dotnet@v4
-      #  with:
-      #    dotnet-version: '8.0'
+      - name: Install dotnet
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0'
 
       - name: Install cdk
         run: |
@@ -119,7 +119,7 @@ jobs:
           name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
           docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
 
-      - name: Pull load balancer container container image
+      - name: Pull load balancer container image
         run: |
           BASE=public.ecr.aws
           file="eks/aws-load-balancer-controller:$LB_CONTROLLER_CONTAINER-linux_arm64"
@@ -127,7 +127,7 @@ jobs:
           name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
           docker save $BASE/$file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
 
-      - name: Pull load balancer container container image
+      - name: Pull cloudwatch agent container image
         run: |
           BASE=public.ecr.aws
           file="cloudwatch-agent/cloudwatch-agent:latest"
