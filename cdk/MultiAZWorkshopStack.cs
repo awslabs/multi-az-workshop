@@ -164,7 +164,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
 
             this.EC2Stack.Node.AddDependency(this.AZTaggerStack);   
             this.EC2Stack.Node.AddDependency(frontEndLogGroup);   
-
+/*
             this.EKSStack = new EKSStack(this, "EKS", new EKSStackProps() {
                 CpuArch = arch,
                 Vpc = this.NetworkStack.Vpc,
@@ -176,7 +176,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
 
             this.EKSStack.Node.AddDependency(this.AZTaggerStack);
             this.EKSStack.Node.AddDependency(frontEndLogGroup);        
-                    
+*/                    
             EnhancedApplicationLoadBalancer alb = new EnhancedApplicationLoadBalancer(this, "ALB", new ApplicationLoadBalancerProps() {
                 InternetFacing = false,
                 Vpc = this.NetworkStack.Vpc,
@@ -298,6 +298,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             // the alarms to finish and nodes start to fail their health checks while it waits
             listener.Node.AddDependency(mazNestedStack);
 
+/*
             ApplicationListenerRule eksRoutes = new ApplicationListenerRule(this, "EKSRoutes", new ApplicationListenerRuleProps() {
                 Action = ListenerAction.Forward(new IApplicationTargetGroup[] { this.EKSStack.EKSAppTargetGroup }),
                 Conditions = new ListenerCondition[] {
@@ -306,7 +307,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 Priority = 1,
                 Listener = listener
             });
-   
+  */ 
             this.FaultInjectionStack = new FaultInjectionStack(this, "FaultInjectionStack", new FaultInjectionStackProps() {
                 AZCount = availabilityZoneNames.Length,
                 AZNames = this.NetworkStack.Vpc.AvailabilityZones,
