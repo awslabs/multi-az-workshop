@@ -36,7 +36,7 @@ jobs:
        
       - name: Dotnet versions
         run: |
-          dotnet --version
+          cat /codebuild/global.json
           dotnet --list-sdks
 
       - name: Install cdk
