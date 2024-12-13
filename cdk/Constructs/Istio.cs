@@ -106,6 +106,9 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 Wait = true
             });
 
+            // Starting with istio version 1.24.0, the helm chart is configured to fail
+            // if "defaults" is set
+
             // Uses the pilot container image
             HelmChart istiod = props.Cluster.AddHelmChart("Istiod", new HelmChartOptions() {
                 Chart = "istiod",
@@ -114,11 +117,11 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 Namespace = "istio-system",
                 Wait = true,
                 Values = new Dictionary<string, object>() {
-                    {"defaults", new Dictionary<string, object>() {
+                    //{"defaults", new Dictionary<string, object>() {
                         {"global", new Dictionary<string, object>() {
                             {"hub", Fn.Sub("${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/istio") }
                         }}
-                    }}
+                    //}}
                 }
             });
 
@@ -133,11 +136,11 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 Repository = "oci://" + istioGatewayHelmChartRepo.RepositoryUri,
                 Namespace = "istio-system",
                 Values = new Dictionary<string, object>() {
-                    {"defaults", new Dictionary<string, object>() {
+                    //{"defaults", new Dictionary<string, object>() {
                         {"service", new Dictionary<string, object>() {
                             { "type", "NodePort" }
                         }}
-                    }}
+                    //}}
                 }
             });
 
@@ -153,11 +156,11 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 Namespace = "istio-system",
                 Wait = true,
                 Values = new Dictionary<string, object>() {
-                    {"defaults", new Dictionary<string, object>() {
+                    //{"defaults", new Dictionary<string, object>() {
                         {"global", new Dictionary<string, object>() {
                             {"hub", Fn.Sub("${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/istio") }
                         }}
-                    }}
+                    //}}
                 }
             });
 

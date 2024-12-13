@@ -98,7 +98,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 Version = props.HelmVersion,
                 Values = new Dictionary<string, object>() {
                     {"clusterName", props.Cluster.ClusterName },
-                    { "image", new Dictionary<string, object>() {
+                    {"image", new Dictionary<string, object>() {
                         {"repository", Fn.Sub("${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/eks/aws-load-balancer-controller")},
                         {"tag", props.ContainerVersion + "-linux_arm64"}
                     }},
