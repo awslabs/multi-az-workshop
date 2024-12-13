@@ -3,9 +3,7 @@ on:
   push:
     branches:
       - vNext
-  pull_request:
-    branches:
-      - vNext
+  pull_request: {}
 jobs:
   build:
     runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
