@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - vNext
+    paths-ignore:
+      - .github/workflows/publish.yml
   pull_request: {}
 jobs:
   build:

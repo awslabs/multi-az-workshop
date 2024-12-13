@@ -9,6 +9,8 @@ on:
           type: string
         aws_session_token:
           type: string
+        email:
+          type: string
 
 env:
   AWS_DEFAULT_REGION: us-east-1
@@ -17,7 +19,7 @@ env:
   AWS_SESSION_TOKEN: ${{ inputs.aws_session_token }}
   WORKSHOP_ID: e9383b42-6c6f-416b-b50a-9313e476e372
   USER_NAME: ${{ github.triggering_actor }}
-  EMAIL: ${{ github.actor }}"@noreply.github.com"
+  EMAIL: ${{ inputs.email }}
   REMOTE_REPO: advanced-multi-az-resilience-patterns
 
 jobs:
