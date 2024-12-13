@@ -12,6 +12,7 @@ jobs:
     env:
       CDK_LOCATION: "cdk"
       PROJECT_NAME: ${{ github.event.repository.name }}
+      DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 0
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

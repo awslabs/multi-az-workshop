@@ -257,7 +257,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             IService wildRydesService = CreateService(this.LoadBalancer, this.NetworkStack.Vpc, new ILogGroup[] {frontEndLogGroup});
 
             var mazNestedStack = new NestedStackWithSource(this, "multi-az-observability-");
-            InstrumentedServiceMultiAZObservability multiAvailabilityZoneObservability = new InstrumentedServiceMultiAZObservability(mazNestedStack, "MultiAZObservability", new InstrumentedServiceMultiAZObservabilityProps() {
+            InstrumentedServiceMultiAZObservability multiAvailabilityZoneObservability = new InstrumentedServiceMultiAZObservability(mazNestedStack, "instrumented-service-", new InstrumentedServiceMultiAZObservabilityProps() {
                 Service = wildRydesService,
                 OutlierThreshold = .70,
                 CreateDashboards = true,
@@ -268,7 +268,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             });
           
             /*
-            BasicServiceMultiAZObservability multiAZObservability = new BasicServiceMultiAZObservability(this, "MultiAZObservability", new BasicServiceMultiAZObservabilityProps() {
+            BasicServiceMultiAZObservability multiAZObservability = new BasicServiceMultiAZObservability(this, "basic-service-", new BasicServiceMultiAZObservabilityProps() {
                 ApplicationLoadBalancers = new IApplicationLoadBalancer[] { loadBalancer },
                 NatGateways = new Dictionary<string, CfnNatGateway>() {
                     { "us-east-1a", natGateway1},
