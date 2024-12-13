@@ -38,7 +38,8 @@ jobs:
         run: |
           cat /codebuild/global.json
           dotnet --info
-          cat /codebuild/global.json | jq '.sdk.version = "8.0.0"' > /codebuild/global.json
+          jq '.sdk.version = "8.0.0"' /codebuild/global.json > temp.json && mv temp.json /codebuild/global.json
+          cat /codebuild/global.json
 
       - name: Install cdk
         run: |
