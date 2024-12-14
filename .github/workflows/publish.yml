@@ -117,104 +117,70 @@ jobs:
           run-id: ${{ needs.latest_workflow.outputs.RUN_ID }}
           github-token: ${{ github.token }}
 
-    #- name: Get latest release tag
-    #  id: latest_release
-    #  run: |
-    #    cd ${{ github.workspace }}
-    #    latest_tag=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
-    #    
-    #    if [ -z "$latest_tag" ]; then
-    #      echo "No release found. Starting with v0.0.0."
-    #      latest_tag="v0.0.0"
-    #      # Get the total number of commits in the current branch
-    #      commit_count=$(git rev-list --count HEAD)
-    #      echo "Total commits: $commit_count"
-
-    #      # Set N to the smaller of 10 or the total number of commits
-    #      N=$((commit_count < 10 ? commit_count : 10))
-    #      commits=$(git log HEAD~$N..HEAD --oneline --pretty="%B")
-    #    else
-    #      commits=$(git log $tag..HEAD --oneline --pretty="%B")
-    #    fi
-
-    #    echo "Latest release tag: $latest_tag"
-    #    echo "latest_tag=$latest_tag" >> $GITHUB_ENV
-    #    echo "$commits"
-    #    echo "commits=$commits" >> $GITHUB_ENV
+      - name: Get latest release tag
+        id: latest_release
+        run: |
+          cd ${{ github.workspace }}
+          latest_tag=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
+          
+          if [ -z "$latest_tag" ]; then
+             echo "No release found. Starting with v0.0.0."
+             latest_tag="v0.0.0"
+             # Get the total number of commits in the current branch
+             #commit_count=$(git rev-list --count HEAD)
+             #echo "Total commits: $commit_count"       
+             # Set N to the smaller of 10 or the total number of commits
+             #N=$((commit_count < 10 ? commit_count : 10))
+             #commits=$(git log HEAD~$N..HEAD --oneline --pretty="%B")
+          else
+            #commits=$(git log $tag..HEAD --oneline --pretty="%B")
+          fi       
+          echo "Latest release tag: $latest_tag"
+          echo "latest_tag=$latest_tag" >> $GITHUB_ENV
+          #echo "$commits"
+          #echo "commits=$commits" >> $GITHUB_ENV
 
       - name: Determine bump type
         id: bump_type
         run: |
-            bump_type="patch"
-    
-            # Analyze commit messages to determine the bump type
-            #commits="${{ env.commits }}"
-            
-            # Check for breaking changes (major bump)
-            #if [[ "$commits" =~ \bfeat!\b || "$commits" =~ \bBREAKING\sCHANGE\b ]]; then
-            #  bump_type="major"
-            # Check for features (minor bump)
-            #elif [[ "$commits" =~ \bfeat:\b ]]; then
-            #  bump_type="minor"
-            # Check for fixes (patch bump)
-            #elif [[ "$commits" =~ \bfix:\b || "$commits" =~ \bchore:\b ]]; then
-            #  bump_type="patch"
-            #fi
-    
-            #if [ -z $bump_type ]; then
-            #  echo "No matching commit message found, no version bump."
-            #  exit 1
-            #fi
-    
-            echo "Detected bump type: $bump_type"
-            echo "bump_type=$bump_type" >> $GITHUB_ENV
+          bump_type="patch"
+  
+          # Analyze commit messages to determine the bump type
+          #commits="${{ env.commits }}"
+          
+          # Check for breaking changes (major bump)
+          #if [[ "$commits" =~ \bfeat!\b || "$commits" =~ \bBREAKING\sCHANGE\b ]]; then
+          #  bump_type="major"
+          # Check for features (minor bump)
+          #elif [[ "$commits" =~ \bfeat:\b ]]; then
+          #  bump_type="minor"
+          # Check for fixes (patch bump)
+          #elif [[ "$commits" =~ \bfix:\b || "$commits" =~ \bchore:\b ]]; then
+          #  bump_type="patch"
+          #fi
+  
+          #if [ -z $bump_type ]; then
+          #  echo "No matching commit message found, no version bump."
+          #  exit 1
+          #fi
+  
+          echo "Detected bump type: $bump_type"
+          echo "bump_type=$bump_type" >> $GITHUB_ENV
 
       - name: Determine next version
         id: bump_version
         run: |
-          bump_type="${{ github.event.inputs.version-bump }}"  # 'major', 'minor', or 'patch'
-          prerelease_label_input="${{ github.event.inputs.prerelease }}"
-
-          # If no release tag is found, start from v0.0.0
-          if [ -z "$latest_tag" ]; then
-            echo "No release found. Starting with v0.0.0."
-            latest_tag="v0.0.0"
-          else
-            echo "Current version: $latest_tag"
-          fi
-
           # Extract the version numbers from the tag (e.g., v1.2.3 -> [1, 2, 3])
           tag="${latest_tag//v/}"  # Remove 'v' prefix
-
+          prerelease_label_input="${{ inputs.prerelease }}"
+          
           if [[ "$tag" =~ ^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$ ]]; then
             major="${BASH_REMATCH[1]}"
             minor="${BASH_REMATCH[2]}"
             patch="${BASH_REMATCH[3]}"
             prerelease="${BASH_REMATCH[4]}"  # Capture pre-release label, e.g., "alpha", "beta", etc.
             build_metadata="${BASH_REMATCH[5]}" # Build metadata (not used, but can be stored)
-
-            if [ -n "$prerelease" ]; then
-              prerelease_parts=(${prerelease//./ })  # Split label and version
-              prerelease_label_in_tag="${prerelease_parts[0]}"
-              prerelease_version_number="${prerelease_parts[1]}"
-
-              if [[] -n "$prerelease_label_input" && "$prerelease_label_input" != "$prerelease_label_in_tag" ]]; then
-                echo "Pre-release label mismatch. Resetting pre-release version."
-                prerelease="${prerelease_label_input}.1"
-              elif [[ -n "$prerelease_label_input" && "$prerelease_label_input" == "$prerelease_label_in_tag" ]]; then
-                if [[ "$bump_type" == "patch" ]]; then
-                  prerelease_version_number=$((prerelease_version_number + 1))
-                  prerelease="${prerelease_label_input}.${prerelease_version_number}"
-                else
-                  prerelease="${prerelease_label_input}.1"
-                fi
-              else
-                prerelease="${prerelease_label_input}.1"
-              fi
-            elif [ -n "$prerelease_label_input" ]; then
-              prerelease="${prerelease_label_input}.1"
-            fi
-
+          
             # Bump the version based on the specified bump type
             case "$bump_type" in
               major)
@@ -229,9 +195,24 @@ jobs:
                 prerelease="${prerelease_label_input}.1"  # Reset to .1 for minor bumps
                 ;;
               patch)
-                # If there's no prerelease, increment the main patch version
-                if [ -z "$prerelease" ]; then
-                  patch=$((patch + 1))
+                if [ -n "$prerelease_label_input" ]; then
+                  prerelease_parts=(${prerelease//./ })  # Split label and version
+                  prerelease_label_in_tag="${prerelease_parts[0]}"
+                  prerelease_version_number="${prerelease_parts[1]}"
+          
+                  if [[ "$prerelease_label_input" != "$prerelease_label_in_tag" ]]; then
+                    echo "Pre-release label mismatch. Resetting pre-release version."
+                    prerelease="${prerelease_label_input}.1"
+                  else
+                    echo "Pre-release labels match, incrementing patch version."
+                    prerelease_version_number=$((prerelease_version_number + 1))
+                    prerelease="${prerelease_label_input}.${prerelease_version_number}"
+                else
+                  # If no existing pre-release, then increment the patch
+                  # otherwise, we just drop the pre-release from the version
+                  if [ -z "$prerelease" ]; then
+                    patch=$((patch + 1))
+                  fi
                 fi
                 ;;
               *)
@@ -239,16 +220,19 @@ jobs:
                 exit 1
                 ;;
             esac
-
+          
             # Create the new version tag
             if [ -n "$prerelease" ]; then
-              echo "prerelease=$prereleast" >> $GITHUB_ENV
               bumped_version="v$major.$minor.$patch-$prerelease"
             else
               bumped_version="v$major.$minor.$patch"
             fi
-
+          
             echo "Bumped version to: $bumped_version"
+            echo "bumped_version=$bumped_version" >> $GITHUB_ENV
+          else
+            echo "Tag $tag is invalid, reseting version to v0.0.1"
+            bumped_version="v0.0.1"
             echo "bumped_version=$bumped_version" >> $GITHUB_ENV
 
       - name: Create Git tag
