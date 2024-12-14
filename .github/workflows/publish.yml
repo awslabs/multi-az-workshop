@@ -106,6 +106,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          branch: main
 
       - name: get_content_artifact
         uses: actions/download-artifact@v4
@@ -115,30 +117,30 @@ jobs:
           run-id: ${{ needs.latest_workflow.outputs.RUN_ID }}
           github-token: ${{ github.token }}
 
-      - name: Get latest release tag
-        id: latest_release
-        run: |
-          cd ${{ github.workspace }}
-          latest_tag=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
-          
-          if [ -z "$latest_tag" ]; then
-            echo "No release found. Starting with v0.0.0."
-            latest_tag="v0.0.0"
-            # Get the total number of commits in the current branch
-            commit_count=$(git rev-list --count HEAD)
-            echo "Total commits: $commit_count"
+    #- name: Get latest release tag
+    #  id: latest_release
+    #  run: |
+    #    cd ${{ github.workspace }}
+    #    latest_tag=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
+    #    
+    #    if [ -z "$latest_tag" ]; then
+    #      echo "No release found. Starting with v0.0.0."
+    #      latest_tag="v0.0.0"
+    #      # Get the total number of commits in the current branch
+    #      commit_count=$(git rev-list --count HEAD)
+    #      echo "Total commits: $commit_count"
 
-            # Set N to the smaller of 10 or the total number of commits
-            N=$((commit_count < 10 ? commit_count : 10))
-            commits=$(git log HEAD~$N..HEAD --oneline --pretty="%B")
-          else
-            commits=$(git log $tag..HEAD --oneline --pretty="%B")
-          fi
+    #      # Set N to the smaller of 10 or the total number of commits
+    #      N=$((commit_count < 10 ? commit_count : 10))
+    #      commits=$(git log HEAD~$N..HEAD --oneline --pretty="%B")
+    #    else
+    #      commits=$(git log $tag..HEAD --oneline --pretty="%B")
+    #    fi
 
-          echo "Latest release tag: $latest_tag"
-          echo "latest_tag=$latest_tag" >> $GITHUB_ENV
-          echo "$commits"
-          echo "commits=$commits" >> $GITHUB_ENV
+    #    echo "Latest release tag: $latest_tag"
+    #    echo "latest_tag=$latest_tag" >> $GITHUB_ENV
+    #    echo "$commits"
+    #    echo "commits=$commits" >> $GITHUB_ENV
 
       - name: Determine bump type
         id: bump_type
@@ -146,20 +148,19 @@ jobs:
             bump_type="patch"
     
             # Analyze commit messages to determine the bump type
-            commits="${{ env.commits }}"
-            bump_type="patch"
+            #commits="${{ env.commits }}"
             
             # Check for breaking changes (major bump)
-            if [[ "$commits" =~ \bfeat!\b || "$commits" =~ \bBREAKING\sCHANGE\b ]]; then
-              bump_type="major"
+            #if [[ "$commits" =~ \bfeat!\b || "$commits" =~ \bBREAKING\sCHANGE\b ]]; then
+            #  bump_type="major"
             # Check for features (minor bump)
-            elif [[ "$commits" =~ \bfeat:\b ]]; then
-              bump_type="minor"
+            #elif [[ "$commits" =~ \bfeat:\b ]]; then
+            #  bump_type="minor"
             # Check for fixes (patch bump)
-            elif [[ "$commits" =~ \bfix:\b || "$commits" =~ \bchore:\b ]]; then
-              bump_type="patch"
-            fi
-
+            #elif [[ "$commits" =~ \bfix:\b || "$commits" =~ \bchore:\b ]]; then
+            #  bump_type="patch"
+            #fi
+    
             #if [ -z $bump_type ]; then
             #  echo "No matching commit message found, no version bump."
             #  exit 1
