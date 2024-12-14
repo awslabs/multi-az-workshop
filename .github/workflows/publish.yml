@@ -87,10 +87,17 @@ jobs:
           cd ${{ github.workspace }}/$REMOTE_REPO
           find . -path ./.git -prune -o ! -name . ! -name .. -exec rm -rf {} + 2> /dev/null
           cp -r ${{ github.workspace }}/workshop/. ${{ github.workspace }}/$REMOTE_REPO
-          git add -A
-          git commit -m "New workshop version"
-          git push
-
+          # exits 1 if there are changes, which is interpreted as true
+          set +e
+          git diff --quiet
+          if [ $? -eq 1 ]; then
+            set -e
+            git add -A
+            git commit -m "New workshop version"
+            git push
+          else
+            echo "No changes detected, nothing to commit"
+            
   bump_version_and_release:
     runs-on: ubuntu-latest
     needs: [ latest_workflow, assets, workshop ]
