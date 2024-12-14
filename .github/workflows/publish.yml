@@ -115,18 +115,13 @@ jobs:
           if [ -z "$latest_tag" ]; then
             echo "No release found. Starting with v0.0.0."
             latest_tag="v0.0.0"
+            commits=$(git log HEAD~10..HEAD --oneline --pretty=%B)
+          else
+            commits=$(git log $tag..HEAD --oneline --pretty=%B)
           fi
 
           echo "Latest release tag: $latest_tag"
           echo "latest_tag=$latest_tag" >> $GITHUB_ENV
-
-      - name: Get commit messages since last release
-        id: get_commits
-        run: |
-          # Get all commit messages since the last release   
-          latest_tag="${{ env.latest_tag }}"
-          tag="${latest_tag:-HEAD~10}"      
-          commits=$(git log $tag..HEAD --oneline --pretty=%B)
           echo "$commits"
           echo "commits=$commits" >> $GITHUB_ENV
 
