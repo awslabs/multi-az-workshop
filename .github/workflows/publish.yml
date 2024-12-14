@@ -24,7 +24,7 @@ env:
 
 jobs:
   latest_workflow:
-    runs-on: ubunti-latest
+    runs-on: ubuntu-latest
     outputs:
         RUN_ID: ${{ steps.get_run.outputs.RUN_ID }}
     steps:
