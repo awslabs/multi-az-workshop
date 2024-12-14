@@ -35,7 +35,7 @@ jobs:
           REPO=${{ github.repository_owner }}/${{ github.repository }}
           WORKFLOW=build.yml
 
-          RUN_ID=$(gh run list --workflow "$WORKFLOW" --status success --limit 1 --repo "$REPO" --json "id" -q '.[0].id')
+          RUN_ID=$(gh run list --workflow "$WORKFLOW" --status success --limit 1 --repo "$REPO" --json "databaseId" -q '.[0].databaseId')
 
           if [ -z "$RUN_ID" ]; then
             echo "No successful workflow runs found!"
