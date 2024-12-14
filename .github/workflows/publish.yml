@@ -123,8 +123,10 @@ jobs:
       - name: Get commit messages since last release
         id: get_commits
         run: |
-          # Get all commit messages since the last release         
-          commits=$(git log ${{ env.latest_tag }}..HEAD --oneline --pretty=%B)
+          # Get all commit messages since the last release   
+          latest_tag="${{ env.latest_tag }}"
+          tag="${latest_tag:-HEAD~10}"      
+          commits=$(git log $tag..HEAD --oneline --pretty=%B)
           echo "$commits"
           echo "commits=$commits" >> $GITHUB_ENV
 
