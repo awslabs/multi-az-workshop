@@ -32,7 +32,7 @@ jobs:
       - name: get run
         id: get_run
         run: |
-          REPO=${{ github.repository_owner }}/${{ github.repository }}
+          REPO=${{ github.repository }}
           WORKFLOW=build.yml
 
           RUN_ID=$(gh run list --workflow "$WORKFLOW" --status success --limit 1 --repo "$REPO" --json "databaseId" -q '.[0].databaseId')
