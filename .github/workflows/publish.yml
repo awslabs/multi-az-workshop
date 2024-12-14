@@ -186,7 +186,7 @@ jobs:
             minor="${BASH_REMATCH[2]}"
             patch="${BASH_REMATCH[3]}"
             prerelease="${BASH_REMATCH[4]}"  # Capture pre-release label, e.g., "alpha", "beta", etc.
-            build_metadata="${BASH_REMATCH[6]}" # Build metadata (not used, but can be stored)
+            build_metadata="${BASH_REMATCH[5]}" # Build metadata (not used, but can be stored)
 
             if [ -n "$prerelease" ]; then
               prerelease_parts=(${prerelease//./ })  # Split label and version
