@@ -93,7 +93,7 @@ jobs:
 
   bump_version_and_release:
     runs-on: ubuntu-latest
-    needs: [ latest_workflow ]
+    needs: [ latest_workflow, assets, workshop ]
 
     steps:
       - name: Checkout repository
@@ -115,7 +115,12 @@ jobs:
           if [ -z "$latest_tag" ]; then
             echo "No release found. Starting with v0.0.0."
             latest_tag="v0.0.0"
-            commits=$(git log HEAD~10..HEAD --oneline --pretty=%B)
+            # Get the total number of commits in the current branch
+            commit_count=$(git rev-list --count HEAD)
+
+            # Set N to the smaller of 10 or the total number of commits
+            N=$((commit_count < 10 ? commit_count : 10))
+            commits=$(git log HEAD~$N..HEAD --oneline --pretty=%B)
           else
             commits=$(git log $tag..HEAD --oneline --pretty=%B)
           fi
