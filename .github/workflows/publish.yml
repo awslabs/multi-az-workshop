@@ -55,6 +55,7 @@ jobs:
           name: AssetsArtifact
           path: ${{ github.workspace }}/assets
           run-id: ${{ needs.latest_workflow.outputs.RUN_ID }}
+          github-token: ${{ github.token }}
 
       - name: upload_assets
         run: aws s3 sync ${{ github.workspace }}/assets s3://ws-assets-us-east-1/$WORKSHOP_ID --delete
@@ -69,6 +70,7 @@ jobs:
           name: WorkshopArtifact
           path: ${{ github.workspace }}/workshop
           run-id: ${{ needs.latest_workflow.outputs.RUN_ID }}
+          github-token: ${{ github.token }}
 
       - name: install remote codecommit
         run: |
@@ -86,9 +88,9 @@ jobs:
           git commit -m "New workshop version"
           git push
 
-  package:
-    runs-on: ubuntu-latest
-    needs: latest_workflow
-    steps:
-        - name: Create package
-          run: |
+  #package:
+  #  runs-on: ubuntu-latest
+  #  needs: latest_workflow
+  #  steps:
+  #      - name: Create package
+  #        run: |
