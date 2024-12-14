@@ -126,12 +126,13 @@ jobs:
             latest_tag="v0.0.0"
             # Get the total number of commits in the current branch
             commit_count=$(git rev-list --count HEAD)
+            echo "Total commits: $commit_count"
 
             # Set N to the smaller of 10 or the total number of commits
             N=$((commit_count < 10 ? commit_count : 10))
-            commits=$(git log HEAD~$N..HEAD --oneline --pretty=%B)
+            commits=$(git log HEAD~$N..HEAD --oneline --pretty="%B")
           else
-            commits=$(git log $tag..HEAD --oneline --pretty=%B)
+            commits=$(git log $tag..HEAD --oneline --pretty="%B")
           fi
 
           echo "Latest release tag: $latest_tag"
@@ -142,7 +143,7 @@ jobs:
       - name: Determine bump type
         id: bump_type
         run: |
-            bump_type=""  # Ignore a commit that wasn't labeled appropriately
+            bump_type="patch"
     
             # Analyze commit messages to determine the bump type
             commits="${{ env.commits }}"
