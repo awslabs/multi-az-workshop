@@ -21,6 +21,7 @@ env:
   USER_NAME: ${{ github.triggering_actor }}
   EMAIL: ${{ inputs.email }}
   REMOTE_REPO: advanced-multi-az-resilience-patterns
+  GH_TOKEN: ${{ github.token }}
 
 jobs:
   latest_workflow:
