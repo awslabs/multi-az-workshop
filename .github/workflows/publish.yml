@@ -118,6 +118,7 @@ jobs:
       - name: Get latest release tag
         id: latest_release
         run: |
+          cd ${{ github.workspace }}
           latest_tag=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
           
           if [ -z "$latest_tag" ]; then
