@@ -11,15 +11,6 @@ on:
           type: string
         email:
           type: string
-        version-bump:
-          description: 'Version bump type (major, minor, patch)'
-          type: choice
-          options:
-            - major
-            - minor
-            - patch
-          required: true
-          default: 'patch'
         prerelease:
           type: string
           description: If you want to make this a pre-release specify the value like 'alpha' or 'beta'
@@ -102,6 +93,7 @@ jobs:
 
   bump_version_and_release:
     runs-on: ubuntu-latest
+    needs: [ latest_workflow ]
 
     steps:
       - name: Checkout repository
