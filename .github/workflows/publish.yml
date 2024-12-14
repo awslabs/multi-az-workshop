@@ -97,6 +97,7 @@ jobs:
             git push
           else
             echo "No changes detected, nothing to commit"
+          fi
             
   bump_version_and_release:
     runs-on: ubuntu-latest
