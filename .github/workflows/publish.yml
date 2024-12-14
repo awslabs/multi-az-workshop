@@ -83,7 +83,7 @@ jobs:
           git clone codecommit://$REMOTE_REPO ${{ github.workspace }}/$REMOTE_REPO
           cd ${{ github.workspace }}/$REMOTE_REPO
           find . -path ./.git -prune -o ! -name . ! -name .. -exec rm -rf {} + 2> /dev/null
-          cp ${{ github.workspace }}/workshop/* ${{ github.workspace }}/$REMOTE_REPO
+          cp -r ${{ github.workspace }}/workshop/. ${{ github.workspace }}/$REMOTE_REPO
           git add -A
           git commit -m "New workshop version"
           git push
