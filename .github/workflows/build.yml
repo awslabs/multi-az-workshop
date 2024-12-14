@@ -5,9 +5,11 @@ on:
       - vNext
     paths-ignore:
       - .github/workflows/publish.yml
+      - .github/workflows/auto-approve-publish-updates.yml
   pull_request: 
     paths-ignore:
       - .github/workflows/publish.yml
+      - .github/workflows/auto-approve-publish-updates.yml
 
 jobs:
   build:
