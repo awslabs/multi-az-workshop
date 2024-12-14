@@ -5,7 +5,10 @@ on:
       - vNext
     paths-ignore:
       - .github/workflows/publish.yml
-  pull_request: {}
+  pull_request: 
+    paths-ignore:
+      - .github/workflows/publish.yml
+
 jobs:
   build:
     runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
