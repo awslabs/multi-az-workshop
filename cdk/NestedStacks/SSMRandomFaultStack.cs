@@ -88,7 +88,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                                 {"ApplicationName", props.DeploymentGroup.ApplicationName},
                                 {"DeploymentGroupName", props.DeploymentGroup.Ref},
                                 {"ApplicationKey", props.ApplicationKey},
-                                {"Bucket", Fn.Ref("AssetsBucket")}
+                                {"Bucket", Fn.Ref("AssetsBucketName")}
                             }}
                         }}*/
                     }},
@@ -215,7 +215,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                                 {"ApplicationName", props.DeploymentGroup.ApplicationName},
                                 {"DeploymentGroupName", props.DeploymentGroup.Ref},
                                 {"ApplicationKey", props.ApplicationKey},
-                                {"Bucket", Fn.Ref("AssetsBucket")}
+                                {"Bucket", Fn.Ref("AssetsBucketName")}
                             }}
                         }}
                     }},

@@ -135,7 +135,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     Revision = new RevisionLocationProperty() {
                         RevisionType = "S3",
                         S3Location = new S3LocationProperty() {
-                            Bucket = Fn.Ref("AssetsBucket"),
+                            Bucket = Fn.Ref("AssetsBucketName"),
                             Key = props.ApplicationKey,
                             BundleType = "zip"
                         }

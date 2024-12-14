@@ -47,9 +47,9 @@ infrastructure:
     - templateLocation: static/multi-az-workshop.json
       label: multi-az-workshop
       parameters:
-        - templateParameter: AssetsBucket
+        - templateParameter: AssetsBucketName
           defaultValue: "{{.AssetsBucketName}}"
         - templateParameter: AssetsBucketPrefix
           defaultValue: "{{.AssetsBucketPrefix}}"
-        - templateParameter: AdminRoleName
+        - templateParameter: ParticipantRoleName
           defaultValue: "{{.ParticipantRoleName}}"

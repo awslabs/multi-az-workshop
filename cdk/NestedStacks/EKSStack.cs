@@ -13,6 +13,7 @@ using Amazon.CDK.AWS.Logs;
 using Amazon.CDK.AWS.RDS;
 using Constructs;
 using Amazon.AWSLabs.MultiAZWorkshop.Constructs;
+using Newtonsoft.Json;
 
 #if NET8_0_OR_GREATER
 using System.Formats.Tar;
@@ -59,6 +60,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
         
         public EKSStack(Stack scope, string id, IEKSStackProps props) : base(scope, id, props)
         { 
+            Dictionary<string, string> versions = JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText("../build/versions.json"));
+
             //BuildHelmLayer().Wait(); // No available to do in .NET 6
             IFunction uploader = this.SetupUploader();
 
@@ -78,9 +81,11 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                                 "echo $ACCOUNT",
                                 "echo $BUCKET",
                                 "echo $KEY",
-                                "aws s3 cp s3://$BUCKET/$KEY $KEY",
+                                "file=${KEY#*/}",
+                                "echo $file",
+                                "aws s3 cp s3://$BUCKET/$KEY $file",
                                 "aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT.dkr.ecr.$AWS_REGION." + Fn.Ref("AWS::URLSuffix"),
-                                "output=$(docker load --input $KEY)",
+                                "output=$(docker load --input $file)",
                                 "echo $output",
                                 "IMAGE=$(echo $output | cut -d':' -f2 | xargs)",
                                 "echo $IMAGE",
@@ -111,6 +116,13 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                                         "ecr:DescribeRepositories",
                                         "ecr:GetAuthorizationToken",
                                         "ecr:BatchGetImage"
+                                    }
+                                }),
+                                new PolicyStatement(new PolicyStatementProps() {
+                                    Effect = Effect.ALLOW,
+                                    Resources = new string[] { "*" },
+                                    Actions = new string[] {
+                                        "kms:Decrypt"
                                     }
                                 }),
                                 new PolicyStatement(new PolicyStatementProps() {
@@ -159,7 +171,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                 ContainerBuildProject = containerBuild,
                 UploaderFunction = uploader,
                 LoadBalancerSecurityGroup = props.LoadBalancerSecurityGroup,
-                ClusterName = "multi-az-workshop-eks-cluster"      
+                ClusterName = "multi-az-workshop-eks-cluster",
+                Version = versions["EKS"] 
             });
 
             this.FixUpNestedStacks();
@@ -167,13 +180,16 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
             Istio istio = new Istio(this, "Istio", new IstioProps() {
                 Cluster = cluster.Cluster,
                 ContainerBuildProject = containerBuild,
-                UploaderFunction = uploader
+                UploaderFunction = uploader,
+                Version = versions["ISTIO"]
             });
 
             AwsLoadBalancerController lbController = new AwsLoadBalancerController(this, "AwsLoadBalancerController", new AwsLoadBalancerControllerProps() {
                 Cluster = cluster.Cluster,
                 ContainerBuildProject = containerBuild,
-                UploaderFunction = uploader
+                UploaderFunction = uploader,
+                ContainerVersion = versions["LB_CONTROLLER_CONTAINER"],
+                HelmVersion = versions["LB_CONTROLLER_HELM"]
             });
             lbController.Node.AddDependency(istio.WaitableNode);
 
@@ -238,7 +254,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
 
                 if (nestedStack != null)
                 {
-                    nestedStack.Node.Children.Append(new CfnParameter(nestedStack, "AssetsBucket", new CfnParameterProps() {
+                    nestedStack.Node.Children.Append(new CfnParameter(nestedStack, "AssetsBucketName", new CfnParameterProps() {
                         Type = "String"
                     }));
 
@@ -255,14 +271,14 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     Console.WriteLine("Writing new parameters");
 
                     nestedStackResource.Parameters = new Dictionary<string, string>() {
-                        { "AssetsBucket", Fn.Ref("AssetsBucket")},
+                        { "AssetsBucketName", Fn.Ref("AssetsBucketName")},
                         { "AssetsBucketPrefix", Fn.Ref("AssetsBucketPrefix")}
                     };
                 }
                 else {
                     Console.WriteLine("Adding to parameters");
 
-                    (nestedStackResource.Parameters as Dictionary<string, string>).Add("AssetsBucket", Fn.Ref("AssetsBucket"));
+                    (nestedStackResource.Parameters as Dictionary<string, string>).Add("AssetsBucketName", Fn.Ref("AssetsBucketName"));
                     (nestedStackResource.Parameters as Dictionary<string, string>).Add("AssetsBucketPrefix", Fn.Ref("AssetsBucketPrefix"));
                 }
                 */
@@ -325,6 +341,11 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     new PolicyStatement(new PolicyStatementProps() {
                         Effect = Effect.ALLOW,
                         Actions = new string[] { "s3:GetObject" },
+                        Resources = new string[] { "*" }
+                    }),
+                    new PolicyStatement(new PolicyStatementProps() {
+                        Effect = Effect.ALLOW,
+                        Actions = new string[] { "kms:Decrypt" },
                         Resources = new string[] { "*" }
                     }),
                     new PolicyStatement(new PolicyStatementProps() {

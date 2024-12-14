@@ -25,8 +25,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 ServiceToken = function.FunctionArn,
                 Properties = new Dictionary<string, object> {
                     { "Type", "Helm" },
-                    { "Bucket", Fn.Ref("AssetsBucket") },
-                    { "Key", Fn.Ref("AssetsBucketPrefix") + "helm/" + name + "-" + version + ".tgz" },
+                    { "Bucket", Fn.Ref("AssetsBucketName") },
+                    { "Key", Fn.Ref("AssetsBucketPrefix") + name + "-" + version + ".tgz" },
                     { "Repository", repo.RepositoryName }
                 }
             });
