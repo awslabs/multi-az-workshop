@@ -136,7 +136,7 @@ jobs:
             #commits=$(git log $tag..HEAD --oneline --pretty="%B")
             echo "There is a latest tag: $latest_tag"
           fi   
-              
+
           echo "Latest release tag: $latest_tag"
           echo "latest_tag=$latest_tag" >> $GITHUB_ENV
           #echo "$commits"
@@ -209,6 +209,7 @@ jobs:
                     echo "Pre-release labels match, incrementing patch version."
                     prerelease_version_number=$((prerelease_version_number + 1))
                     prerelease="${prerelease_label_input}.${prerelease_version_number}"
+                  fi
                 else
                   # If no existing pre-release, then increment the patch
                   # otherwise, we just drop the pre-release from the version
@@ -236,6 +237,7 @@ jobs:
             echo "Tag $tag is invalid, reseting version to v0.0.1"
             bumped_version="v0.0.1"
             echo "bumped_version=$bumped_version" >> $GITHUB_ENV
+          fi
 
       - name: Create Git tag
         run: |
