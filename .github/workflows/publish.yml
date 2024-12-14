@@ -124,17 +124,19 @@ jobs:
           latest_tag=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
           
           if [ -z "$latest_tag" ]; then
-             echo "No release found. Starting with v0.0.0."
-             latest_tag="v0.0.0"
-             # Get the total number of commits in the current branch
-             #commit_count=$(git rev-list --count HEAD)
-             #echo "Total commits: $commit_count"       
-             # Set N to the smaller of 10 or the total number of commits
-             #N=$((commit_count < 10 ? commit_count : 10))
-             #commits=$(git log HEAD~$N..HEAD --oneline --pretty="%B")
+            echo "No release found. Starting with v0.0.0."
+            latest_tag="v0.0.0"
+            # Get the total number of commits in the current branch
+            #commit_count=$(git rev-list --count HEAD)
+            #echo "Total commits: $commit_count"       
+            # Set N to the smaller of 10 or the total number of commits
+            #N=$((commit_count < 10 ? commit_count : 10))
+            #commits=$(git log HEAD~$N..HEAD --oneline --pretty="%B")
           else
             #commits=$(git log $tag..HEAD --oneline --pretty="%B")
-          fi       
+            echo "There is a latest tag: $latest_tag"
+          fi   
+              
           echo "Latest release tag: $latest_tag"
           echo "latest_tag=$latest_tag" >> $GITHUB_ENV
           #echo "$commits"
