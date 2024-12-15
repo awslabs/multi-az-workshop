@@ -19,7 +19,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          branches: [ vNext ]
+          ref: vNext
 
       # Step 2: Set up git
       - name: Set up Git
@@ -32,21 +32,6 @@ jobs:
         run: |
           # Create the pull request
           gh pr create --title "Auto-update file" --body "This PR automatically updates the file." --base main --head vNext
-
-      # Step 4: Approve the PR using GitHub CLI
-      - name: Approve the PR
-        run: |
-          # Get the PR number
-          pr_number=$(gh pr list --state open --head vNext --json number -q ".[0].number")
-          
-          # Approve the PR
-          gh pr review "$pr_number" --approve
-
-      # Step 5: Merge the PR
-      - name: Merge the PR
-        run: |
-          # Get the PR number (same as before)
-          pr_number=$(gh pr list --state open --head vNext --json number -q ".[0].number")
-          
-          # Merge the PR
-          gh pr merge "$pr_number" --merge
+          pr_number=$(gh pr create --base main --head vNext--title "auto update publish workflow" --label "auto-approve" --json number -q ".number")
+          echo "pr_number=$pr_number" >> $GITHUB_ENV
+          gh api -X PATCH /repos/${{ github.repository }}/pulls/${{ env.pr_number }}/merge -f merge_method=merge -f automerge=true
