@@ -175,13 +175,19 @@ jobs:
           # Extract the version numbers from the tag (e.g., v1.2.3 -> [1, 2, 3])
           tag="${latest_tag//v/}"  # Remove 'v' prefix
           prerelease_label_input="${{ inputs.prerelease }}"
-          
-          if [[ "$tag" =~ ^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$ ]]; then
+          regex="^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-((0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\+([0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*))?$"
+     
+          if [[ "$tag" =~ $regex ]]; then
             major="${BASH_REMATCH[1]}"
             minor="${BASH_REMATCH[2]}"
             patch="${BASH_REMATCH[3]}"
-            prerelease="${BASH_REMATCH[4]}"  # Capture pre-release label, e.g., "alpha", "beta", etc.
-            build_metadata="${BASH_REMATCH[5]}" # Build metadata (not used, but can be stored)
+            prerelease="${BASH_REMATCH[5]}"  # Capture pre-release label, e.g., "alpha", "beta", etc.
+            build_metadata="${BASH_REMATCH[10]}" # Build metadata (not used, but can be stored)
+            echo "MAJOR:        $major"
+            echo "MINOR:        $minor"
+            echo "PATCH:        $patch"
+            echo "PRE-RELEASE:  $prerelease"
+            echo "METADATA:     $build_metadata"
           
             # Bump the version based on the specified bump type
             case "$bump_type" in
