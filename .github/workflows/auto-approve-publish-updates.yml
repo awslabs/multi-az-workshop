@@ -42,4 +42,4 @@ jobs:
 
           # Add labels to the PR
           gh pr edit $pr_number --add-label "auto-merge,auto-approve"
-          gh pr merge $pr_number --auto
+          gh pr merge $pr_number --merge --auto
