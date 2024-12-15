@@ -31,5 +31,5 @@ jobs:
       - name: Create a PR
         run: |
           # Create the pull request
-          gh pr create --base main --head vNext --title "auto update publish workflow" --label "auto-approve" --label "auto-merge"
+          gh pr create --base main --head vNext --title "auto update publish workflow" --body "Automatic update to the publishing workflow." --label "auto-approve" --label "auto-merge"
           gh api -X PATCH /repos/${{ github.repository }}/pulls/${{ env.pr_number }}/merge -f merge_method=merge -f automerge=true
