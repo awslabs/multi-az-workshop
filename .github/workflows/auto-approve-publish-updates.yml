@@ -19,7 +19,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          branches: [ vNext ]
+          ref: vNext
 
       # Step 2: Set up git
       - name: Set up Git
