@@ -178,9 +178,9 @@ jobs:
           regex="^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-((0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\+([0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*))?$"
      
           if [[ "$tag" =~ $regex ]]; then
-            major="${BASH_REMATCH[1]}" # major
-            minor="${BASH_REMATCH[2]}" # minor
-            patch="${BASH_REMATCH[3]}" # patch
+            major="${BASH_REMATCH[1]}"
+            minor="${BASH_REMATCH[2]}"
+            patch="${BASH_REMATCH[3]}"
             prerelease="${BASH_REMATCH[5]}"  # Capture pre-release label, e.g., "alpha", "beta", etc.
             build_metadata="${BASH_REMATCH[10]}" # Build metadata (not used, but can be stored)
             echo "MAJOR:        $major"
