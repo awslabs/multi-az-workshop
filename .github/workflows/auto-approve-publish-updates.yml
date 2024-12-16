@@ -2,8 +2,9 @@ name: Auto Commit and Approve PR
 
 on:
   push:
-    paths:
-      - .github/workflows/publish.yml  # Trigger the workflow only if this file changes
+    paths-ignore:
+      - 'app-src/**'
+      - 'cdk/**'
     branches:
       - vNext  # You can specify which branches to track
 

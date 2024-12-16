@@ -6,6 +6,7 @@ on:
     paths:
       - app-src/**
       - cdk/**
+      - build/**
       - .github/workflows/build.yml
 
 jobs:
