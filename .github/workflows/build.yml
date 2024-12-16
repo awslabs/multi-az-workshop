@@ -3,15 +3,15 @@ on:
   push:
     branches:
       - vNext
-    paths-ignore:
-      - .github/workflows/publish.yml
-      - .github/workflows/auto-approve-publish-updates.yml
-      - .github/workflows/auto-approve.yml
+    paths:
+      - app-src/**
+      - cdk/**
+      - .github/workflows/build.yml
   pull_request: 
-    paths-ignore:
-      - .github/workflows/publish.yml
-      - .github/workflows/auto-approve-publish-updates.yml
-      - .github/workflows/auto-approve.yml
+    paths:
+      - app-src/**
+      - cdk/**
+      - .github/workflows/build.yml
 
 jobs:
   build:
