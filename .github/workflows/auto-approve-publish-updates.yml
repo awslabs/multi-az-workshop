@@ -1,0 +1,45 @@
+name: Auto Commit and Approve PR
+
+on:
+  push:
+    paths:
+      - .github/workflows/publish.yml  # Trigger the workflow only if this file changes
+    branches:
+      - vNext  # You can specify which branches to track
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  create_and_approve_pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out the repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: vNext
+
+      # Step 2: Set up git
+      - name: Set up Git
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+      # Step 3: Create a pull request using GitHub CLI
+      - name: Create a PR
+        run: |
+          # Create the pull request
+          #gh pr create --base main --head vNext --title "auto update publish workflow" --body "Automatic update to the publishing workflow." --label "auto-approve" --label "auto-merge"
+          # Create the PR and capture PR number
+          pr_number=$(gh api --method POST /repos/${{ github.repository }}/pulls \
+            -f title="Auto Update Publish Workflow" \
+            -f body="Automatic update to the publishing workflow." \
+            -f head="vNext" \
+            -f base="main" \
+            -q ".number")
+
+          # Add labels to the PR
+          gh pr edit $pr_number --add-label "auto-merge,auto-approve"
+          gh pr merge $pr_number --merge --auto

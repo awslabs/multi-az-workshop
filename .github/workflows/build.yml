@@ -1,0 +1,403 @@
+name: build
+on:
+  pull_request: 
+    branches:
+      - main
+    paths:
+      - app-src/**
+      - cdk/**
+      - .github/workflows/build.yml
+
+jobs:
+  build:
+    runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
+    env:
+      CDK_LOCATION: "cdk"
+      PROJECT_NAME: ${{ github.event.repository.name }}
+      DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 0
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+
+      #- name: Install node.js
+      #  uses: actions/setup-node@v4
+      #  with:
+      #    node-version: 20
+
+      #- name: Install python
+      #  uses: actions/setup-python@v4
+      #  with:
+      #    python-version: '3.13'
+
+      - name: Install dotnet
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0'
+       
+      - name: Dotnet version update
+        run: |
+          cat /codebuild/global.json
+          dotnet --info
+          jq '.sdk.version = "8.0.0"' /codebuild/global.json > temp.json && mv temp.json /codebuild/global.json
+          cat /codebuild/global.json
+
+      - name: Install cdk
+        run: |
+          npm install aws-cdk -g
+          cdk --version
+
+      - name: Create tmp
+        run: mkdir -p ${{ github.workspace }}/tmp
+
+      - name: Create assets
+        run: mkdir -p ${{ github.workspace }}/assets
+
+      - name: Set versions
+        run: |
+          # Read the JSON file and iterate over each key-value pair
+          for key in $(jq -r 'keys[]' ${{ github.workspace }}/build/versions.json); do
+            value=$(jq -r ".\"$key\"" ${{ github.workspace }}/build/versions.json)
+            echo "Setting environment variable for $key with value $value"
+            # Set the environment variable
+            echo "$key=$value" >> $GITHUB_ENV
+          done
+
+      - name: Create helm lambda layer
+        run: |
+          file=helm-v$HELM-linux-arm64.tar.gz
+          curl --location https://get.helm.sh/$file --output /tmp/$file
+          tar -zxvf /tmp/$file --directory /tmp
+          mkdir -p ${{ github.workspace }}/$CDK_LOCATION/layer/helm
+          cp /tmp/linux-arm64/helm ${{ github.workspace }}/$CDK_LOCATION/layer/helm/
+          chmod 0755 ${{ github.workspace }}/$CDK_LOCATION/layer/helm/helm
+          cd ${{ github.workspace }}/$CDK_LOCATION/layer
+          zip -r ${{ github.workspace }}/$CDK_LOCATION/helm-layer.zip .
+
+      - name: Copy destination rule
+        run: |
+          file=destination-rule.yaml
+          cp ${{ github.workspace }}/$CDK_LOCATION/Configs/$file ${{ github.workspace }}/assets/$file
+
+      - name: Get kubectl
+        run: |
+          file=kubectl
+          curl --location https://dl.k8s.io/release/v$KUBECTL/bin/linux/arm64/$file --output ${{ github.workspace }}/assets/$file
+          
+      - name: Get istio helm charts
+        run: |
+          BASE=https://istio-release.storage.googleapis.com/charts
+          istio_deps=("base-$ISTIO.tgz" "istiod-$ISTIO.tgz" "gateway-$ISTIO.tgz" "cni-$ISTIO.tgz")
+          for file in ${istio_deps[@]}; do
+            curl --location $BASE/$file --output ${{ github.workspace }}/assets/$file
+          done
+
+      - name: Get AWS load balancer controller helm chart
+        run: |
+          file=aws-load-balancer-controller-$LB_CONTROLLER_HELM.tgz
+          curl --location https://aws.github.io/eks-charts/$file --output ${{ github.workspace }}/assets/$file
+
+      #- name: Pull istio container images
+      #  run: |
+      #    istio_containers=("istio/install-cni:$ISTIO" "istio/pilot:$ISTIO" "istio/proxyv2:$ISTIO")
+      #    for file in ${istio_containers[@]}; do
+      #      docker pull $file
+      #      name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
+      #      docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
+      #    done
+
+      - name: Pull install-cni container image
+        run: |
+          file="istio/install-cni:$ISTIO"
+          docker pull $file
+          name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
+          docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
+
+      - name: Pull pilot container image
+        run: |
+          file="istio/pilot:$ISTIO"
+          docker pull $file
+          name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
+          docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
+
+      - name: Pull proxy container image
+        run: |
+          file="istio/proxyv2:$ISTIO"
+          docker pull $file
+          name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
+          docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
+
+      - name: Pull load balancer controller container image
+        run: |
+          BASE=public.ecr.aws
+          file="eks/aws-load-balancer-controller:$LB_CONTROLLER_CONTAINER-linux_arm64"
+          docker pull $BASE/$file
+          name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
+          docker save $BASE/$file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
+
+      - name: Pull cloudwatch agent container image
+        run: |
+          BASE=public.ecr.aws
+          file="cloudwatch-agent/cloudwatch-agent:latest"
+          docker pull $BASE/$file
+          name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
+          docker save $BASE/$file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
+
+      #- name: Pull AWS container images
+      #  run: |
+      #    aws_containers=("eks/aws-load-balancer-controller:$LB_CONTROLLER_CONTAINER-linux_arm64" "cloudwatch-agent/cloudwatch-agent:latest")
+      #    BASE=public.ecr.aws
+      #    for file in ${aws_containers[@]}; do
+      #      docker pull $BASE/$file
+      #      name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
+      #      docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
+      #    done
+
+      - name: Build arm64 web app
+        run: |
+          rm -rf ${{ github.workspace }}/app-src/output
+          mkdir -p ${{ github.workspace }}/app-src/output
+          mkdir -p ${{ github.workspace }}/app-src/output/src
+          cd ${{ github.workspace }}/app-src
+          dotnet restore
+          dotnet publish --configuration Release --runtime linux-arm64 --output ${{ github.workspace }}/app-src/output/src -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained
+          cd ${{ github.workspace }}/app-src/output
+          zip -r ${{ github.workspace }}/assets/app_arm64.zip src/
+          cd ${{ github.workspace }}/app-src
+          zip -r ${{ github.workspace }}/assets/app_arm64.zip apache/ scripts/ appspec.yml
+          rm -rf ${{ github.workspace }}/app-src/output
+
+      - name: Build failing arm64 web app
+        run: |
+          rm -rf ${{ github.workspace }}/app-src/output
+          mkdir -p ${{ github.workspace }}/app-src/output
+          mkdir -p ${{ github.workspace }}/app-src/output/src
+          cd ${{ github.workspace }}/app-src
+          dotnet publish --configuration Release --runtime linux-arm64 --output ${{ github.workspace }}/app-src/output/src -p:DefineConstants="FAIL" -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained
+          cd ${{ github.workspace }}/app-src/output
+          zip -r ${{ github.workspace }}/assets/app_arm64_fail.zip src/
+          cd ${{ github.workspace }}/app-src
+          zip -r ${{ github.workspace }}/assets/app_arm64_fail.zip apache/ scripts/ appspec.yml
+          rm -rf ${{ github.workspace }}/app-src/output
+
+      #- name: Set up docker buildx
+      #  uses: docker/setup-buildx-action@v3
+
+      - name: Build arm64 container
+        run: |
+          rm -rf ${{ github.workspace }}/app-src/output
+          mkdir -p ${{ github.workspace }}/app-src/output
+          mkdir -p ${{ github.workspace }}/app-src/output/src
+          cd ${{ github.workspace }}/app-src
+          dotnet publish --configuration Release --runtime linux-musl-arm64 --output ${{ github.workspace }}/app-src/output/src -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained
+          cd ${{ github.workspace }}/app-src/output
+          docker build --tag $PROJECT_NAME/app:latest --platform linux/arm64 --build-arg SRC=src --file ${{ github.workspace }}/build/dockerfile .
+          docker save $PROJECT_NAME/app:latest | gzip > ${{ github.workspace }}/assets/container.tar.gz
+          rm -rf ${{ github.workspace }}/app-src/output
+
+      - name: Build assets
+        run: |
+          cd ${{ github.workspace }}/$CDK_LOCATION
+          cdk synth --quiet
+          chmod +x ${{ github.workspace }}/build/package.py
+          ${{ github.workspace }}/build/package.py $PROJECT_NAME ${{ github.workspace }} $CDK_LOCATION
+          cd ${{ github.workspace }}/assets
+          zip -r ${{ github.workspace }}/content.zip .
+          cp ${{ github.workspace }}/static/$PROJECT_NAME.json ${{ github.workspace }}/$PROJECT_NAME.template
+          cd ${{ github.workspace }}
+          zip ${{ github.workspace }}/content.zip $PROJECT_NAME.template
+          cp ${{ github.workspace }}/content.zip ${{ github.workspace }}/assets
+          
+      - name: Upload workshop artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WorkshopArtifact
+          path: |
+            ${{ github.workspace }}/static
+            ${{ github.workspace }}/content
+            ${{ github.workspace }}/contentspec.yaml
+
+      - name: Upload assets artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AssetsArtifact
+          path: ${{ github.workspace }}/assets/**/*
+
+      - name: Upload content artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ContentArtifact
+          path: ${{ github.workspace }}/content.zip
+
+  test:
+    needs: [ build ]
+    runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
+    env:
+      BUCKET: ${{ secrets.BUCKET }}
+      PROJECT_NAME: ${{ github.event.repository.name }}
+    steps:
+      - name: Get workshop content
+        uses: actions/download-artifact@v4
+        with:
+          name: ContentArtifact
+
+      - name: Upload to S3
+        id: s3
+        run: |
+          date=$(date --utc +"%Y-%m-%dT%H-%M-%SZ")
+          echo "DATE=$date" >> $GITHUB_OUTPUT
+          mkdir -p ${{ github.workspace }}/content
+          unzip content.zip -d ${{ github.workspace }}/content
+          aws s3 cp ${{ github.workspace }}/content s3://$BUCKET/$date/ --recursive
+
+      - name: Deploy change set
+        id: changeset
+        run: |
+          date=${{ steps.s3.outputs.DATE }}
+          set +e
+          aws cloudformation describe-stacks --stack-name $PROJECT_NAME --region $AWS_REGION >/dev/null 2>&1; EXITCODE=$?
+          set -e
+          if [[ $EXITCODE -eq 0 ]]; then
+            echo STACK EXISTS
+            aws cloudformation create-change-set --change-set-type UPDATE --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --template-url https://$BUCKET.s3.amazonaws.com/$date/$PROJECT_NAME.template --parameters ParameterKey=AssetsBucketName,ParameterValue=$BUCKET ParameterKey=AssetsBucketPrefix,ParameterValue="${date}/" ParameterKey=ParticipantRoleName,ParameterValue=Admin --capabilities CAPABILITY_IAM --region $AWS_REGION
+          else
+            echo STACK DOESNT EXIST
+            aws cloudformation create-change-set --change-set-type CREATE --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --template-url https://$BUCKET.s3.amazonaws.com/$date/$PROJECT_NAME.template --parameters ParameterKey=AssetsBucketName,ParameterValue=$BUCKET ParameterKey=AssetsBucketPrefix,ParameterValue="${date}/" ParameterKey=ParticipantRoleName,ParameterValue=Admin --capabilities CAPABILITY_IAM --region $AWS_REGION
+          fi
+          echo WAITING FOR CHANGE SET
+          aws cloudformation wait change-set-create-complete --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --region $AWS_REGION
+          aws cloudformation execute-change-set --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --region $AWS_REGION
+          echo "CHANGE_SET=$PROJECT_NAME-$date" >> "$GITHUB_OUTPUT"
+          echo "STACK_NAME=$PROJECT_NAME" >> "$GITHUB_OUTPUT"
+    outputs:
+      CHANGE_SET: ${{ steps.changeset.outputs.CHANGE_SET }}
+      STACK_NAME: ${{ steps.changeset.outputs.STACK_NAME }}
+      DATE: ${{ steps.s3.outputs.DATE }}
+      S3_STATUS: ${{ steps.s3.outcome }}
+    
+  wait_for_stack:
+      runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
+      needs: [ test ]
+      env:
+        CHANGE_SET: ${{ needs.test.outputs.CHANGE_SET }}
+        STACK_NAME: ${{ needs.test.outputs.STACK_NAME }}
+      steps:
+        - name: Wait for CloudFormation Stack to complete
+          run: |
+            echo "Waiting for CloudFormation stack to complete..."
+            get_change_set_status() {
+              aws cloudformation describe-stacks \
+              --stack-name "$STACK_NAME" \
+              --query "Stacks[0].StackStatus" \
+              --region $AWS_REGION \
+              --output text
+            }
+
+            # Initial status check
+            STATUS=$(get_change_set_status)
+            
+            # Loop to monitor the status of the change set
+            while true; do
+                case "$STATUS" in
+                    "CREATE_COMPLETE")
+                      echo "Creation is complete"
+                      exit 0
+                      ;;
+                    "CREATE_IN_PROGRESS")
+                      echo "Change set is being created, waiting..."
+                      ;;
+                    "CREATE_FAILED")
+                      echo "Change set creation failed!"
+                      exit 1
+                      ;;
+
+                    "DELETE_COMPLETE")
+                      echo "Delete complete"
+                      exit 1
+                      ;;
+                    "DELETE_FAILED")
+                      echo "Delete failed"
+                      exit 1
+                      ;;
+                    "DELETE_IN_PROGRESS")
+                      echo "Delete in progress, waiting..."
+                      ;;
+
+                    "REVIEW_IN_PROGRESS")
+                      echo "Review in progress, waiting"
+                      ;;
+
+                    "ROLLBACK_COMPLETE")
+                      echo "Create failed and rolled back"
+                      exit 1
+                      ;;
+                    "ROLLBACK_FAILED")
+                      echo "Create failed and rollback failed"
+                      exit 1
+                      ;;
+                    "ROLLBACK_IN_PROGRESS")
+                      echo "Rollback in progress, waiting"
+                      exit 1
+                      ;;
+
+                    "UPDATE_COMPLETE")
+                      echo "Update complete"
+                      exit 0
+                      ;;
+                    "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS")
+                      echo "Update finishing, waiting..."
+                      ;;
+                    "UPDATE_IN_PROGRESS")
+                      echo "Update in progress, waiting"
+                      ;;
+
+                    "UPDATE_ROLLBACK_COMPLETE")
+                      echo "Update failed"
+                      exit 1
+                      ;;
+                    "UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRES")
+                      echo "Update rollback cleanup, waiting..."
+                      ;;
+                    "UPDATE_ROLLBACK_FAILED")
+                      echo "Update failed, rollback failed"
+                      exit 1
+                      ;;
+                    "UPDATE_ROLLBACK_IN_PROGRESS")
+                      echo "Update rollback in progress, waiting"
+                      ;;
+                   
+                    *)
+                      echo "Unknown status: $STATUS"
+                      exit 1
+                      ;;
+                esac
+
+                # Wait for 30 seconds before checking the status again
+                sleep 30
+
+                # Get the current status again
+                STATUS=$(get_change_set_status)
+            done
+          
+  cleanup:
+    runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
+    needs: [ wait_for_stack, test ]
+    if: ${{ always() && needs.test.outputs.S3_STATUS == 'success' }}
+    env:
+      DATE: ${{ needs.test.outputs.DATE }}
+      BUCKET: ${{ secrets.BUCKET }}
+      PROJECT_NAME: ${{ github.event.repository.name }}
+    steps: 
+      - name: Cleanup Old S3 Content
+        if: ${{ needs.wait_for_stack.result == 'success' }}
+        run: |
+          echo Deleting old S3 content due to deployment success
+          aws s3 rm s3://$BUCKET/ --recursive --exclude "$DATE/*"
+      - name: Cleanup New S3 Content
+        if: ${{ needs.wait_for_stack.result != 'success' }}
+        run: |
+          echo Deleting new S3 content because deployment did not succeed
+          aws s3 rm s3://$BUCKET/ --recursive --exclude "*" --include "$DATE/*"
+          

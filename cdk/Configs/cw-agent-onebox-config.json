@@ -1,0 +1,73 @@
+{
+    "metrics": {
+        "namespace": "multi-az/frontend/onebox",
+        "append_dimensions": {
+            "AutoScalingGroupName": "${aws:AutoScalingGroupName}",
+            "InstanceId": "${aws:InstanceId}"
+        },
+        "aggregation_dimensions": [ ["AutoScalingGroupName"], ["InstanceId"]],
+        "metrics_collected": {
+            "mem": {
+                "measurement": [
+                    "mem_used_percent"
+                ]
+            },
+            "disk": {
+                "measurement": [
+                    { "name": "free", "unit": "Megabytes"},
+                    { "name": "total", "unit": "Megabytes"},
+                    { "name": "used", "unit": "Megabytes"},
+                    "used_percent",
+                    "inodes_free",
+                    "inodes_used",
+                    "inodes_total"
+                ],
+                "drop_device": true
+            },
+            "processes": {
+                "measurement": [
+                    "blocked",
+                    "dead",
+                    "running",
+                    "wait",
+                    "zombies"
+                ]
+            }
+        }
+    },
+    "logs": {
+        "metrics_collected": {
+            "emf": {}
+        },
+        "logs_collected": {
+            "files": {
+                "collect_list": [
+                    {
+                        "file_path": "/var/log/cfn-init-cmd.log",
+                        "log_group_name": "cfn-init-cmd.log",
+                        "log_stream_name": "${aws:InstanceId}",
+                        "timestamp_format": "%H: %M: %S%y%b%-d"
+                    },
+                    {
+                        "file_path": "/var/log/cfn-init.log",
+                        "log_group_name": "cfn-init.log",
+                        "log_stream_name": "${aws:InstanceId}",
+                        "timestamp_format": "%H: %M: %S%y%b%-d"
+                    },
+                    {
+                        "file_path": "/var/log/cloud-init-output.log",
+                        "log_group_name": "cloud-init-output.log",
+                        "log_stream_name": "${aws:InstanceId}",
+                        "timestamp_format": "%H: %M: %S%y%b%-d"
+                    },
+                    {
+                        "file_path": "/var/log/cloud-init.log",
+                        "log_group_name": "cloud-init.log",
+                        "log_stream_name": "${aws:InstanceId}",
+                        "timestamp_format": "%H: %M: %S%y%b%-d"
+                    }
+                ]
+            }
+        }
+    }
+}

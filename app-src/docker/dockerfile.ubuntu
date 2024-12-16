@@ -1,0 +1,13 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+ARG PLATFORM=linux/arm64
+
+FROM --platform=${PLATFORM} ubuntu:latest
+
+ARG SRC=src
+
+ADD ${SRC} /var/www/multi-az-app
+RUN apt-get update && apt-get -y install curl net-tools && apt-get clean
+
+EXPOSE 5000
+ENTRYPOINT [ "/var/www/multi-az-app/multi-az-application" ]
