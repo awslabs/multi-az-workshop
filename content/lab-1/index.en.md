@@ -317,7 +317,7 @@ BasicServiceMultiAZObservability multiAvailabilityZoneObservability = new BasicS
 });
 ```
 
-Both options support running workloads on EC2, ECS, Lambda, and EKS. To learn more about using the construct visit the [github repo](https://github.com/bamcis-io/multi-az-observability).
+Both options support running workloads on EC2, ECS, Lambda, and EKS. To learn more about using the construct visit the [github repo](https://github.com/cdklabs/cdk-multi-az-observability).
 
 ## Conclusion
 We've examined the observability available to us in the Wild Rydes service to detect single-AZ impairments. In the next lab we're going to update Wild Rydes' architecture so that we can effectively use AZs as fault boundaries that contain impact to a single AZ.

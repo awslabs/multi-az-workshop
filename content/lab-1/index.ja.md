@@ -317,7 +317,7 @@ BasicServiceMultiAZObservability multiAvailabilityZoneObservability = new BasicS
 });
 ```
 
-どちらのオプションもEC2、ECS、Lambda、EKSでのワークロードの実行をサポートしています。コンストラクトの使用方法について詳しく知るには、[GitHubリポジトリ](https://github.com/bamcis-io/multi-az-observability)をご覧ください。
+どちらのオプションもEC2、ECS、Lambda、EKSでのワークロードの実行をサポートしています。コンストラクトの使用方法について詳しく知るには、[GitHubリポジトリ](https://github.com/cdklabs/cdk-multi-az-observability)をご覧ください。
 
 ## まとめ
 Wild Rydesサービスにおいて、単一AZの障害を検出するために利用可能な可観測性を確認しました。次のラボでは、単一AZへの影響を封じ込める障害境界としてAZを効果的に使用できるように、Wild Rydesのアーキテクチャを更新します。
