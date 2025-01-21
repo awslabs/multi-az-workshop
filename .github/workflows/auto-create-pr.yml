@@ -35,12 +35,12 @@ jobs:
           #gh pr create --base main --head vNext --title "auto update publish workflow" --body "Automatic update to the publishing workflow." --label "auto-approve" --label "auto-merge"
           # Create the PR and capture PR number
           pr_number=$(gh api --method POST /repos/${{ github.repository }}/pulls \
-            -f title="Auto Update Publish Workflow" \
-            -f body="Automatic update to the publishing workflow." \
+            -f title="Auto Create PR" \
+            -f body="Automatic PR creation" \
             -f head="vNext" \
             -f base="main" \
             -q ".number")
 
           # Add labels to the PR
-          gh pr edit $pr_number --add-label "auto-merge,auto-approve"
+          gh pr edit $pr_number --add-label "auto-approve"
           gh pr merge $pr_number --merge --auto
