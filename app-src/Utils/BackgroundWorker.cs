@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace BAMCIS.MultiAZApp.Utils
 {
-    public class BackgroundWorker : IHostedService
+    public class BackgroundWorker : BackgroundService
     {
         private readonly IWorker worker;
 
@@ -16,14 +16,23 @@ namespace BAMCIS.MultiAZApp.Utils
             this.worker = worker;
         }
 
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            await this.worker.DoWork(stoppingToken);
+        }
+
+        /* These are only needed if you directly implement IHostedService
         public async Task StartAsync(CancellationToken cancellationToken)
         {
+            cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             await worker.DoWork(cancellationToken);
         }
 
-        public Task StopAsync(CancellationToken cancellationToken)
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
-            return Task.CompletedTask;
+            cts.Cancel();
+            return Task.CompletedTask; 
         }
+        */
     }
 }

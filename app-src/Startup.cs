@@ -1,5 +1,6 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
+
 using Amazon.CloudWatch.EMF.Config;
 using Amazon.CloudWatch.EMF.Environment;
 using Amazon.CloudWatch.EMF.Logger;
@@ -38,6 +39,17 @@ namespace BAMCIS.MultiAZApp
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
+            // In-memory cache
+            services.AddMemoryCache();
+
+            // Add the refresh worker so that it can be injectged into the 
+            // background service
+            services.AddSingleton<IWorker, CacheRefreshWorker>();
+            
+            // Add hosted service to run the background worker, which will host the
+            // cache refresh worker
+            services.AddHostedService<BackgroundWorker>();
+
             // API controllers
             services.AddControllers();
 
@@ -46,10 +58,6 @@ namespace BAMCIS.MultiAZApp
             services.AddSingleton<IEnvironmentProvider, EnvironmentProvider>();
             services.AddSingleton<IResourceFetcher, ResourceFetcher>();
             services.AddSingleton(EnvironmentConfigurationProvider.Config);
-
-            // In-memory cache
-            services.AddMemoryCache();
-            services.AddSingleton<IWorker, CacheRefreshWorker>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
