@@ -1,4 +1,4 @@
-name: Auto Commit and Approve PR
+name: Auto Create Pull Request For Non Workshop Assets
 
 on:
   push:
