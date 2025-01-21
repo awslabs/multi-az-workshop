@@ -1,6 +1,7 @@
 ﻿// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using Amazon;
 using Amazon.CloudWatch.EMF.Logger;
 using Amazon.CloudWatch.EMF.Model;
 using Amazon.SecretsManager;
@@ -21,13 +22,20 @@ namespace BAMCIS.MultiAZApp.Utils
     {
         private readonly ILogger<CacheRefreshWorker> logger;
         private readonly IMemoryCache cache;
-        private readonly Stopwatch stopwatch;
+        private readonly Stopwatch stopwatch = new Stopwatch();
+        private static readonly IAmazonSecretsManager client;
+        private static readonly int delayMilliseconds = 60000; // 1 minute
+        private static readonly int clientTimeoutSeconds = 4;
 
-        public CacheRefreshWorker(ILogger<CacheRefreshWorker> logger, IMemoryCache cache) : base()
+        static CacheRefreshWorker()
+        {
+            client = new AmazonSecretsManagerClient(region: RegionEndpoint.GetBySystemName(EnvironmentUtils.GetRegion()));
+        }
+
+        public CacheRefreshWorker(ILogger<CacheRefreshWorker> logger, IMemoryCache cache)
         {
             this.logger = logger;
             this.cache = cache;
-            this.stopwatch = new Stopwatch();
         }
 
         public async Task DoWork(CancellationToken cancellationToken)
@@ -36,96 +44,105 @@ namespace BAMCIS.MultiAZApp.Utils
             {
                 using (var metrics = new MetricsLogger())
                 {
-                    LoggerSetup(metrics);
                     this.stopwatch.Restart();
+                    ConfigureMetricsLogger(metrics);
+                    metrics.PutProperty("LoggerSetupLatency", this.stopwatch.Elapsed.TotalMilliseconds);
 
-                    try
+                    var ts = this.stopwatch.Elapsed;
+                    int val = await RefreshCacheAsync(metrics, cancellationToken);
+
+                    // This is a more precise measurement, typically varies 0.01 - 0.005 ms versus 2.0 - 0.1 ms measuring from
+                    // inside the called method, but likely also includes context switching time, which could skew the success
+                    // and fault metrics a bit
+                    if (val == 0)
                     {
-                        if (this.cache.TryGetValue("LastCacheRefresh", out DateTime lastUpdate))
-                        {
-                            var nextUpdate = lastUpdate.AddMinutes(5);
-                            var now = DateTime.UtcNow;
-                            metrics.PutProperty("LastCacheRefresh", lastUpdate.ToString("yyyy-MM-ddTHH:mm:ss.ffffZ"));
-                            metrics.PutProperty("NextCacheUpdateTime", nextUpdate.ToString("yyyy-MM-ddTHH:mm:ss.ffffZ"));
-                            metrics.PutProperty("Now", now.ToString("yyyy-MM-ddTHH:mm:ss.ffffZ"));
-
-                            if (nextUpdate < now)
-                            {
-                                metrics.PutProperty("CacheRefresh", true);
-                                this.cache.Set<DateTime>("LastCacheRefresh", now);
-
-                                try 
-                                {
-                                    string val = File.ReadAllText("/etc/secret").Trim();
-
-                                    if (!String.IsNullOrEmpty(val))
-                                    {
-                                        Dictionary<string, string> secrets = await GetSecret(val);
-                                        string connectionString = $"Host={secrets["host"]};Port={secrets["port"]};Username={secrets["username"]};Password={secrets["password"]};Database={secrets["dbname"]};Timeout=4;";  
-                                        this.cache.Set<string>("ConnectionString", connectionString);
-                                    } 
-                                    else
-                                    {
-                                        this.cache.Set<string>("ConnectionString", "");
-                                    }
-                                }
-                                catch (Exception e)
-                                {
-                                    this.cache.Set<string>("ConnectionString", "");
-                                    File.AppendAllText("/var/log/secretrserror.log", e.Message);
-                                }  
-                            }
-                            else
-                            {
-                                metrics.PutProperty("CacheRefresh", false);
-                                // Only wait if we didn't need to refresh the cache
-                                // if we do refresh it, it will loop back through immediately
-                                // see that we don't need to refresh yet, then come to here
-                                // and sleep
-                                await Task.Delay(1000 * 300); // Wait 5 minutes
-                            }
-                        }
-                        else
-                        {
-                            metrics.PutProperty("CacheRefresh", false);
-                            this.cache.Set<DateTime>("LastCacheRefresh", DateTime.MinValue.ToUniversalTime());
-                        }
+                        metrics.PutMetric("SuccessLatency", (this.stopwatch.Elapsed - ts).TotalMilliseconds, Unit.MILLISECONDS);
                     }
-                    catch (Exception e)
+                    else if (val == 1) 
                     {
-                        metrics.PutProperty("GetSecretValueFailure", e.Message);
-                        // also sleep here in case there is a transient error
-                        await Task.Delay(1000 * 300); // Wait 5 minutes
+                        metrics.PutMetric("FaultLatency", (this.stopwatch.Elapsed - ts).TotalMilliseconds, Unit.MILLISECONDS);
                     }
-                    finally
-                    {
-                        this.stopwatch.Stop();
-                        metrics.PutMetric("CacheRefreshLatency", this.stopwatch.ElapsedMilliseconds, Unit.MILLISECONDS);
-                    }
+
+                    ts = this.stopwatch.Elapsed;
+                    metrics.PutMetric("TotalLatency", ts.TotalMilliseconds, Unit.MILLISECONDS);
+                    this.stopwatch.Stop();
                 }
+
+                await Task.Delay(delayMilliseconds, cancellationToken);
             }
         }
 
-        private static void LoggerSetup(IMetricsLogger metrics)
+        private async Task<int> RefreshCacheAsync(IMetricsLogger metrics, CancellationToken cancellationToken)
         {
+            var ts = this.stopwatch.Elapsed;
+
+            DateTime now = DateTime.UtcNow;
+            metrics.PutProperty("Now", now.ToString("yyyy-MM-ddTHH:mm:ss.ffffZ"));
+
+            DateTime lastUpdate;
+            DateTime nextUpdate = now;
+
+            if (cache.TryGetValue("LastCacheRefresh", out lastUpdate))
+            {
+                nextUpdate = lastUpdate.AddMilliseconds(delayMilliseconds);
+            }
+         
+            metrics.PutProperty("LastCacheRefresh", lastUpdate.ToString("yyyy-MM-ddTHH:mm:ss.ffffZ"));
+            metrics.PutProperty("NextCacheUpdateTime", nextUpdate.ToString("yyyy-MM-ddTHH:mm:ss.ffffZ"));
+
+            if (nextUpdate > now)
+            {
+                metrics.PutProperty("CacheRefresh", false);
+                metrics.PutMetric("Fault", 0, Unit.COUNT);
+                metrics.PutMetric("Success", 1, Unit.COUNT);
+                metrics.PutMetric("Error", 0, Unit.COUNT);
+                return 2;
+            }
+
+            cache.Set("LastCacheRefresh", now);
+            metrics.PutProperty("CacheRefresh", true);
+            
+            try
+            {
+                string connectionString = await GetConnectionStringAsync();
+                this.cache.Set("ConnectionString", connectionString);            
+                metrics.PutMetric("Fault", 0, Unit.COUNT);
+                metrics.PutMetric("Success", 1, Unit.COUNT);
+                metrics.PutMetric("Error", 0, Unit.COUNT);
+                //metrics.PutMetric("SuccessLatency", (this.stopwatch.Elapsed - ts).TotalMilliseconds, Unit.MILLISECONDS);
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                this.cache.Set("ConnectionString", "");
+                metrics.PutMetric("Fault", 1, Unit.COUNT);
+                metrics.PutMetric("Success", 0, Unit.COUNT);
+                metrics.PutMetric("Error", 0, Unit.COUNT);
+                LogError(metrics, ex, "Failed to retrieve connection string.");
+                //metrics.PutMetric("FaultLatency", (this.stopwatch.Elapsed - ts).TotalMilliseconds, Unit.MILLISECONDS);
+                return 1;
+            }
+        }
+
+        private static void ConfigureMetricsLogger(IMetricsLogger metrics)
+        {
+            metrics.SetNamespace(EnvironmentUtils.IsOneBox() ? Constants.METRIC_NAMESPACE_ONE_BOX : Constants.METRIC_NAMESPACE);
+            metrics.PutProperty("Ec2InstanceId", EnvironmentUtils.GetInstanceId());
+            metrics.PutProperty("Operation", "CacheRefresh");
+
             if (EnvironmentUtils.IsOneBox())
             {
-                metrics.SetNamespace("multi-az-workshop/frontend/onebox");
-
                 var regionDimensions = new DimensionSet();
 
                 regionDimensions.AddDimension("Region", EnvironmentUtils.GetRegion());
 
                 metrics.PutProperty("AZ-ID", EnvironmentUtils.GetAZId());
                 metrics.PutProperty("InstanceId", EnvironmentUtils.GetHostId());
-                metrics.PutProperty("Ec2InstanceId", EnvironmentUtils.GetInstanceId());
 
                 metrics.SetDimensions(regionDimensions);
             }
             else
             {
-                metrics.SetNamespace("multi-az-workshop/frontend");
-
                 var regionDimensions = new DimensionSet();
                 var regionAZDimensions = new DimensionSet();
                 var regionAZInstanceIdDimensions = new DimensionSet();
@@ -139,26 +156,37 @@ namespace BAMCIS.MultiAZApp.Utils
 
                 regionAZInstanceIdDimensions.AddDimension("InstanceId", EnvironmentUtils.GetHostId());
 
-                metrics.PutProperty("Ec2InstanceId", EnvironmentUtils.GetInstanceId());
-
                 metrics.SetDimensions(regionAZInstanceIdDimensions, regionAZDimensions, regionDimensions);
             }
         }
 
-        private static async Task<Dictionary<string, string>> GetSecret(string secretName)
-        {
-            IAmazonSecretsManager client = new AmazonSecretsManagerClient();
+        private static async Task<string> GetConnectionStringAsync()
+        {         
+            string secretId = File.ReadAllText("/etc/secret").Trim();
 
-            GetSecretValueRequest request = new GetSecretValueRequest
+            var request = new GetSecretValueRequest
             {
-                SecretId = secretName,
-                VersionStage = "AWSCURRENT", // VersionStage defaults to AWSCURRENT if unspecified.
+                SecretId = secretId,
+                VersionStage = "AWSCURRENT"
             };
 
-            GetSecretValueResponse response = await client.GetSecretValueAsync(request);
-            string secret = response.SecretString;
+            var response = await client.GetSecretValueAsync(request);
+            var secrets = JsonConvert.DeserializeObject<Dictionary<string, string>>(response.SecretString);
 
-            return JsonConvert.DeserializeObject<Dictionary<string, string>>(secret);           
-        } 
+            return $"Host={secrets["host"]};Port={secrets["port"]};Username={secrets["username"]};" +
+                   $"Password={secrets["password"]};Database={secrets["dbname"]};Timeout={clientTimeoutSeconds};";
+        }
+
+        private void LogError(IMetricsLogger metrics, Exception ex, string message)
+        {
+            try {
+                logger.LogError(ex, message);
+                metrics.PutProperty("ErrorMessage", ex.Message);
+            }
+            catch (Exception e) {
+                Console.WriteLine(ex.Message);
+                Console.WriteLine(e.Message);
+            }
+        }
     }
 }
