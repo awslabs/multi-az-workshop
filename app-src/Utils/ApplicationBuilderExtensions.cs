@@ -3,7 +3,6 @@
 using Amazon.CloudWatch.EMF.Logger;
 using Amazon.CloudWatch.EMF.Model;
 using Amazon.XRay.Recorder.Core;
-using BAMCIS.MultiAZApp.Utils;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Controllers;
@@ -22,18 +21,23 @@ namespace BAMCIS.MultiAZApp.Utils
             app.UseEmfMiddleware((context, logger) =>
             {
                 AWSXRayRecorder recorder = AWSXRayRecorder.Instance;
-                recorder.AddAnnotation("AZ-ID", EnvironmentUtils.GetAZId());
-                recorder.AddMetadata("InstanceId", EnvironmentUtils.GetInstanceId());
-                recorder.AddMetadata("Ec2InstanceId", EnvironmentUtils.GetInstanceId());
-                recorder.AddMetadata("Region", EnvironmentUtils.GetRegion());
+                string hostId = EnvironmentUtils.GetHostId();
+                string instanceId = EnvironmentUtils.GetInstanceId();
+                string region = EnvironmentUtils.GetRegion();
+                string azId = EnvironmentUtils.GetAZId();
+
+                recorder.AddAnnotation("AZ-ID", azId);
+                recorder.AddMetadata("InstanceId", hostId);
+                recorder.AddMetadata("Ec2InstanceId", instanceId);
+                recorder.AddMetadata("Region", region);
                 recorder.AddAnnotation("Soure", "server");
                 recorder.AddAnnotation("OneBox", EnvironmentUtils.IsOneBox());
 
                 var endpoint = context.GetEndpoint();
                 string operation = String.Empty;
 
-                logger.PutProperty("InstanceId", EnvironmentUtils.GetHostId());
-                logger.PutProperty("Ec2InstanceId", EnvironmentUtils.GetInstanceId());
+                logger.PutProperty("InstanceId", hostId);
+                logger.PutProperty("Ec2InstanceId", instanceId);
                 logger.PutProperty("AZ", EnvironmentUtils.GetAZ());
 
                 if (endpoint != null)
@@ -45,7 +49,7 @@ namespace BAMCIS.MultiAZApp.Utils
                 if (EnvironmentUtils.IsOneBox())
                 {
                     logger.SetNamespace(Constants.METRIC_NAMESPACE_ONE_BOX);
-                    logger.PutProperty("AZ-ID", EnvironmentUtils.GetAZId());
+                    logger.PutProperty("AZ-ID", azId);
 
                     var regionDimensions = new DimensionSet();
 
@@ -55,7 +59,7 @@ namespace BAMCIS.MultiAZApp.Utils
                         recorder.AddAnnotation("Operation", operation);
                     }
 
-                    regionDimensions.AddDimension("Region", EnvironmentUtils.GetRegion());
+                    regionDimensions.AddDimension("Region", region);
 
                     logger.SetDimensions(regionDimensions);
                 }
@@ -75,16 +79,16 @@ namespace BAMCIS.MultiAZApp.Utils
                         recorder.AddAnnotation("Operation", operation);
                     }
 
-                    instanceAZRegionDimensions.AddDimension("Region", EnvironmentUtils.GetRegion());
-                    instanceAZRegionDimensions.AddDimension("AZ-ID", EnvironmentUtils.GetAZId());
-                    instanceAZRegionDimensions.AddDimension("InstanceId", EnvironmentUtils.GetHostId());
+                    instanceAZRegionDimensions.AddDimension("Region", region);
+                    instanceAZRegionDimensions.AddDimension("AZ-ID", azId);
+                    instanceAZRegionDimensions.AddDimension("InstanceId", hostId);
 
-                    regionAZDimensions.AddDimension("Region", EnvironmentUtils.GetRegion());
-                    regionAZDimensions.AddDimension("AZ-ID", EnvironmentUtils.GetAZId());
+                    regionAZDimensions.AddDimension("Region", region);
+                    regionAZDimensions.AddDimension("AZ-ID", azId);
                     
-                    regionDimensions.AddDimension("Region", EnvironmentUtils.GetRegion());
+                    regionDimensions.AddDimension("Region", region);
            
-                    logger.SetDimensions(regionAZDimensions, regionDimensions);
+                    logger.SetDimensions(regionAZDimensions, regionDimensions, instanceAZRegionDimensions);
                 }
 
                 int status = context.Response.StatusCode;
@@ -186,7 +190,10 @@ namespace BAMCIS.MultiAZApp.Utils
                         case int n when (n >= 200 && n <= 399):
                             logger.PutMetric("SuccessLatency", stopWatch.ElapsedMilliseconds, Unit.MILLISECONDS);
                             break;
-                        case int n when (n >= 400 && n <= 599):
+                        case int n when (n >= 400 && n <= 499):
+                            logger.PutMetric("ErrorLatency", stopWatch.ElapsedMilliseconds, Unit.MILLISECONDS);
+                            break;
+                        case int n when (n >= 500 && n <= 599):
                             logger.PutMetric("FaultLatency", stopWatch.ElapsedMilliseconds, Unit.MILLISECONDS);
                             break;
                         default:
