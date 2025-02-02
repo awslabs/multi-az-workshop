@@ -324,6 +324,14 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                                     {"app", app }
                                 }}
                             }},
+                            { "strategy", new Dictionary<string, object>() {
+                                    {"type", "RollingUpdate"},
+                                    {"rollingUpdate", new Dictionary<string, object>(){
+                                        {"maxUnavailable", 1},
+                                        {"maxSurge", 1}
+                                    }}
+                                }
+                            },
                             { "template", new Dictionary<string, object> {                             
                                 {"metadata", new Dictionary<string, object>() {
                                     {"labels", new Dictionary<string, object>() {
