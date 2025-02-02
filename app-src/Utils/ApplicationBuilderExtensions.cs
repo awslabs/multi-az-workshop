@@ -68,6 +68,7 @@ namespace BAMCIS.MultiAZApp.Utils
                     logger.SetNamespace(Constants.METRIC_NAMESPACE);
 
                     var instanceAZRegionDimensions = new DimensionSet();
+                    var instanceRegionDimensions = new DimensionSet();
                     var regionAZDimensions = new DimensionSet();
                     var regionDimensions = new DimensionSet();
 
@@ -83,12 +84,15 @@ namespace BAMCIS.MultiAZApp.Utils
                     instanceAZRegionDimensions.AddDimension("AZ-ID", azId);
                     instanceAZRegionDimensions.AddDimension("InstanceId", hostId);
 
+                    instanceRegionDimensions.AddDimension("Region", region);
+                    instanceRegionDimensions.AddDimension("InstanceId", hostId);
+
                     regionAZDimensions.AddDimension("Region", region);
                     regionAZDimensions.AddDimension("AZ-ID", azId);
                     
                     regionDimensions.AddDimension("Region", region);
            
-                    logger.SetDimensions(regionAZDimensions, regionDimensions, instanceAZRegionDimensions);
+                    logger.SetDimensions(regionAZDimensions, regionDimensions, instanceAZRegionDimensions, instanceRegionDimensions);
                 }
 
                 int status = context.Response.StatusCode;
