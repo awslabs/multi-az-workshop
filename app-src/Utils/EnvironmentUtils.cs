@@ -113,6 +113,11 @@ namespace BAMCIS.MultiAZApp.Utils
             return !String.IsNullOrEmpty(Amazon.Util.EC2InstanceMetadata.InstanceId) ? Amazon.Util.EC2InstanceMetadata.InstanceId : String.Empty;
         }
 
+        /// <summary>
+        /// Returns the underlying EC2 instance Id from the EC2 metadata service. This could be the container host id or the EC2 instance where
+        /// the application is running.
+        /// </summary>
+        /// <returns></returns>
         public static string GetInstanceId()
         {
             if (String.IsNullOrEmpty(instanceid))
@@ -134,6 +139,11 @@ namespace BAMCIS.MultiAZApp.Utils
             }
         }
 
+        /// <summary>
+        /// Gets the id of the container or EC2 instance. For a EKS pod, this will return the HOSTNAME environment variable, which is the pod name. For an ECS
+        /// task, this will be the service name and the task unique id, like myservice-123456789012abcd. For EC2, it is the instance id.
+        /// </summary>
+        /// <returns></returns>
         private static string GetHostIdMetadata()
         {
             string k8s = Environment.GetEnvironmentVariable("KUBERNETES_SERVICE_HOST");
@@ -151,9 +161,10 @@ namespace BAMCIS.MultiAZApp.Utils
                     string response = Task.Run(() => client.GetStringAsync(ecsMetadata + "/task")).Result;
                     Dictionary<string, object> data = JsonConvert.DeserializeObject<Dictionary<string, object>>(response);
                     string service = data["ServiceName"] as string;
+                    // :task/1dc5c17a-422b-4dc4-b493-371970c6c4d6
                     string taskArn = data["TaskARN"] as string;
 
-                    hostId = service + "-" + taskArn.Split(":").Last();
+                    hostId = service + "-" + taskArn.Split(":").Last().Split("/").Last();
                 }
             }
             else
@@ -164,6 +175,11 @@ namespace BAMCIS.MultiAZApp.Utils
             return hostId;
         }
 
+        /// <summary>
+        /// Gets the id of the container or EC2 instance. For a EKS pod, this will return the HOSTNAME environment variable, which is the pod name. For an ECS
+        /// task, this will be the service name and the task unique id, like myservice-123456789012abcd. For EC2, it is the instance id.
+        /// </summary>
+        /// <returns></returns>
         public static string GetHostId()
         {
             if (String.IsNullOrEmpty(hostid))
