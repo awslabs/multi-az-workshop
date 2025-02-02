@@ -24,6 +24,7 @@ namespace BAMCIS.MultiAZApp.Utils
                 AWSXRayRecorder recorder = AWSXRayRecorder.Instance;
                 recorder.AddAnnotation("AZ-ID", EnvironmentUtils.GetAZId());
                 recorder.AddMetadata("InstanceId", EnvironmentUtils.GetInstanceId());
+                recorder.AddMetadata("Ec2InstanceId", EnvironmentUtils.GetInstanceId());
                 recorder.AddMetadata("Region", EnvironmentUtils.GetRegion());
                 recorder.AddAnnotation("Soure", "server");
                 recorder.AddAnnotation("OneBox", EnvironmentUtils.IsOneBox());
@@ -62,15 +63,21 @@ namespace BAMCIS.MultiAZApp.Utils
                 {
                     logger.SetNamespace(Constants.METRIC_NAMESPACE);
 
+                    var instanceAZRegionDimensions = new DimensionSet();
                     var regionAZDimensions = new DimensionSet();
                     var regionDimensions = new DimensionSet();
 
                     if (!String.IsNullOrEmpty(operation))
-                    {        
+                    {   
+                        instanceAZRegionDimensions.AddDimension("Operation", operation);
                         regionAZDimensions.AddDimension("Operation", operation);
                         regionDimensions.AddDimension("Operation", operation);
                         recorder.AddAnnotation("Operation", operation);
                     }
+
+                    instanceAZRegionDimensions.AddDimension("Region", EnvironmentUtils.GetRegion());
+                    instanceAZRegionDimensions.AddDimension("AZ-ID", EnvironmentUtils.GetAZId());
+                    instanceAZRegionDimensions.AddDimension("InstanceId", EnvironmentUtils.GetHostId());
 
                     regionAZDimensions.AddDimension("Region", EnvironmentUtils.GetRegion());
                     regionAZDimensions.AddDimension("AZ-ID", EnvironmentUtils.GetAZId());
