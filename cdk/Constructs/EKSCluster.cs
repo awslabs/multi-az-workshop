@@ -316,7 +316,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             }); 
 
             Function instanceMetadataUpdater = new Function(this, "InstanceMetadataUpdater", new FunctionProps() {
-                Runtime = Runtime.PYTHON_3_12,
+                Runtime = MultiAZWorkshopStack.pythonRuntime,
                 Code = Code.FromInline(File.ReadAllText("./ec2-metadata-update-src/index.py")),
                 Handler = "index.handler",
                 Role = executionRole,

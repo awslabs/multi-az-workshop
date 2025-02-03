@@ -12,6 +12,7 @@ using Amazon.CDK.AWS.SSM;
 using Amazon.AWSLabs.MultiAZWorkshop.Constructs;
 using Amazon.AWSLabs.MultiAZWorkshop.NestedStacks;
 using Cdklabs.MultiAZObservability;
+using Amazon.CDK.AWS.Lambda;
 
 namespace Amazon.AWSLabs.MultiAZWorkshop
 {
@@ -34,6 +35,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
         const string operationNameJsonPath = "$.Operation";
         const string instanceIdJsonPath = "$.InstanceId";
         const InstanceArchitecture arch = InstanceArchitecture.ARM_64;
+        public static readonly Runtime pythonRuntime = Runtime.PYTHON_3_13;
 
         private IpV6NetworkStack NetworkStack {get;}
 
