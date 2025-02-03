@@ -98,9 +98,14 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                         Resources = new string[] {Fn.Sub("arn:${AWS::Partition}:kms:*:${AWS::AccountId}:key/*")}
                     }),
                     new PolicyStatement(new PolicyStatementProps() { 
-                        Actions = new string[] {"secretsmanager:GetSecretValue"},
+                        Actions = [
+                            "secretsmanager:GetSecretValue",
+                            "secretsmanager:DescribeSecret"
+                        ],
                         Effect = Effect.ALLOW,
-                        Resources = new string[] {(props.DatabaseCluster as DatabaseCluster).Secret.SecretFullArn}
+                        Resources = [
+                            (props.DatabaseCluster as DatabaseCluster).Secret.SecretFullArn
+                        ]
                     })
                 },
                 Roles = new IRole[] { podRole }
@@ -359,6 +364,12 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                                             {"ports", new Dictionary<string, object>[] {
                                                 new Dictionary<string, object>() {
                                                     {"containerPort", 5000}
+                                                }
+                                            }},
+                                            {"env", new Dictionary<string, object>[] {
+                                                new Dictionary<string, object>() {
+                                                    {"name", "DB_SECRET"},
+                                                    {"value", (props.DatabaseCluster as DatabaseCluster).Secret.SecretName}
                                                 }
                                             }}
                                         },
