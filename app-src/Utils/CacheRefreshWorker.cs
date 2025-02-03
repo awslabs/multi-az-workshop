@@ -109,7 +109,6 @@ namespace BAMCIS.MultiAZApp.Utils
                 metrics.PutMetric("Fault", 0, Unit.COUNT);
                 metrics.PutMetric("Success", 1, Unit.COUNT);
                 metrics.PutMetric("Error", 0, Unit.COUNT);
-                //metrics.PutMetric("SuccessLatency", (this.stopwatch.Elapsed - ts).TotalMilliseconds, Unit.MILLISECONDS);
                 return 0;
             }
             catch (Exception ex)
@@ -119,7 +118,6 @@ namespace BAMCIS.MultiAZApp.Utils
                 metrics.PutMetric("Success", 0, Unit.COUNT);
                 metrics.PutMetric("Error", 0, Unit.COUNT);
                 LogError(metrics, ex, "Failed to retrieve connection string.");
-                //metrics.PutMetric("FaultLatency", (this.stopwatch.Elapsed - ts).TotalMilliseconds, Unit.MILLISECONDS);
                 return 1;
             }
         }
@@ -161,8 +159,21 @@ namespace BAMCIS.MultiAZApp.Utils
         }
 
         private static async Task<string> GetConnectionStringAsync()
-        {         
-            string secretId = File.ReadAllText("/etc/secret").Trim();
+        {      
+            string secretId;
+
+            if (File.Exists("/etc/secret"))
+            {
+                secretId = File.ReadAllText("/etc/secret").Trim();
+            }
+            else {
+                secretId = System.Environment.GetEnvironmentVariable("DB_SECRET");
+            }
+
+            if (String.IsNullOrEmpty(secretId))
+            {
+                throw new ResourceNotFoundException("Was unable to read DB secret id from file or environment variable.");
+            }
 
             var request = new GetSecretValueRequest
             {
