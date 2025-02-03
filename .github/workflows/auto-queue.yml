@@ -2,11 +2,10 @@
 
 name: auto-queue
 on:
-  pull_request_target:
+  workflow_run:
+    workflows: [build]
     types:
-      - opened
-      - reopened
-      - ready_for_review
+      - completed
 
 env:
   GH_TOKEN: ${{ github.token }}
