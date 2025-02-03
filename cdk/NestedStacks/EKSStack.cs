@@ -365,12 +365,12 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     }),
                     new PolicyStatement(new PolicyStatementProps() {
                         Effect = Effect.ALLOW,
-                        Actions = new string[] { 
+                        Actions = [ 
                             "codebuild:StartBuild",
                             "codebuild:ListBuildsForProject",
                             "codebuild:BatchGetBuilds"
-                        },
-                        Resources = new string[] { "*" }
+                        ],
+                        Resources = ["*"]
                     })
                 }
             });
@@ -392,11 +392,11 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                 Environment = new Dictionary<string, string>() {
                     { "AWS_ACCOUNT_ID", Fn.Ref("AWS::AccountId")}
                 },
-                Layers = new ILayerVersion[] {
+                Layers = [
                     new LayerVersion(this, "HelmLayer", new LayerVersionProps() {
                         Code = Code.FromAsset("./helm-layer.zip")
                     })
-                },
+                ],
                 Code = Code.FromInline(File.ReadAllText("./uploader-src/index.py"))
             });
 
