@@ -265,7 +265,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 MinSize = 3,
                 MaxSize = 3,
                 InstanceTypes = new Amazon.CDK.AWS.EC2.InstanceType[] { Amazon.CDK.AWS.EC2.InstanceType.Of(props.CpuArch == InstanceArchitecture.ARM_64 ?  InstanceClass.T4G : InstanceClass.T3, InstanceSize.LARGE) },
-                NodeRole = eksWorkerRole    
+                NodeRole = eksWorkerRole
             });
 
             this.Nodegroup.Node.AddDependency(rule);
