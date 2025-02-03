@@ -299,7 +299,6 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             // the alarms to finish and nodes start to fail their health checks while it waits
             listener.Node.AddDependency(mazNestedStack);
 
-/*
             ApplicationListenerRule eksRoutes = new ApplicationListenerRule(this, "EKSRoutes", new ApplicationListenerRuleProps() {
                 Action = ListenerAction.Forward(new IApplicationTargetGroup[] { this.EKSStack.EKSAppTargetGroup }),
                 Conditions = new ListenerCondition[] {
@@ -308,7 +307,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 Priority = 1,
                 Listener = listener
             });
-  */ 
+
             this.FaultInjectionStack = new FaultInjectionStack(this, "fault-injection-", new FaultInjectionStackProps() {
                 AZCount = availabilityZoneNames.Length,
                 AZNames = this.NetworkStack.Vpc.AvailabilityZones,
