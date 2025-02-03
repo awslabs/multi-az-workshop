@@ -263,7 +263,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
             this.LaunchTemplate = new LaunchTemplate(this, "front-end-launch-template", new LaunchTemplateProps() {
                 UserData = userData,
                 MachineImage = MachineImage.LatestAmazonLinux2023(new AmazonLinux2023ImageSsmParameterProps() { CpuType = props.CpuArch == InstanceArchitecture.ARM_64 ? AmazonLinuxCpuType.ARM_64 : AmazonLinuxCpuType.X86_64 }),
-                InstanceType = Amazon.CDK.AWS.EC2.InstanceType.Of(props.CpuArch == InstanceArchitecture.ARM_64 ? InstanceClass.T4G : InstanceClass.T3, InstanceSize.NANO),
+                InstanceType = Amazon.CDK.AWS.EC2.InstanceType.Of(props.CpuArch == InstanceArchitecture.ARM_64 ? InstanceClass.T4G : InstanceClass.T3A, InstanceSize.MICRO),
                 EbsOptimized  = true,
                 InstanceProfile = profile,
                 SecurityGroup = sg,
