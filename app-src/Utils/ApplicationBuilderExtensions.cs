@@ -42,7 +42,6 @@ namespace BAMCIS.MultiAZApp.Utils
                 string operation = String.Empty;
           
                 logger.PutProperty("AZ", EnvironmentUtils.GetAZ());
-                logger.PutProperty("HostId", hostId);
                 logger.PutProperty("Environment", env.GetEnvironmentType().ToString());
 
                 if (endpoint != null)
@@ -53,6 +52,7 @@ namespace BAMCIS.MultiAZApp.Utils
 
                 if (EnvironmentUtils.IsOneBox())
                 {
+                    logger.PutProperty("HostId", hostId);
                     logger.PutProperty("InstanceId", instanceId);
                     logger.SetNamespace(Constants.METRIC_NAMESPACE_ONE_BOX);
                     logger.PutProperty("AZ-ID", azId);
@@ -77,6 +77,8 @@ namespace BAMCIS.MultiAZApp.Utils
                     var instanceRegionDimensions = new DimensionSet();
                     var regionAZDimensions = new DimensionSet();
                     var regionDimensions = new DimensionSet();
+                    var hostRegionDimensions = new DimensionSet();
+                    var hostOperationRegionDimensions = new DimensionSet();
 
                     if (!String.IsNullOrEmpty(operation))
                     {   
@@ -84,20 +86,36 @@ namespace BAMCIS.MultiAZApp.Utils
                         instanceOperationRegionDimensions.AddDimension("Region", region);
                         instanceOperationRegionDimensions.AddDimension("InstanceId", instanceId);
 
+                        hostOperationRegionDimensions.AddDimension("Operation", operation);
+                        hostOperationRegionDimensions.AddDimension("Region", region);
+                        hostOperationRegionDimensions.AddDimension("HostId", hostId);
+
                         regionAZDimensions.AddDimension("Operation", operation);
+                        
                         regionDimensions.AddDimension("Operation", operation);
+                        
                         recorder.AddAnnotation("Operation", operation);
                     }               
 
                     instanceRegionDimensions.AddDimension("Region", region);
                     instanceRegionDimensions.AddDimension("InstanceId", instanceId);
 
+                    hostRegionDimensions.AddDimension("Region", region);
+                    hostRegionDimensions.AddDimension("HostId", hostId);
+
                     regionAZDimensions.AddDimension("Region", region);
                     regionAZDimensions.AddDimension("AZ-ID", azId);
                     
                     regionDimensions.AddDimension("Region", region);
            
-                    logger.SetDimensions(regionAZDimensions, regionDimensions, instanceOperationRegionDimensions, instanceRegionDimensions);
+                    logger.SetDimensions(
+                        regionAZDimensions, 
+                        regionDimensions, 
+                        instanceOperationRegionDimensions, 
+                        instanceRegionDimensions, 
+                        hostRegionDimensions,
+                        hostOperationRegionDimensions
+                    );
                 }
 
                 int status = context.Response.StatusCode;
