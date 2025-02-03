@@ -387,7 +387,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                 Handler = "index.handler",
                 MemorySize = 512,
                 Timeout = Duration.Seconds(300),
-                Runtime = Runtime.PYTHON_3_12,
+                Runtime = MultiAZWorkshopStack.pythonRuntime,
                 Role = uploaderRole,
                 Environment = new Dictionary<string, string>() {
                     { "AWS_ACCOUNT_ID", Fn.Ref("AWS::AccountId")}

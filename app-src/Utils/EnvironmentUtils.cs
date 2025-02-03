@@ -13,7 +13,6 @@ namespace BAMCIS.MultiAZApp.Utils
 {
     public static class EnvironmentUtils
     {
-
         public static string region;
         public static string az;
         public static string azid;
@@ -146,13 +145,13 @@ namespace BAMCIS.MultiAZApp.Utils
         /// <returns></returns>
         private static string GetHostIdMetadata()
         {
-            string k8s = Environment.GetEnvironmentVariable("KUBERNETES_SERVICE_HOST");
-            string ecsMetadata = Environment.GetEnvironmentVariable("ECS_CONTAINER_METADATA_URI_V4");
+            string k8s = System.Environment.GetEnvironmentVariable("KUBERNETES_SERVICE_HOST");
+            string ecsMetadata = System.Environment.GetEnvironmentVariable("ECS_CONTAINER_METADATA_URI_V4");
             string hostId = "";
 
             if (!String.IsNullOrEmpty(k8s))
             {
-                hostId = Environment.GetEnvironmentVariable("HOSTNAME");
+                hostId = System.Environment.GetEnvironmentVariable("HOSTNAME");
             }
             else if (!String.IsNullOrEmpty(ecsMetadata))
             {
@@ -184,7 +183,7 @@ namespace BAMCIS.MultiAZApp.Utils
         {
             if (String.IsNullOrEmpty(hostid))
             {
-                hostid = GetInstanceIdMetadata();
+                hostid = GetHostIdMetadata();
 
                 if (String.IsNullOrEmpty(hostid))
                 {
@@ -205,7 +204,7 @@ namespace BAMCIS.MultiAZApp.Utils
         {
             bool isOneBox = false;
 
-            string onebox = Environment.GetEnvironmentVariable("ONEBOX");
+            string onebox = System.Environment.GetEnvironmentVariable("ONEBOX");
 
             bool empty = String.IsNullOrEmpty(onebox);
 

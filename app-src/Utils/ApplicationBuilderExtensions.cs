@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using System;
 using System.Diagnostics;
@@ -20,24 +21,29 @@ namespace BAMCIS.MultiAZApp.Utils
         {
             app.UseEmfMiddleware((context, logger) =>
             {
+                var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+                var ep = new EnvironmentProvider(loggerFactory);
+                IEnvironment env = ep.ResolveEnvironment();
+
                 AWSXRayRecorder recorder = AWSXRayRecorder.Instance;
-                string hostId = EnvironmentUtils.GetHostId();
-                string instanceId = EnvironmentUtils.GetInstanceId();
-                string region = EnvironmentUtils.GetRegion();
-                string azId = EnvironmentUtils.GetAZId();
+                string hostId = env.GetHostId();// EnvironmentUtils.GetHostId();
+                string instanceId = env.GetInstanceId(); //EnvironmentUtils.GetInstanceId();
+                string region = env.GetRegion(); // EnvironmentUtils.GetRegion();
+                string azId = env.GetAZId(); // EnvironmentUtils.GetAZId();
 
                 recorder.AddAnnotation("AZ-ID", azId);
-                recorder.AddMetadata("InstanceId", hostId);
-                recorder.AddMetadata("Ec2InstanceId", instanceId);
+                recorder.AddMetadata("InstanceId", instanceId);
+                recorder.AddMetadata("HostId", hostId);
                 recorder.AddMetadata("Region", region);
-                recorder.AddAnnotation("Soure", "server");
+                recorder.AddAnnotation("Source", "server");
                 recorder.AddAnnotation("OneBox", EnvironmentUtils.IsOneBox());
 
                 var endpoint = context.GetEndpoint();
                 string operation = String.Empty;
           
-                logger.PutProperty("Ec2InstanceId", instanceId);
                 logger.PutProperty("AZ", EnvironmentUtils.GetAZ());
+                logger.PutProperty("HostId", hostId);
+                logger.PutProperty("Environment", env.GetEnvironmentType().ToString());
 
                 if (endpoint != null)
                 {
@@ -47,7 +53,7 @@ namespace BAMCIS.MultiAZApp.Utils
 
                 if (EnvironmentUtils.IsOneBox())
                 {
-                    logger.PutProperty("InstanceId", hostId);
+                    logger.PutProperty("InstanceId", instanceId);
                     logger.SetNamespace(Constants.METRIC_NAMESPACE_ONE_BOX);
                     logger.PutProperty("AZ-ID", azId);
 
@@ -76,7 +82,7 @@ namespace BAMCIS.MultiAZApp.Utils
                     {   
                         instanceOperationRegionDimensions.AddDimension("Operation", operation);
                         instanceOperationRegionDimensions.AddDimension("Region", region);
-                        instanceOperationRegionDimensions.AddDimension("InstanceId", hostId);
+                        instanceOperationRegionDimensions.AddDimension("InstanceId", instanceId);
 
                         regionAZDimensions.AddDimension("Operation", operation);
                         regionDimensions.AddDimension("Operation", operation);
@@ -84,7 +90,7 @@ namespace BAMCIS.MultiAZApp.Utils
                     }               
 
                     instanceRegionDimensions.AddDimension("Region", region);
-                    instanceRegionDimensions.AddDimension("InstanceId", hostId);
+                    instanceRegionDimensions.AddDimension("InstanceId", instanceId);
 
                     regionAZDimensions.AddDimension("Region", region);
                     regionAZDimensions.AddDimension("AZ-ID", azId);
