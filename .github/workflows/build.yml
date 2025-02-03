@@ -403,4 +403,17 @@ jobs:
         run: |
           echo Deleting new S3 content because deployment did not succeed
           aws s3 rm s3://$BUCKET/ --recursive --exclude "*" --include "$DATE/*"
-          
+
+  record_pr:
+    runs-on: ubuntu-latest
+    needs: [cleanup, wait_for_stack]
+    if: needs.wait_for_stack.result == 'success' && github.event_name == 'pull_request'
+    steps:
+      - name: Save PR Number
+        run: echo "${{ github.event.pull_request.number }}" > pr_number.txt
+      
+      - name: Upload PR Number Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: pr-number
+          path: pr_number.txt
