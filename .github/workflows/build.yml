@@ -9,8 +9,7 @@ on:
       - build/**
       - content/**
       - static/**
-      - .github/workflows/build.yml
-
+      
 jobs:
   build:
     runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
@@ -413,7 +412,7 @@ jobs:
         run: echo "${{ github.event.pull_request.number }}" > pr_number.txt
       
       - name: Upload PR Number Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: pr-number
           path: pr_number.txt
