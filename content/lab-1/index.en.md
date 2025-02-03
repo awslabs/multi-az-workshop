@@ -149,7 +149,7 @@ The event is scheduled to run every minute. It issues 60 HTTP requests to the ur
 The canary is recording metrics using the [Embedded Metric Format](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Embedded_Metric_Format_Specification.html) (EMF). EMF provides a single approach for both producing structured logs as well as extracting custom CloudWatch metrics from those logs. This allows us to create CloudWatch dashboards and alarms on the embedded metric data as well as query the logs with tools like Contributor Insights in a single solution. You'll see how the server-side also produces logs like this in Lab 3.
 
 ### Simplifying observability
-If the alarms, metrics, and dashboards feel a little complicated to setup and build yourself, that's because they are. There is a lot of available information to think through and combine to provide signals about single-AZ impact. To simplify the setup and use reasonable defaults, this workshop uses an open-source CDK construct (available in TypeScript, Go, Python, and .NET [Java coming soon]) to simplify setting up the necessary observability. To use the CDK construct, you define your service like this:
+If the alarms, metrics, and dashboards feel a little complicated to setup and build yourself, that's because they are. There is a lot of available information to think through and combine to provide signals about single-AZ impact. To simplify the setup and use reasonable defaults, this workshop uses an open-source CDK construct (available in TypeScript, Go, Python, Java, and .NET) to simplify setting up the necessary observability. To use the CDK construct, you define your service like this:
 
 ```csharp
 var wildRydesService = new Service(new ServiceProps(){
@@ -164,7 +164,7 @@ var wildRydesService = new Service(new ServiceProps(){
         DatapointsToAlarm = 3,
         EvaluationPeriods = 5,
         FaultAlarmThreshold = 1,
-        FaultMetricNames = new string[] { "Fault", "Error" },
+        FaultMetricNames = new string[] { "Fault" },
         GraphedFaultStatistics = new string[] { "Sum" },
         GraphedSuccessStatistics = new string[] { "Sum" },
         MetricNamespace = metricsNamespace,
