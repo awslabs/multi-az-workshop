@@ -366,12 +366,12 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                                                     {"containerPort", 5000}
                                                 }
                                             }},
-                                            //{"env", new Dictionary<string, object>[] {
-                                            //    new Dictionary<string, object>() {
-                                            //        {"name", "DB_SECRET"},
-                                            //        {"value", (props.DatabaseCluster as DatabaseCluster).Secret.SecretName}
-                                            //    }
-                                            //}}
+                                            {"env", new Dictionary<string, object>[] {
+                                                new Dictionary<string, object>() {
+                                                    {"name", "DB_SECRET"},
+                                                    {"value", (props.DatabaseCluster as DatabaseCluster).Secret.SecretName}
+                                                }
+                                            }}
                                         },
                                         new Dictionary<string, object>() {
                                             {"image", Fn.Sub("${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/cloudwatch-agent/cloudwatch-agent:latest")},

@@ -18,6 +18,7 @@ SPDX-License-Identifier: Apache-2.0
     <PackageReference Include="Cdklabs.MultiAZObservability" Version="0.0.0-alpha.0" />
     <PackageReference Include="Constructs" Version="10.4.2" />
     <PackageReference Include="Amazon.CDK.LambdaLayer.KubectlV32" Version="2.0.0" />
+    <PackageReference Include="Amazon.CDK.LambdaLayer.KubectlV31" Version="2.0.0" />
 
     <!-- jsii Roslyn analyzers (un-comment to obtain compile-time checks for missing required props
     <PackageReference Include="Amazon.Jsii.Analyzers" Version="*" PrivateAssets="all" />
