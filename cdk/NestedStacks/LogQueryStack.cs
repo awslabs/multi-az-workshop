@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 using Amazon.CDK;
 using Amazon.CDK.AWS.Logs;
-using io.bamcis.cdk.MultiAZObservability;
 using Amazon.AWSLabs.MultiAZWorkshop.Constructs;
+using Cdklabs.MultiAZObservability;
 
 namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
 {
