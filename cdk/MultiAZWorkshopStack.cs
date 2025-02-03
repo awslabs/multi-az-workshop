@@ -9,9 +9,9 @@ using Amazon.CDK.AWS.ElasticLoadBalancingV2;
 using Amazon.CDK.AWS.Logs;
 using Amazon.CDK.AWS.Route53RecoveryControl;
 using Amazon.CDK.AWS.SSM;
-using io.bamcis.cdk.MultiAZObservability;
 using Amazon.AWSLabs.MultiAZWorkshop.Constructs;
 using Amazon.AWSLabs.MultiAZWorkshop.NestedStacks;
+using Cdklabs.MultiAZObservability;
 
 namespace Amazon.AWSLabs.MultiAZWorkshop
 {

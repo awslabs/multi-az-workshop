@@ -12,7 +12,7 @@ using Amazon.CDK.AWS.Lambda;
 using Amazon.CDK.AWS.Logs;
 using Amazon.CDK.AWS.RDS;
 using Amazon.CDK.AWS.SSM;
-using Amazon.CDK.LambdaLayer.KubectlV31;
+using Amazon.CDK.LambdaLayer.KubectlV32;
 using Constructs;
 
 namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
@@ -35,7 +35,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
 
         public string ClusterName {get; set;}
 
-        public string Version {get; set;} = "1.31";
+        public string Version {get; set;} = "1.32";
     }
 
     public interface IEKSClusterProps
@@ -75,7 +75,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             controlPlaneSG.AddIngressRule(controlPlaneSG, Port.AllTcp());
             controlPlaneSG.AddIngressRule(controlPlaneSG, Port.AllIcmp());   
             
-            ILayerVersion kubetctlLayer = new KubectlV31Layer(this, "KubectlV31Layer");        
+            ILayerVersion kubetctlLayer = new KubectlV32Layer(this, "KubectlV32Layer");        
 
             ILogGroup clusterLogGroup = new LogGroup(this, "ClusterLogGroup", new LogGroupProps() {
                 LogGroupName = "/aws/eks/" + props.ClusterName + "/cluster",
