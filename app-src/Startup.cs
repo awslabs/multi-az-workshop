@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Amazon.CloudWatch.EMF.Config;
-using Amazon.CloudWatch.EMF.Environment;
 using Amazon.CloudWatch.EMF.Logger;
 using BAMCIS.MultiAZApp.Utils;
 using Microsoft.AspNetCore.Builder;
@@ -55,8 +54,8 @@ namespace BAMCIS.MultiAZApp
 
             // Embedded metrics format services
             services.AddScoped<IMetricsLogger, MetricsLogger>();
-            services.AddSingleton<IEnvironmentProvider, EnvironmentProvider>();
-            services.AddSingleton<IResourceFetcher, ResourceFetcher>();
+            services.AddSingleton<Amazon.CloudWatch.EMF.Environment.IEnvironmentProvider, Amazon.CloudWatch.EMF.Environment.EnvironmentProvider>();
+            services.AddSingleton<Amazon.CloudWatch.EMF.Environment.IResourceFetcher, Amazon.CloudWatch.EMF.Environment.ResourceFetcher>();
             services.AddSingleton(EnvironmentConfigurationProvider.Config);
         }
 
