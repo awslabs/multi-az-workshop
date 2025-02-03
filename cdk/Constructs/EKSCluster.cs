@@ -12,6 +12,7 @@ using Amazon.CDK.AWS.Lambda;
 using Amazon.CDK.AWS.Logs;
 using Amazon.CDK.AWS.RDS;
 using Amazon.CDK.AWS.SSM;
+using Amazon.CDK.LambdaLayer.KubectlV31;
 using Amazon.CDK.LambdaLayer.KubectlV32;
 using Constructs;
 
@@ -75,7 +76,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             controlPlaneSG.AddIngressRule(controlPlaneSG, Port.AllTcp());
             controlPlaneSG.AddIngressRule(controlPlaneSG, Port.AllIcmp());   
             
-            ILayerVersion kubetctlLayer = new KubectlV32Layer(this, "KubectlV32Layer");        
+            ILayerVersion kubetctlLayer = new KubectlV31Layer(this, "KubectlV31Layer");        
 
             ILogGroup clusterLogGroup = new LogGroup(this, "ClusterLogGroup", new LogGroupProps() {
                 LogGroupName = "/aws/eks/" + props.ClusterName + "/cluster",
@@ -87,7 +88,6 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 Vpc = props.Vpc,
                 VpcSubnets = new SubnetSelection[] { new SubnetSelection() { SubnetType = SubnetType.PRIVATE_ISOLATED } },
                 DefaultCapacity = 0,
-                //Version =  KubernetesVersion.V1_31,
                 Version = KubernetesVersion.Of(props.Version),
                 PlaceClusterHandlerInVpc = false,
                 EndpointAccess = EndpointAccess.PUBLIC_AND_PRIVATE,
