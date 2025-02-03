@@ -59,7 +59,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
             }); 
 
             Function azTagger = new Function(this, "azTagger", new FunctionProps() {
-                Runtime = Runtime.PYTHON_3_12,
+                Runtime = MultiAZWorkshopStack.pythonRuntime,
                 Code = Code.FromInline(File.ReadAllText("./az-tagger-src/index.py")),
                 Handler = "index.handler",
                 Role = executionRole,
