@@ -9,8 +9,7 @@ on:
       - build/**
       - content/**
       - static/**
-      - .github/workflows/build.yml
-
+      
 jobs:
   build:
     runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
