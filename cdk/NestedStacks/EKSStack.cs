@@ -293,11 +293,11 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    using (var stream = client.GetStreamAsync("https://get.helm.sh/helm-v3.15.1-linux-arm64.tar.gz"))
+                    using (var stream = await client.GetStreamAsync("https://get.helm.sh/helm-v3.15.1-linux-arm64.tar.gz"))
                     {
                         using (var fs = new FileStream("helm.tar.gz", FileMode.OpenOrCreate))
                         {
-                            stream.Result.CopyTo(fs);
+                            stream.CopyTo(fs);
                         }
                     }
                 }
