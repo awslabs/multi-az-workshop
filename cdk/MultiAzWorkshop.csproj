@@ -14,8 +14,8 @@ SPDX-License-Identifier: Apache-2.0
   <ItemGroup>
     <!-- CDK Construct Library dependencies -->
     <PackageReference Include="Amazon.CDK.Lib" Version="2.177.0" />
-    <!-- <PackageReference Include="io.bamcis.cdk.MultiAZObservability" Version="0.0.1-alpha.24" />-->
-    <PackageReference Include="Cdklabs.MultiAZObservability" Version="0.0.0-alpha.0" />
+    <PackageReference Include="io.bamcis.cdk.MultiAZObservability" Version="0.0.1-alpha.24" />
+    <!--<PackageReference Include="Cdklabs.MultiAZObservability" Version="0.0.0-alpha.0" />-->
     <PackageReference Include="Constructs" Version="10.4.2" />
     <PackageReference Include="Amazon.CDK.LambdaLayer.KubectlV32" Version="2.0.0" />
     <PackageReference Include="Amazon.CDK.LambdaLayer.KubectlV31" Version="2.0.0" />
