@@ -11,8 +11,9 @@ using Amazon.CDK.AWS.Route53RecoveryControl;
 using Amazon.CDK.AWS.SSM;
 using Amazon.AWSLabs.MultiAZWorkshop.Constructs;
 using Amazon.AWSLabs.MultiAZWorkshop.NestedStacks;
-using Cdklabs.MultiAZObservability;
+//using Cdklabs.MultiAZObservability;
 using Amazon.CDK.AWS.Lambda;
+using io.bamcis.cdk.MultiAZObservability;
 
 namespace Amazon.AWSLabs.MultiAZWorkshop
 {
