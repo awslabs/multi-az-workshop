@@ -22,14 +22,19 @@ namespace BAMCIS.MultiAZApp.Utils
             app.UseEmfMiddleware((context, logger) =>
             {
                 var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-                var ep = new EnvironmentProvider(loggerFactory);
-                IEnvironment env = ep.ResolveEnvironment();
+                //var ep = new EnvironmentProvider(loggerFactory);
+                //IEnvironment env = ep.ResolveEnvironment();
 
                 AWSXRayRecorder recorder = AWSXRayRecorder.Instance;
-                string hostId = env.GetHostId();// EnvironmentUtils.GetHostId();
-                string instanceId = env.GetInstanceId(); //EnvironmentUtils.GetInstanceId();
-                string region = env.GetRegion(); // EnvironmentUtils.GetRegion();
-                string azId = env.GetAZId(); // EnvironmentUtils.GetAZId();
+                //string hostId = env.GetHostId();// EnvironmentUtils.GetHostId();
+                //string instanceId = env.GetInstanceId(); //EnvironmentUtils.GetInstanceId();
+                //string region = env.GetRegion(); // EnvironmentUtils.GetRegion();
+                //string azId = env.GetAZId(); // EnvironmentUtils.GetAZId();
+
+                string hostId = EnvironmentUtils.GetHostId();
+                string instanceId = EnvironmentUtils.GetInstanceId();
+                string region = EnvironmentUtils.GetRegion();
+                string azId = EnvironmentUtils.GetAZId();
 
                 recorder.AddAnnotation("AZ-ID", azId);
                 recorder.AddMetadata("InstanceId", instanceId);
@@ -42,7 +47,7 @@ namespace BAMCIS.MultiAZApp.Utils
                 string operation = String.Empty;
           
                 logger.PutProperty("AZ", EnvironmentUtils.GetAZ());
-                logger.PutProperty("Environment", env.GetEnvironmentType().ToString());
+                //logger.PutProperty("Environment", env.GetEnvironmentType().ToString());
 
                 if (endpoint != null)
                 {

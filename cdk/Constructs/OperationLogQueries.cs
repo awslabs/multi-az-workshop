@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 using Amazon.CDK;
 using Amazon.CDK.AWS.Logs;
-using Cdklabs.MultiAZObservability;
+//using Cdklabs.MultiAZObservability;
 using Constructs;
+using io.bamcis.cdk.MultiAZObservability;
 
 namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
 {
