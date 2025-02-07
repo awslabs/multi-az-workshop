@@ -29,7 +29,13 @@ namespace BAMCIS.MultiAZApp.Controllers
         private ObjectResult DoWork() {
             Thread.Sleep(this.rand.Next(1, 20));
             this.Response.ContentType = MediaTypeNames.Application.Json;
-            return Ok(new { region = EnvironmentUtils.GetRegion(), az = EnvironmentUtils.GetAZId(), statusCode = 200, instanceId = EnvironmentUtils.GetHostId() });
+
+            return Ok(new { 
+                region = EnvironmentUtils.GetRegion(), 
+                az = EnvironmentUtils.GetAZId(), 
+                statusCode = 200, 
+                instanceId = EnvironmentUtils.GetHostId() 
+            });
         }
 
         private ObjectResult DoWorkProbelm() {
@@ -46,6 +52,7 @@ namespace BAMCIS.MultiAZApp.Controllers
             this.cache = cache;
         }
 
+        // GET: /health
         [Route("health")]
         [HttpGet]
         public IActionResult HealthCheck()
