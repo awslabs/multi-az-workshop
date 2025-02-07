@@ -39,7 +39,7 @@ namespace BAMCIS.MultiAZApp.Utils
             }
             catch (Exception ex)
             {
-                _logger.LogDebug("Failed to lookup EKS environment variables.", ex);
+                _logger.LogDebug(ex, "Failed to lookup EKS environment variables.");
             }
 
             return false;

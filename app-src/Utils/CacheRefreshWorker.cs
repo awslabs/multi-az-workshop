@@ -162,13 +162,13 @@ namespace BAMCIS.MultiAZApp.Utils
         {      
             string secretId;
 
-            if (File.Exists("/etc/secret"))
-            {
+            //if (File.Exists("/etc/secret"))
+            //{
                 secretId = File.ReadAllText("/etc/secret").Trim();
-            }
-            else {
-                secretId = System.Environment.GetEnvironmentVariable("DB_SECRET");
-            }
+            //}
+            //else {
+            //    secretId = System.Environment.GetEnvironmentVariable("DB_SECRET");
+            //}
 
             if (String.IsNullOrEmpty(secretId))
             {

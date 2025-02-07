@@ -32,7 +32,7 @@ namespace BAMCIS.MultiAZApp.Utils
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogDebug("Failed to get metadata from: " + ecsMetadata + "/task", ex);
+                    _logger.LogDebug(ex, "Failed to get metadata from: {ecs}/task", ecsMetadata);
                 }
             }
         }
@@ -55,7 +55,7 @@ namespace BAMCIS.MultiAZApp.Utils
             }
             catch (Exception ex)
             {
-                _logger.LogDebug("Failed to lookup ECS environment variables.", ex);
+                _logger.LogDebug(ex, "Failed to lookup ECS environment variables.");
             }
 
             return false;
