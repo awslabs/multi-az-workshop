@@ -13,7 +13,7 @@ using Amazon.CDK.AWS.Logs;
 using Amazon.CDK.AWS.RDS;
 using Amazon.CDK.AWS.SSM;
 using Amazon.CDK.LambdaLayer.KubectlV31;
-using Amazon.CDK.LambdaLayer.KubectlV32;
+//using Amazon.CDK.LambdaLayer.KubectlV32;
 using Constructs;
 
 namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
