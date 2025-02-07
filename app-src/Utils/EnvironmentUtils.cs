@@ -18,7 +18,7 @@ namespace BAMCIS.MultiAZApp.Utils
         public static string azid;
         public static string instanceid;
         public static string hostid;
-        public static string onebox;
+        public static bool onebox;
 
         static EnvironmentUtils()
         {
@@ -27,6 +27,7 @@ namespace BAMCIS.MultiAZApp.Utils
             az = GetAzMetadata();
             instanceid = GetInstanceIdMetadata();
             hostid = GetHostIdMetadata();
+            onebox = GetOneBoxMetadata();
         }
 
         private static string GetRegionMetadata()
@@ -39,20 +40,9 @@ namespace BAMCIS.MultiAZApp.Utils
             if (String.IsNullOrEmpty(region))
             {
                 region = GetRegionMetadata();
-
-                if (String.IsNullOrEmpty(region))
-                {
-                    return "unknown";
-                }
-                else
-                {
-                    return region;
-                }
             }
-            else
-            {
-                return region;
-            }       
+
+            return !String.IsNullOrEmpty(region) ? region : "unknown";
         }
 
         private static string GetAzIdMetadata()
@@ -65,20 +55,9 @@ namespace BAMCIS.MultiAZApp.Utils
             if (String.IsNullOrEmpty(azid))
             {
                 azid = GetAzIdMetadata();
+            }
 
-                if (String.IsNullOrEmpty(azid))
-                {
-                    return "unknown";
-                }
-                else
-                {
-                    return azid;
-                }
-            }
-            else
-            {
-                return azid;
-            }
+            return !String.IsNullOrEmpty(azid) ? azid : "unknown";
         }
 
         private static string GetAzMetadata()
@@ -91,20 +70,9 @@ namespace BAMCIS.MultiAZApp.Utils
             if (String.IsNullOrEmpty(az))
             {
                 az = GetAzMetadata();
+            }
 
-                if (String.IsNullOrEmpty(az))
-                {
-                    return "unknown";
-                }
-                else
-                {
-                    return az;
-                }
-            }
-            else
-            {
-                return az;
-            }
+            return !String.IsNullOrEmpty(az) ? az : "unknown";
         }
 
         private static string GetInstanceIdMetadata()
@@ -122,20 +90,9 @@ namespace BAMCIS.MultiAZApp.Utils
             if (String.IsNullOrEmpty(instanceid))
             {
                 instanceid = GetInstanceIdMetadata();
-
-                if (String.IsNullOrEmpty(instanceid))
-                {
-                    return "unknown";
-                }
-                else
-                {
-                    return instanceid;
-                }
             }
-            else
-            {
-                return instanceid;
-            }
+                
+            return !String.IsNullOrEmpty(instanceid) ? instanceid : "unknown";
         }
 
         /// <summary>
@@ -145,10 +102,10 @@ namespace BAMCIS.MultiAZApp.Utils
         /// <returns></returns>
         private static string GetHostIdMetadata()
         {
-            string k8s = System.Environment.GetEnvironmentVariable("KUBERNETES_SERVICE_HOST");
-            string ecsMetadata = System.Environment.GetEnvironmentVariable("ECS_CONTAINER_METADATA_URI_V4");
             string hostId = "";
 
+            string k8s = System.Environment.GetEnvironmentVariable("KUBERNETES_SERVICE_HOST");
+            string ecsMetadata = System.Environment.GetEnvironmentVariable("ECS_CONTAINER_METADATA_URI_V4");
             if (!String.IsNullOrEmpty(k8s))
             {
                 hostId = System.Environment.GetEnvironmentVariable("HOSTNAME");
@@ -162,7 +119,6 @@ namespace BAMCIS.MultiAZApp.Utils
                     string service = data["ServiceName"] as string;
                     // :task/1dc5c17a-422b-4dc4-b493-371970c6c4d6
                     string taskArn = data["TaskARN"] as string;
-
                     hostId = service + "-" + taskArn.Split(":").Last().Split("/").Last();
                 }
             }
@@ -170,7 +126,7 @@ namespace BAMCIS.MultiAZApp.Utils
             {
                 hostId = GetInstanceIdMetadata();
             }
-
+            
             return hostId;
         }
 
@@ -184,23 +140,13 @@ namespace BAMCIS.MultiAZApp.Utils
             if (String.IsNullOrEmpty(hostid))
             {
                 hostid = GetHostIdMetadata();
+            }
 
-                if (String.IsNullOrEmpty(hostid))
-                {
-                    return "unknown";
-                }
-                else
-                {
-                    return hostid;
-                }
-            }
-            else
-            {
-                return hostid;
-            }
+            return !String.IsNullOrEmpty(hostid) ? hostid : "unknown";
+
         }
 
-        public static bool IsOneBox()
+        private static bool GetOneBoxMetadata()
         {
             bool isOneBox = false;
 
@@ -227,6 +173,11 @@ namespace BAMCIS.MultiAZApp.Utils
             catch (Exception) { }
 
             return isOneBox;
+        }
+
+        public static bool IsOneBox()
+        {
+            return onebox;
         }
     }
 }

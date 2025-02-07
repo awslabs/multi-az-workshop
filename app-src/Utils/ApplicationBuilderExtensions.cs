@@ -91,7 +91,7 @@ namespace BAMCIS.MultiAZApp.Utils
                     var instanceRegionDimensions = new DimensionSet();
                     var regionAZDimensions = new DimensionSet();
                     var regionDimensions = new DimensionSet();
-                    //var hostRegionDimensions = new DimensionSet();
+                    var hostRegionDimensions = new DimensionSet();
                     //var hostOperationRegionDimensions = new DimensionSet();
 
                     if (!String.IsNullOrEmpty(operation))
@@ -112,8 +112,8 @@ namespace BAMCIS.MultiAZApp.Utils
                     instanceRegionDimensions.AddDimension("Region", region);
                     instanceRegionDimensions.AddDimension("InstanceId", instanceId);
 
-                    //hostRegionDimensions.AddDimension("Region", region);
-                    //hostRegionDimensions.AddDimension("HostId", hostId);
+                    hostRegionDimensions.AddDimension("Region", region);
+                    hostRegionDimensions.AddDimension("HostId", hostId);
 
                     regionAZDimensions.AddDimension("Region", region);
                     regionAZDimensions.AddDimension("AZ-ID", azId);
@@ -123,8 +123,8 @@ namespace BAMCIS.MultiAZApp.Utils
                     logger.SetDimensions(
                         regionAZDimensions, 
                         regionDimensions,
-                        instanceRegionDimensions
-                        //hostRegionDimensions,
+                        instanceRegionDimensions,
+                        hostRegionDimensions
                         //hostOperationRegionDimensions
                     );
 
