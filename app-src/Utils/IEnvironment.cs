@@ -15,5 +15,7 @@ namespace BAMCIS.MultiAZApp.Utils
         string GetAZId();
 
         string GetAZ();
+
+        bool IsOneBox();
     }
 }

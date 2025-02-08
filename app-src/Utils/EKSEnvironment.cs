@@ -9,8 +9,6 @@ namespace BAMCIS.MultiAZApp.Utils
 
         private static string _hostname = "HOSTNAME";
 
-        private string _host;
-
         public EKSEnvironment(ILogger logger) : this(logger, new ResourceFetcher())
         {
 
@@ -18,12 +16,12 @@ namespace BAMCIS.MultiAZApp.Utils
 
         public EKSEnvironment(ILogger logger, IResourceFetcher fetcher) : base(logger, fetcher)
         {
-            _host = System.Environment.GetEnvironmentVariable(_hostname);
+            _hostid = System.Environment.GetEnvironmentVariable(_hostname);
         }
 
         public override string GetHostId()
         {
-            return _host;
+            return _hostid;
         }
 
         public override bool Probe()
@@ -34,7 +32,7 @@ namespace BAMCIS.MultiAZApp.Utils
 
                 if (!String.IsNullOrEmpty(k8s)) 
                 {
-                    return !String.IsNullOrEmpty(_host);
+                    return !String.IsNullOrEmpty(_hostid);
                 }
             }
             catch (Exception ex)
