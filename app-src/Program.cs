@@ -1,35 +1,25 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Hosting;
-using Serilog;
+using Amazon.CloudWatch.EMF.Config;
+using BAMCIS.MultiAZApp.Utilities;
 
-namespace BAMCIS.MultiAZApp
+var builder = WebApplication.CreateBuilder(args);
+
+EnvironmentConfigurationProvider.Config = new Configuration
 {
-    public class Program
-    {
-        public static void Main(string[] args)
-        {
-            Log.Logger = new LoggerConfiguration().WriteTo.RollingFile("/var/log/multi-az-app_{Date}.log")
-                .MinimumLevel.Debug()
-                .Enrich.FromLogContext()
-                .CreateLogger();
+    ServiceName = Constants.SERVICE_NAME,
+    LogGroupName = Constants.LOG_GROUP_NAME,
+    ServiceType =  "WebApi",
+    EnvironmentOverride = builder.Environment.IsDevelopment()
+        ? Amazon.CloudWatch.EMF.Environment.Environments.Local
+        : Amazon.CloudWatch.EMF.Environment.Environments.EC2
+};
 
-            CreateHostBuilder(args).Build().Run();
+builder.WebHost.ConfigureKestrel((context, serverOptions) => {
+    serverOptions.AddServerHeader = true;
+    serverOptions.ListenAnyIP(5000);
+});
 
-            Log.CloseAndFlush();
-        }
-
-        public static IHostBuilder CreateHostBuilder(string[] args) {
-            return Host.CreateDefaultBuilder(args).ConfigureWebHostDefaults(webBuilder =>
-                {
-                    webBuilder.UseStartup<Startup>();
-                    webBuilder.ConfigureKestrel((context, serverOptions) => {
-                        serverOptions.AddServerHeader = true;
-                        serverOptions.ListenAnyIP(5000);
-                    });
-                }
-            ).UseSerilog();
-        }
-    }
-}
+builder
+    .RegisterServices()
+    .Build()
+    .SetupMiddleware()
+    .Run();

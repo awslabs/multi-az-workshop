@@ -1,15 +1,11 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading.Tasks;
 using Amazon.SecretsManager;
 using Amazon.SecretsManager.Model;
 using Newtonsoft.Json;
 
-namespace BAMCIS.MultiAZApp.Utils
+namespace BAMCIS.MultiAZApp.Utilities
 {
     public interface IDatabaseConnection
     {
@@ -18,7 +14,7 @@ namespace BAMCIS.MultiAZApp.Utils
 
     public class DatabaseConnection : IDatabaseConnection
     {
-        private string connectionString = "";
+        private string _connectionString = "";
 
         public DatabaseConnection()
         {
@@ -28,23 +24,23 @@ namespace BAMCIS.MultiAZApp.Utils
                 if (!String.IsNullOrEmpty(val))
                 {
                     Dictionary<string, string> secrets = GetSecret(val).Result;
-                    this.connectionString = $"Host={secrets["host"]};Port={secrets["port"]};Username={secrets["username"]};Password={secrets["password"]};Database={secrets["dbname"]};Timeout=2;";  
+                    this._connectionString = $"Host={secrets["host"]};Port={secrets["port"]};Username={secrets["username"]};Password={secrets["password"]};Database={secrets["dbname"]};Timeout=2;";  
                 } 
                 else
                 {
-                    this.connectionString = String.Empty;
+                    this._connectionString = String.Empty;
                 }
             }
             catch (Exception e)
             {
-                this.connectionString = String.Empty;
+                this._connectionString = String.Empty;
                 File.AppendAllText("/var/log/secretrserror.log", e.Message);
             }     
         }
 
         public string GetConnectionString()
         {
-            return this.connectionString;
+            return this._connectionString;
         }
 
         private static async Task<Dictionary<string, string>> GetSecret(string secretName)

@@ -1,25 +1,20 @@
-﻿// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 using Amazon.CloudWatch.EMF.Logger;
-using BAMCIS.MultiAZApp.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
-using System;
 using System.Diagnostics;
-using System.Threading;
 using Newtonsoft.Json;
-using System.Threading.Tasks;
 using Npgsql;
-using System.Collections.Generic;
 using Amazon.CloudWatch.EMF.Model;
 using System.Net.Mime; // Don't delete, needed for FAIL
 
 namespace BAMCIS.MultiAZApp.Controllers
 {
+    [ApiController]
     [Route("/")]
-    public class HomeController : Controller
+    public class HomeController : ControllerBase
     {
         private readonly ILogger<HomeController> logger;
         private readonly IMetricsLogger metrics;
@@ -31,17 +26,23 @@ namespace BAMCIS.MultiAZApp.Controllers
             this.Response.ContentType = MediaTypeNames.Application.Json;
 
             return Ok(new { 
-                region = EnvironmentUtils.GetRegion(), 
-                az = EnvironmentUtils.GetAZId(), 
-                statusCode = 200, 
-                instanceId = EnvironmentUtils.GetHostId() 
+                statusCode = 200
             });
         }
 
         private ObjectResult DoWorkProbelm() {
             Thread.Sleep(this.rand.Next(1, 20));
             this.Response.ContentType = MediaTypeNames.Application.Json;
-            return Problem(statusCode: 500, type: null, detail: JsonConvert.SerializeObject(new { region = EnvironmentUtils.GetRegion(), az = EnvironmentUtils.GetAZId(), statusCode = 500, instanceId = EnvironmentUtils.GetHostId() }));
+
+            return Problem(
+                statusCode: 500, 
+                type: null, 
+                detail: JsonConvert.SerializeObject(
+                    new { 
+                        statusCode = 500
+                    }
+                )
+            );
         }
 
         public HomeController(ILogger<HomeController> logger, IMetricsLogger metrics, IMemoryCache cache)
@@ -94,7 +95,7 @@ namespace BAMCIS.MultiAZApp.Controllers
         public async Task<IActionResult> Ride()
         {
             this.Response.ContentType = MediaTypeNames.Application.Json;
-            if (this.cache.TryGetValue<string>("ConnectionString", out string connString) && !String.IsNullOrEmpty(connString))
+            if (this.cache.TryGetValue<string>("ConnectionString", out var connString) && !String.IsNullOrEmpty(connString))
             {
                 try {  
                     await using var dataSource = NpgsqlDataSource.Create(connString);
@@ -113,18 +114,33 @@ namespace BAMCIS.MultiAZApp.Controllers
                     sw.Stop();
                     this.metrics.PutMetric("QueryLatency", sw.ElapsedMilliseconds, Unit.MILLISECONDS);
 
-                    return Ok(new { region = EnvironmentUtils.GetRegion(), az = EnvironmentUtils.GetAZId(), statusCode = 200, instanceId = EnvironmentUtils.GetInstanceId(), tables = content.ToArray() });
+                    return Ok(
+                        new { 
+                            statusCode = 200,
+                            tables = content.ToArray() 
+                        }
+                    );
                 }
                 catch (Exception e)
                 {
                     this.metrics.PutProperty("Exception", e);
-                    return Problem(detail: JsonConvert.SerializeObject(new { region = EnvironmentUtils.GetRegion(), az = EnvironmentUtils.GetAZId(), statusCode = 500, instanceId = EnvironmentUtils.GetInstanceId(), exception = e }), statusCode: 500, type: null);
+                    return Problem(
+                        detail: JsonConvert.SerializeObject(
+                            new { 
+                                statusCode = 500, 
+                                exception = e 
+                            }
+                        ), statusCode: 500, type: null);
                 }
             }
             else
             {
                 this.metrics.PutProperty("Exception", "No connection string.");
-                return Problem(detail: JsonConvert.SerializeObject(new { region = EnvironmentUtils.GetRegion(), az = EnvironmentUtils.GetAZId(), statusCode = 404, instanceId = EnvironmentUtils.GetInstanceId(), problem = "Connection string was empty, check secrets manager configuration." }), statusCode: 404, type: null);
+                return Problem(
+                    detail: JsonConvert.SerializeObject(new { 
+                        statusCode = 404, 
+                        problem = "Connection string was empty, check secrets manager configuration." }
+                    ), statusCode: 404, type: null);
             }
         }
     }

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace BAMCIS.MultiAZApp.Utils
+namespace BAMCIS.MultiAZApp.Utilities
 {
     public interface IResourceFetcher
     {
