@@ -1,4 +1,3 @@
-
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -6,29 +5,23 @@ version: 0.0
 os: linux
 files:
   - source: src
-    destination: /var/www/multi-az-app
-  - source: apache/multi-az-app.conf
-    destination: /etc/httpd/conf.d
-  - source: apache/kestrel.service
+    destination: /var/www/multi-az-workshop-application
+  - source: scripts/kestrel.service
     destination: /etc/systemd/system
 permissions:
-  - object: /var/www/multi-az-app/multi-az-application
+  - object: /var/www/multi-az-workshop-application/multi-az-workshop-application
     mode: 755
 hooks:
   BeforeInstall:
     - location: scripts/stop-kestrel-service.sh
       runas: root
   AfterInstall:
-    - location: scripts/httpd-configtest.sh
-      runas: root
     - location: scripts/enable-kestrel-service.sh
       runas: root
     - location: scripts/open-firewall.sh
       runas: root
   ApplicationStart:
     - location: scripts/start-kestrel-service.sh
-      runas: root
-    - location: scripts/restart-httpd.sh
       runas: root
   ValidateService:
     - location: scripts/service-test.sh

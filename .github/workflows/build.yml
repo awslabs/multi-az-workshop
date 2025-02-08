@@ -168,7 +168,7 @@ jobs:
           cd ${{ github.workspace }}/app-src/output
           zip -r ${{ github.workspace }}/assets/app_arm64.zip src/
           cd ${{ github.workspace }}/app-src
-          zip -r ${{ github.workspace }}/assets/app_arm64.zip apache/ scripts/ appspec.yml
+          zip -r ${{ github.workspace }}/assets/app_arm64.zip scripts/ appspec.yml
           rm -rf ${{ github.workspace }}/app-src/output
 
       - name: Build failing arm64 web app
@@ -181,7 +181,7 @@ jobs:
           cd ${{ github.workspace }}/app-src/output
           zip -r ${{ github.workspace }}/assets/app_arm64_fail.zip src/
           cd ${{ github.workspace }}/app-src
-          zip -r ${{ github.workspace }}/assets/app_arm64_fail.zip apache/ scripts/ appspec.yml
+          zip -r ${{ github.workspace }}/assets/app_arm64_fail.zip scripts/ appspec.yml
           rm -rf ${{ github.workspace }}/app-src/output
 
       #- name: Set up docker buildx

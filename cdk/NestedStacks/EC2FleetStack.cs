@@ -27,7 +27,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
 
         public InstanceArchitecture CpuArch {get; set;} = InstanceArchitecture.ARM_64;
 
-        public int Port {get; set; } = 80;
+        public int Port {get; set; } = 5000;
 
         public string CloudWatchAgentConfigVersion {get; set;} = "0.01";
 
@@ -64,7 +64,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     "06_restart-amazon-cloudwatch-agent",
                     "07_xray-daemon-download",
                     "08_xray-daemon-install",
-                    "09_setup-httpd",
+                    //"09_setup-httpd",
                     "10_setup-firewalld",
                     "11_install-codedeploy",
                     "12_start-codedeploy-agent",

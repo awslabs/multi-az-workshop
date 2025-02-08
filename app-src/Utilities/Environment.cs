@@ -1,4 +1,4 @@
-namespace BAMCIS.MultiAZApp.Utils
+namespace BAMCIS.MultiAZApp.Utilities
 {
     public enum Environment
     {

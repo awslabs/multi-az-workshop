@@ -6,8 +6,8 @@ FROM --platform=${PLATFORM} public.ecr.aws/docker/library/alpine:latest
 
 ARG SRC=src
 
-ADD ${SRC} /var/www/multi-az-app
+ADD ${SRC} /var/www/multi-az-workshop-application
 RUN apk --no-cache add curl libstdc++ libgcc
 
 EXPOSE 5000
-ENTRYPOINT [ "/var/www/multi-az-app/multi-az-application" ]
+ENTRYPOINT [ "/var/www/multi-az-workshop-application/multi-az-workshop-application" ]

@@ -1,16 +1,16 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 [Unit]
-Description=Multi-AZ Workshop Running on Amazon Linux 2
+Description=Multi-AZ Workshop Running on Amazon Linux 2023
 
 [Service]
-WorkingDirectory=/var/www/multi-az-app
-ExecStart=/var/www/multi-az-app/multi-az-application
+WorkingDirectory=/var/www/multi-az-workshop-application
+ExecStart=/var/www/multi-az-workshop-application/multi-az-workshop-application
 Restart=always
 # Restart service after 10 seconds if the dotnet service crashes:
 RestartSec=10
 KillSignal=SIGINT
-SyslogIdentifier=multi-az-workshop
+SyslogIdentifier=multi-az-workshop-application
 User=apache
 Environment=ASPNETCORE_ENVIRONMENT=Production 
 
