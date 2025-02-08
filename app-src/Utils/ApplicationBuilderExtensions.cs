@@ -27,19 +27,19 @@ namespace BAMCIS.MultiAZApp.Utils
                 IEnvironment env = ep.ResolveEnvironment();
 
                 AWSXRayRecorder recorder = AWSXRayRecorder.Instance;
-                string hostId = env.GetHostId();
-                string instanceId = env.GetInstanceId();
-                string region = env.GetRegion();
-                string azId = env.GetAZId();
-                string az = env.GetAZ();
-                bool oneBox = env.IsOneBox();
+                //string hostId = env.GetHostId();
+                //string instanceId = env.GetInstanceId();
+                //string region = env.GetRegion();
+                //string azId = env.GetAZId();
+                //string az = env.GetAZ();
+                //bool oneBox = env.IsOneBox();
 
-                //string hostId = EnvironmentUtils.GetHostId();
-                //string instanceId = EnvironmentUtils.GetInstanceId();
-                //string region = EnvironmentUtils.GetRegion();
-                //string azId = EnvironmentUtils.GetAZId();
-                //bool oneBox = EnvironmentUtils.IsOneBox();
-                //string az = EnvironmentUtils.GetAZ();
+                string hostId = EnvironmentUtils.GetHostId();
+                string instanceId = EnvironmentUtils.GetInstanceId();
+                string region = EnvironmentUtils.GetRegion();
+                string azId = EnvironmentUtils.GetAZId();
+                bool oneBox = EnvironmentUtils.IsOneBox();
+                string az = EnvironmentUtils.GetAZ();
 
                 recorder.AddAnnotation("AZ-ID", azId);
                 recorder.AddMetadata("InstanceId", instanceId);
@@ -67,7 +67,7 @@ namespace BAMCIS.MultiAZApp.Utils
                     }
                 }
 
-                if (EnvironmentUtils.IsOneBox())
+                if (oneBox)
                 {
                     logger.PutProperty("HostId", hostId);
                     logger.PutProperty("InstanceId", instanceId);

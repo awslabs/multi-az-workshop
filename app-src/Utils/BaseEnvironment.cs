@@ -45,7 +45,7 @@ namespace BAMCIS.MultiAZApp.Utils
         {
             if (String.IsNullOrEmpty(_az))
             {
-                _az = !String.IsNullOrEmpty(Amazon.Util.EC2InstanceMetadata.GetData("/placement/availability-zone")) ? Amazon.Util.EC2InstanceMetadata.GetData("/placement/availability-zone") : String.Empty;
+                _az = !String.IsNullOrEmpty(Amazon.Util.EC2InstanceMetadata.AvailabilityZone) ? Amazon.Util.EC2InstanceMetadata.AvailabilityZone : String.Empty;
             }
 
             return !String.IsNullOrEmpty(_az) ? _az : "unknown";

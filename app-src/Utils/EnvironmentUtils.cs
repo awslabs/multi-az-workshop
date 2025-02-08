@@ -62,7 +62,7 @@ namespace BAMCIS.MultiAZApp.Utils
 
         private static string GetAzMetadata()
         {
-            return !String.IsNullOrEmpty(Amazon.Util.EC2InstanceMetadata.GetData("/placement/availability-zone")) ? Amazon.Util.EC2InstanceMetadata.GetData("/placement/availability-zone") : String.Empty;
+            return !String.IsNullOrEmpty(Amazon.Util.EC2InstanceMetadata.AvailabilityZone) ? Amazon.Util.EC2InstanceMetadata.AvailabilityZone : String.Empty;
         }
 
         public static string GetAZ()
