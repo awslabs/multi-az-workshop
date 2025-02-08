@@ -39,12 +39,12 @@ jobs:
         with:
           dotnet-version: '9.0'
        
-      #- name: Dotnet version update
-      #  run: |
-      #    cat /codebuild/global.json
-      #    dotnet --info
-      #    jq '.sdk.version = "8.0.0"' /codebuild/global.json > temp.json && mv temp.json /codebuild/global.json
-      #    cat /codebuild/global.json
+      - name: Dotnet version update
+        run: |
+          cat /codebuild/global.json
+          dotnet --info
+          jq '.sdk.version = "9.0.0"' /codebuild/global.json > temp.json && mv temp.json /codebuild/global.json
+          cat /codebuild/global.json
 
       - name: Install cdk
         run: |
