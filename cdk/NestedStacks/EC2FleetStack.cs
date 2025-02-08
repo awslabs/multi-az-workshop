@@ -64,12 +64,13 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     "06_restart-amazon-cloudwatch-agent",
                     "07_xray-daemon-download",
                     "08_xray-daemon-install",
-                    //"09_setup-httpd",
+                    "09_setup-httpd",
                     "10_setup-firewalld",
                     "11_install-codedeploy",
                     "12_start-codedeploy-agent",
                     "13_install_icu_support",
-                    "14_set_database_details"
+                    "14_set_database_details",
+                    "15_install-docker"
                 }
             },
             {
@@ -506,6 +507,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                         InitCommand.ShellCommand("systemctl start firewalld"),
                         InitCommand.ShellCommand("firewall-cmd --state"),
                         InitCommand.ShellCommand($"firewall-cmd --add-port={props.Port}/tcp --permanent"),
+                        InitCommand.ShellCommand("firewall-cmd --add-port=80/tcp --permanent"),
                         InitCommand.ShellCommand("firewall-cmd --reload"),
                         InitCommand.ShellCommand("firewall-cmd --list-all"),
                     })                        
@@ -547,6 +549,21 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                         }
                     )                   
                 },
+                {
+                    "15_install-docker",
+                    new InitConfig(
+                        new InitElement[] {
+                            InitPackage.Yum("docker"),
+                            InitService.Enable("docker", new InitServiceOptions() {
+                                Enabled = true,
+                                EnsureRunning = true,
+                                ServiceManager = ServiceManager.SYSVINIT
+                            }),
+                            InitCommand.ShellCommand("usermod -a -G docker ec2-user"),
+                            InitCommand.ShellCommand("docker ps")
+                        }
+                    )
+                }
             };
         }
     }
