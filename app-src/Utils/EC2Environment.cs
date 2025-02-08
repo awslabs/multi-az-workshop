@@ -14,19 +14,19 @@ namespace BAMCIS.MultiAZApp.Utils
 
         private string _token;
 
-        public EC2Environment(ILogger logger) : base (logger, new ResourceFetcher())
+        public EC2Environment(ILogger logger) : this(logger, new ResourceFetcher())
         {
 
         }
 
         public EC2Environment(ILogger logger, IResourceFetcher fetcher) : base(logger, fetcher)
         {
-
+            _hostid = this.GetInstanceId();
         }
 
         public override string GetHostId()
         {
-            return this.GetInstanceId();
+            return _hostid;
         }
 
         public override bool Probe()

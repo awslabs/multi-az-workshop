@@ -22,22 +22,24 @@ namespace BAMCIS.MultiAZApp.Utils
         {
             app.UseEmfMiddleware((context, logger) =>
             {
-                //var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-                //var ep = new EnvironmentProvider(loggerFactory);
-                //IEnvironment env = ep.ResolveEnvironment();
+                var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+                var ep = new EnvironmentProvider(loggerFactory);
+                IEnvironment env = ep.ResolveEnvironment();
 
                 AWSXRayRecorder recorder = AWSXRayRecorder.Instance;
-                //string hostId = env.GetHostId();
-                //string instanceId = env.GetInstanceId();
-                //string region = env.GetRegion();
-                //string azId = env.GetAZId();
+                string hostId = env.GetHostId();
+                string instanceId = env.GetInstanceId();
+                string region = env.GetRegion();
+                string azId = env.GetAZId();
+                string az = env.GetAZ();
+                bool oneBox = env.IsOneBox();
 
-                string hostId = EnvironmentUtils.GetHostId();
-                string instanceId = EnvironmentUtils.GetInstanceId();
-                string region = EnvironmentUtils.GetRegion();
-                string azId = EnvironmentUtils.GetAZId();
-                bool oneBox = EnvironmentUtils.IsOneBox();
-                string az = EnvironmentUtils.GetAZ();
+                //string hostId = EnvironmentUtils.GetHostId();
+                //string instanceId = EnvironmentUtils.GetInstanceId();
+                //string region = EnvironmentUtils.GetRegion();
+                //string azId = EnvironmentUtils.GetAZId();
+                //bool oneBox = EnvironmentUtils.IsOneBox();
+                //string az = EnvironmentUtils.GetAZ();
 
                 recorder.AddAnnotation("AZ-ID", azId);
                 recorder.AddMetadata("InstanceId", instanceId);
@@ -49,7 +51,7 @@ namespace BAMCIS.MultiAZApp.Utils
                 logger.PutProperty("AZ", az);
                 logger.PutProperty("Path", context.Request.Path);
                 logger.PutProperty("OneBox", oneBox);
-                //logger.PutProperty("Environment", env.GetEnvironmentType().ToString());
+                logger.PutProperty("Environment", env.GetEnvironmentType().ToString());
 
                 var endpoint = context.GetEndpoint();
                 string operation = String.Empty;
@@ -92,7 +94,7 @@ namespace BAMCIS.MultiAZApp.Utils
                     var regionAZDimensions = new DimensionSet();
                     var regionDimensions = new DimensionSet();
                     var hostRegionDimensions = new DimensionSet();
-                    //var hostOperationRegionDimensions = new DimensionSet();
+                    var hostOperationRegionDimensions = new DimensionSet();
 
                     if (!String.IsNullOrEmpty(operation))
                     {   
@@ -100,9 +102,9 @@ namespace BAMCIS.MultiAZApp.Utils
                         instanceOperationRegionDimensions.AddDimension("Region", region);
                         instanceOperationRegionDimensions.AddDimension("InstanceId", instanceId);
 
-                        //hostOperationRegionDimensions.AddDimension("Operation", operation);
-                        //hostOperationRegionDimensions.AddDimension("Region", region);
-                        //hostOperationRegionDimensions.AddDimension("HostId", hostId);
+                        hostOperationRegionDimensions.AddDimension("Operation", operation);
+                        hostOperationRegionDimensions.AddDimension("Region", region);
+                        hostOperationRegionDimensions.AddDimension("HostId", hostId);
 
                         regionAZDimensions.AddDimension("Operation", operation);
                         
@@ -125,11 +127,14 @@ namespace BAMCIS.MultiAZApp.Utils
                         regionDimensions,
                         instanceRegionDimensions,
                         hostRegionDimensions
-                        //hostOperationRegionDimensions
                     );
 
                     if (instanceOperationRegionDimensions.DimensionKeys.Any()) {
                         logger.PutDimensions(instanceOperationRegionDimensions);
+                    }
+
+                    if (hostOperationRegionDimensions.DimensionKeys.Any()) {
+                        logger.PutDimensions(hostOperationRegionDimensions);
                     }
                 }
 
