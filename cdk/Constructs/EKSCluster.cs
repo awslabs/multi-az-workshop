@@ -78,7 +78,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             
             ILayerVersion kubetctlLayer = new KubectlV31Layer(this, "KubectlV31Layer");        
 
-            ILogGroup clusterLogGroup = new LogGroup(this, "ClusterLogGroup", new LogGroupProps() {
+            ILogGroup clusterLogGroup = new LogGroup(this, "cluster-log-group", new LogGroupProps() {
                 LogGroupName = "/aws/eks/" + props.ClusterName + "/cluster",
                 RemovalPolicy = RemovalPolicy.DESTROY,
                 Retention = RetentionDays.ONE_WEEK

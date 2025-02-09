@@ -42,8 +42,6 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
         public ISecurityGroup LoadBalancerSecurityGroup {get; set;}
 
         public ISubnetSelection Subnets {get; set;}
-
-        public string ApplicationImageUri {get; set;}
     }
 
     public class EC2FleetStack : NestedStack
@@ -604,7 +602,6 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                                 Fn.Join("\n",
                                     [
                                         "export AWS_REGION=" + Aws.REGION,
-                                        "export ECR_REPO_URI=" + props.ApplicationImageUri,
                                         "export URL_SUFFIX=" + Aws.URL_SUFFIX,
                                         "export ONEBOX=false",
                                         "export ACCOUNT_ID=" + Aws.ACCOUNT_ID

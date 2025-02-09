@@ -198,8 +198,9 @@ jobs:
           docker build --tag $PROJECT_NAME:latest --platform linux/arm64 --build-arg SRC=src --file ${{ github.workspace }}/build/dockerfile .
           docker save $PROJECT_NAME:latest | gzip > ${{ github.workspace }}/assets/container.tar.gz
           zip -r ${{ github.workspace }}/assets/app_deploy.zip ${{ github.workspace }}/assets/container.tar.gz
+          zip ${{ github.workspace }}/assets/app_deploy.zip ${{ github.workspace }}/assets/cloudwatch-agent.tar.gz
           cd ${{ github.workspace }}/app-src
-          zip -r ${{ github.workspace }}/assets/app_deploy.zip docker/
+          zip -r ${{ github.workspace }}/assets/app_deploy.zip docker/ docker/appspec.yml
           rm -rf ${{ github.workspace }}/app-src/output
 
       - name: Build failing arm64 container
@@ -210,12 +211,12 @@ jobs:
           cd ${{ github.workspace }}/app-src
           dotnet publish --configuration Release --runtime linux-musl-arm64 --output ${{ github.workspace }}/app-src/output/src -p:DefineConstants="FAIL" -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained
           cd ${{ github.workspace }}/app-src/output
-          docker build --tag $PROJECT_NAME:fail --platform linux/arm64 --build-arg SRC=src --file ${{ github.workspace }}/build/dockerfile .
-          docker save $PROJECT_NAME:fail | gzip > ${{ github.workspace }}/assets/container.fault.tar.gz
-          cp ${{ github.workspace }}/assets/container.fault.tar.gz /tmp/container.tar.gz
+          docker build --tag $PROJECT_NAME:latest --platform linux/arm64 --build-arg SRC=src --file ${{ github.workspace }}/build/dockerfile .
+          docker save $PROJECT_NAME:latest | gzip > /tmp/container.tar.gz
           zip -r ${{ github.workspace }}/assets/app_deploy_fail.zip /tmp/container.tar.gz
+          zip ${{ github.workspace }}/assets/app_deploy_fail.zip ${{ github.workspace }}/assets/cloudwatch-agent.tar.gz
           cd ${{ github.workspace }}/app-src
-          zip -r ${{ github.workspace }}/assets/app_deploy_fail.zip docker/
+          zip -r ${{ github.workspace }}/assets/app_deploy_fail.zip docker/ docker/appspec.yml
           rm -f /tmp/container.tar.gz
           rm -rf ${{ github.workspace }}/app-src/output
 

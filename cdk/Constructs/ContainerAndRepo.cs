@@ -6,28 +6,86 @@ using Amazon.CDK.AWS.IAM;
 using Amazon.CDK.AWS.Logs;
 using Constructs;
 using System.IO;
+using Amazon.CDK.AWS.ECR;
+using System;
 
 namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
 {
+    public class RepoAndContainerProps
+    {
+        public string RepositoryName {get; set;}
+        public string ContainerImageS3ObjectKey {get; set;}
+    }
+
+    public class RepoAndHelmChartProps
+    {
+        public string RepositoryName {get; set;}
+        public string HelmChartS3ObjectKey {get; set;}
+
+    }
+
     public class ContainerAndRepo : Construct, IConstruct
     {
-        public static IFunction UploaderFunction;
+        public IFunction UploaderFunction;
 
-        public static IProject ContainerBuildProject;
+        public IProject ContainerBuildProject;
 
-        static ContainerAndRepo()
+        public ContainerAndRepo(NestedStackWithSource scope, string id) : base(scope, id)
         {
-            Stack stack = new Stack();
-            UploaderFunction = SetupUploader(stack);
-            ContainerBuildProject = SetupContainerBuildProject(stack);
+            UploaderFunction = SetupUploader(scope);
+            ContainerBuildProject = SetupContainerBuildProject(scope);
         }
 
-        public ContainerAndRepo(Construct scope, string id) : base(scope, id)
+        /// <summary>
+        /// Creates a new ECR repository and uploads a container image to the repo
+        /// </summary>
+        /// <param name="props"></param>
+        /// <returns>The image URI</returns>
+        public CustomResource AddContainerAndRepo(RepoAndContainerProps props)
         {
+            Repository applicationRepo = new Repository(this, props.RepositoryName.Replace("/", "-") + "-repo", new RepositoryProps() {
+                EmptyOnDelete = true,
+                RemovalPolicy = RemovalPolicy.DESTROY,
+                RepositoryName = props.RepositoryName
+            });
 
+            CustomResource appContainerImage = new CustomResource(this, props.RepositoryName.Replace("/", "-") + "-container", new CustomResourceProps() {
+                ServiceToken = this.UploaderFunction.FunctionArn,
+                Properties = new Dictionary<string, object> {
+                    { "Type", "Docker" },
+                    { "Bucket", Fn.Ref("AssetsBucketName") },
+                    { "Key", Fn.Ref("AssetsBucketPrefix") + props.ContainerImageS3ObjectKey },
+                    { "ProjectName", this.ContainerBuildProject.ProjectName },
+                    { "Repository", applicationRepo.RepositoryName },
+                    { "Nonce", new Random().NextInt64() }
+                }
+            });
+
+            return appContainerImage;
         }
 
-        private static IFunction SetupUploader(Stack scope)
+        public CustomResource CreateRepoAndHelmChart(RepoAndHelmChartProps props)
+        {
+            Repository helmRepo = new Repository(this, props.RepositoryName.Replace("/", "-") + "-repo", new RepositoryProps() {
+                EmptyOnDelete = true,
+                RemovalPolicy = RemovalPolicy.DESTROY,
+                RepositoryName = props.RepositoryName
+            });
+
+            CustomResource chart = new CustomResource(this, props.RepositoryName.Replace("/", "-") + "-container", new CustomResourceProps() {
+                ServiceToken = this.UploaderFunction.FunctionArn,
+                Properties = new Dictionary<string, object> {
+                    { "Type", "Helm" },
+                    { "Bucket", Fn.Ref("AssetsBucketName") },
+                    { "Key", Fn.Ref("AssetsBucketPrefix") + props.HelmChartS3ObjectKey },
+                    { "Repository", helmRepo.RepositoryName }
+                }
+            });
+
+            return chart;
+        }
+
+        private static IFunction SetupUploader(Construct scope)
         {
             IManagedPolicy uploaderPolicy = new ManagedPolicy(scope, "UploaderPolicy", new ManagedPolicyProps(){
                 Statements = new PolicyStatement[] {
@@ -123,7 +181,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             return uploader;
         }  
 
-        private static IProject SetupContainerBuildProject(Stack scope)
+        private static IProject SetupContainerBuildProject(Construct scope)
         {
             // This will download the container tar.gz from S3, unzip it, then
             // push to the ECR repository
