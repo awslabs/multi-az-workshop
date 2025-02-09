@@ -68,7 +68,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
 
             this.applicationFaultImage = faultApplicationRepo.RepositoryUri + ":latest";
 
-            CustomResource appContainerWithFaultImage = new CustomResource(this, "AppContainer", new CustomResourceProps() {
+            CustomResource appContainerWithFaultImage = new CustomResource(this, "AppFaultContainer", new CustomResourceProps() {
                 ServiceToken = this.uploaderFunction.FunctionArn,
                 Properties = new Dictionary<string, object> {
                     { "Type", "Docker" },
