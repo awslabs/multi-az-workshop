@@ -18,8 +18,6 @@ hooks:
   AfterInstall:
     - location: scripts/enable-kestrel-service.sh
       runas: root
-    - location: scripts/open-firewall.sh
-      runas: root
   ApplicationStart:
     - location: scripts/start-kestrel-service.sh
       runas: root
