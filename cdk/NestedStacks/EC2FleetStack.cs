@@ -70,7 +70,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     "12_start-codedeploy-agent",
                     "13_install_icu_support",
                     "14_set_database_details",
-                    "15_install-docker"
+                    "15_install-docker",
+                    "16_verify-docker"
                 }
             },
             {
@@ -558,7 +559,14 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                                 Enabled = true,
                                 EnsureRunning = true,
                                 ServiceManager = ServiceManager.SYSVINIT
-                            }),
+                            })
+                        }
+                    )
+                },
+                {
+                    "16_verify-docker",
+                    new InitConfig(
+                        new InitElement[] {
                             InitCommand.ShellCommand("usermod -a -G docker ec2-user"),
                             InitCommand.ShellCommand("docker ps")
                         }
