@@ -152,6 +152,11 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 albSG.AddIngressRule(Peer.Ipv6(Fn.Select(0, this.NetworkStack.Vpc.VpcIpv6CidrBlocks)), Port.Tcp(80));
             }
 
+            var appStack = new ApplicationStack(this, "app-stack", new ApplicationStackProps() {
+                ContainerImageWithFaultObjectKey = "container.fault.tar.gz",
+                ContainerImageObjectKey = "container.tar.gz",
+            });
+
             // Deploys the EC2 auto scaling groups, load balancers, and target groups
             // with accompanying resources like IAM and log groups
             this.EC2Stack = new EC2FleetStack(this, "ec2-", new EC2FleetStackProps() {
@@ -176,6 +181,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 LoadBalancerSecurityGroup = albSG,
                 AdminRoleName = participantRole.ValueAsString,
                 IAMResourcePath = "/front-end/eks-fleet/",
+                ContainerBuildProject = appStack.containerBuildProject,
+                UploaderFunction = appStack.uploaderFunction
             });
 
             this.EKSStack.Node.AddDependency(this.AZTaggerStack);

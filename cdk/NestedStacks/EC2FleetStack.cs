@@ -64,7 +64,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     "06_restart-amazon-cloudwatch-agent",
                     "07_xray-daemon-download",
                     "08_xray-daemon-install",
-                    "09_setup-httpd",
+                    //"09_setup-httpd",
                     "10_setup-firewalld",
                     "11_install-codedeploy",
                     "12_start-codedeploy-agent",
@@ -249,6 +249,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
             });
 
             sg.AddIngressRule(Peer.SecurityGroupId(props.LoadBalancerSecurityGroup.SecurityGroupId), Port.HTTP);
+            sg.AddIngressRule(Peer.SecurityGroupId(props.LoadBalancerSecurityGroup.SecurityGroupId), Port.Tcp(5000));
             
             #endregion
 

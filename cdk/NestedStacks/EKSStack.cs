@@ -37,6 +37,10 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
         public string IAMResourcePath {get; set;} = "/front-end/eks-fleet/";
 
         public string AdminRoleName {get; set;}
+
+        public IProject ContainerBuildProject {get; set;}
+
+        public IFunction UploaderFunction {get; set;}
     }
 
     public interface IEKSStackProps : INestedStackProps
@@ -52,6 +56,10 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
         public string IAMResourcePath {get; set;}
 
         public string AdminRoleName {get; set;}
+
+        public IProject ContainerBuildProject {get; set;}
+
+        public IFunction UploaderFunction {get; set;}
     }
 
     public class EKSStack : NestedStackWithSource
@@ -63,113 +71,113 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
             Dictionary<string, string> versions = JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText("../build/versions.json"));
 
             //BuildHelmLayer().Wait(); // No available to do in .NET 6
-            IFunction uploader = this.SetupUploader();
+            //IFunction uploader = this.SetupUploader();
 
             // This will download the container tar.gz from S3, unzip it, then
             // push to the ECR repository
-            Project containerBuild = new Project(this, "AppBuild", new ProjectProps() {      
-                Environment = new BuildEnvironment() {
-                    BuildImage = LinuxArmBuildImage.AMAZON_LINUX_2_STANDARD_3_0,
-                    Privileged = true
-                },
-                BuildSpec = BuildSpec.FromObjectToYaml(new Dictionary<string, object>() {
-                    { "version", "0.2"},
-                    { "phases", new Dictionary<string, object>() {
-                        {"build", new Dictionary<string, object>() {
-                            {"commands", new string[] {
-                                "ACCOUNT=$(echo $CODEBUILD_BUILD_ARN | cut -d':' -f5)",
-                                "echo $ACCOUNT",
-                                "echo $BUCKET",
-                                "echo $KEY",
-                                "file=${KEY#*/}",
-                                "echo $file",
-                                "aws s3 cp s3://$BUCKET/$KEY $file",
-                                "aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT.dkr.ecr.$AWS_REGION." + Fn.Ref("AWS::URLSuffix"),
-                                "output=$(docker load --input $file)",
-                                "echo $output",
-                                "IMAGE=$(echo $output | cut -d':' -f2 | xargs)",
-                                "echo $IMAGE",
-                                "VER=$(echo $output | cut -d':' -f3 | xargs)",
-                                "echo $VER",
-                                "docker tag ${IMAGE}:${VER} $ACCOUNT.dkr.ecr.$AWS_REGION." + Fn.Ref("AWS::URLSuffix") + "/${REPO}:${VER}",                                              
-                                "docker push $ACCOUNT.dkr.ecr.$AWS_REGION." + Fn.Ref("AWS::URLSuffix") + "/${REPO}:${VER}"
-                            }}
-                        }}
-                    }}
-                }),
-                Role = new Role(this, "CodeBuildRole", new RoleProps() {
-                    AssumedBy = new ServicePrincipal("codebuild.amazonaws.com"),
-                    ManagedPolicies = new IManagedPolicy[] {
-                        new ManagedPolicy(this, "CodeBuildPolicy", new ManagedPolicyProps() {
-                            Statements = new PolicyStatement[] {
-                                new PolicyStatement(new PolicyStatementProps() {
-                                    Effect = Effect.ALLOW,
-                                    Resources = new string[] { "*" },
-                                    Actions = new string[] {
-                                        "s3:GetObject",
-                                        "ecr:CompleteLayerUpload",
-                                        "ecr:UploadLayerPart",
-                                        "ecr:InitiateLayerUpload",
-                                        "ecr:BatchCheckLayerAvailability",
-                                        "ecr:PutImage",
-                                        "ecr:DescribeImages",
-                                        "ecr:DescribeRepositories",
-                                        "ecr:GetAuthorizationToken",
-                                        "ecr:BatchGetImage"
-                                    }
-                                }),
-                                new PolicyStatement(new PolicyStatementProps() {
-                                    Effect = Effect.ALLOW,
-                                    Resources = new string[] { "*" },
-                                    Actions = new string[] {
-                                        "kms:Decrypt"
-                                    }
-                                }),
-                                new PolicyStatement(new PolicyStatementProps() {
-                                    Effect = Effect.ALLOW,
-                                    Resources = new string[] { 
-                                        //Fn.Sub("arn:${AWS::Partition}:${AWS::Region}:${AWS::AccountId}:report-group/*")
-                                        "*"
-                                     },
-                                    Actions = new string[] {
-                                        "codebuild:CreateReportGroup",
-                                        "codebuild:CreateReport",
-                                        "codebuild:UpdateReport",
-                                        "codebuild:BatchPutTestCases",
-                                        "codebuild:BatchPutCodeCoverages"
-                                    }
-                                }),
-                                new PolicyStatement(new PolicyStatementProps() {
-                                    Effect = Effect.ALLOW,
-                                    Resources = new string[] { 
-                                        //Fn.Sub("arn:${AWS::Partition}:${AWS::Region}:${AWS::AccountId}:log-group/aws/codebuild/*")
-                                        "*"
-                                    },
-                                    Actions = new string[] {
-                                        "logs:CreateLogGroup",
-                                        "logs:CreateLogStream",
-                                        "logs:PutLogEvents"
-                                    }
-                                })
-                            }
-                        })
-                    }
-                })
-            });
+            // Project containerBuild = new Project(this, "AppBuild", new ProjectProps() {      
+            //     Environment = new BuildEnvironment() {
+            //         BuildImage = LinuxArmBuildImage.AMAZON_LINUX_2_STANDARD_3_0,
+            //         Privileged = true
+            //     },
+            //     BuildSpec = BuildSpec.FromObjectToYaml(new Dictionary<string, object>() {
+            //         { "version", "0.2"},
+            //         { "phases", new Dictionary<string, object>() {
+            //             {"build", new Dictionary<string, object>() {
+            //                 {"commands", new string[] {
+            //                     "ACCOUNT=$(echo $CODEBUILD_BUILD_ARN | cut -d':' -f5)",
+            //                     "echo $ACCOUNT",
+            //                     "echo $BUCKET",
+            //                     "echo $KEY",
+            //                     "file=${KEY#*/}",
+            //                     "echo $file",
+            //                     "aws s3 cp s3://$BUCKET/$KEY $file",
+            //                     "aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT.dkr.ecr.$AWS_REGION." + Fn.Ref("AWS::URLSuffix"),
+            //                     "output=$(docker load --input $file)",
+            //                     "echo $output",
+            //                     "IMAGE=$(echo $output | cut -d':' -f2 | xargs)",
+            //                     "echo $IMAGE",
+            //                     "VER=$(echo $output | cut -d':' -f3 | xargs)",
+            //                     "echo $VER",
+            //                     "docker tag ${IMAGE}:${VER} $ACCOUNT.dkr.ecr.$AWS_REGION." + Fn.Ref("AWS::URLSuffix") + "/${REPO}:${VER}",                                              
+            //                     "docker push $ACCOUNT.dkr.ecr.$AWS_REGION." + Fn.Ref("AWS::URLSuffix") + "/${REPO}:${VER}"
+            //                 }}
+            //             }}
+            //         }}
+            //     }),
+            //     Role = new Role(this, "CodeBuildRole", new RoleProps() {
+            //         AssumedBy = new ServicePrincipal("codebuild.amazonaws.com"),
+            //         ManagedPolicies = new IManagedPolicy[] {
+            //             new ManagedPolicy(this, "CodeBuildPolicy", new ManagedPolicyProps() {
+            //                 Statements = new PolicyStatement[] {
+            //                     new PolicyStatement(new PolicyStatementProps() {
+            //                         Effect = Effect.ALLOW,
+            //                         Resources = new string[] { "*" },
+            //                         Actions = new string[] {
+            //                             "s3:GetObject",
+            //                             "ecr:CompleteLayerUpload",
+            //                             "ecr:UploadLayerPart",
+            //                             "ecr:InitiateLayerUpload",
+            //                             "ecr:BatchCheckLayerAvailability",
+            //                             "ecr:PutImage",
+            //                             "ecr:DescribeImages",
+            //                             "ecr:DescribeRepositories",
+            //                             "ecr:GetAuthorizationToken",
+            //                             "ecr:BatchGetImage"
+            //                         }
+            //                     }),
+            //                     new PolicyStatement(new PolicyStatementProps() {
+            //                         Effect = Effect.ALLOW,
+            //                         Resources = new string[] { "*" },
+            //                         Actions = new string[] {
+            //                             "kms:Decrypt"
+            //                         }
+            //                     }),
+            //                     new PolicyStatement(new PolicyStatementProps() {
+            //                         Effect = Effect.ALLOW,
+            //                         Resources = new string[] { 
+            //                             //Fn.Sub("arn:${AWS::Partition}:${AWS::Region}:${AWS::AccountId}:report-group/*")
+            //                             "*"
+            //                          },
+            //                         Actions = new string[] {
+            //                             "codebuild:CreateReportGroup",
+            //                             "codebuild:CreateReport",
+            //                             "codebuild:UpdateReport",
+            //                             "codebuild:BatchPutTestCases",
+            //                             "codebuild:BatchPutCodeCoverages"
+            //                         }
+            //                     }),
+            //                     new PolicyStatement(new PolicyStatementProps() {
+            //                         Effect = Effect.ALLOW,
+            //                         Resources = new string[] { 
+            //                             //Fn.Sub("arn:${AWS::Partition}:${AWS::Region}:${AWS::AccountId}:log-group/aws/codebuild/*")
+            //                             "*"
+            //                         },
+            //                         Actions = new string[] {
+            //                             "logs:CreateLogGroup",
+            //                             "logs:CreateLogStream",
+            //                             "logs:PutLogEvents"
+            //                         }
+            //                     })
+            //                 }
+            //             })
+            //         }
+            //     })
+            // });
 
-            LogGroup logs = new LogGroup(this, "BuildProjectLogGroup", new LogGroupProps() {
-                LogGroupName = "/aws/codebuild/" + containerBuild.ProjectName,
-                Retention = RetentionDays.ONE_WEEK,
-                RemovalPolicy = RemovalPolicy.DESTROY
-            });
+            // LogGroup logs = new LogGroup(this, "BuildProjectLogGroup", new LogGroupProps() {
+            //     LogGroupName = "/aws/codebuild/" + containerBuild.ProjectName,
+            //     Retention = RetentionDays.ONE_WEEK,
+            //     RemovalPolicy = RemovalPolicy.DESTROY
+            // });
 
             EKSCluster cluster = new EKSCluster(this, "Cluster", new EKSClusterProps() {
                 AdminRole = Role.FromRoleName(this, "AdminRole", props.AdminRoleName),
                 CpuArch = props.CpuArch,
                 DatabaseCluster = props.Database,
                 Vpc = props.Vpc,
-                ContainerBuildProject = containerBuild,
-                UploaderFunction = uploader,
+                ContainerBuildProject = props.ContainerBuildProject,
+                UploaderFunction = props.UploaderFunction,
                 LoadBalancerSecurityGroup = props.LoadBalancerSecurityGroup,
                 ClusterName = "multi-az-workshop-eks-cluster",
                 Version = versions["EKS"] 
@@ -179,15 +187,15 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
         
             Istio istio = new Istio(this, "Istio", new IstioProps() {
                 Cluster = cluster.Cluster,
-                ContainerBuildProject = containerBuild,
-                UploaderFunction = uploader,
+                ContainerBuildProject = props.ContainerBuildProject,
+                UploaderFunction = props.UploaderFunction,
                 Version = versions["ISTIO"]
             });
 
             AwsLoadBalancerController lbController = new AwsLoadBalancerController(this, "AwsLoadBalancerController", new AwsLoadBalancerControllerProps() {
                 Cluster = cluster.Cluster,
-                ContainerBuildProject = containerBuild,
-                UploaderFunction = uploader,
+                ContainerBuildProject = props.ContainerBuildProject,
+                UploaderFunction = props.UploaderFunction,
                 ContainerVersion = versions["LB_CONTROLLER_CONTAINER"],
                 HelmVersion = versions["LB_CONTROLLER_HELM"]
             });
@@ -195,9 +203,9 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
 
             EKSApplication app = new EKSApplication(this, "EKSApp", new EKSApplicationProps() {
                 Cluster = cluster.Cluster,
-                ContainerBuildProject = containerBuild,
+                ContainerBuildProject = props.ContainerBuildProject,
                 DatabaseCluster = props.Database,
-                UploaderFunction = uploader,
+                UploaderFunction = props.UploaderFunction,
                 ContainerObjectKey = "container.tar.gz",
                 Namespace = "multi-az-workshop"
             });
