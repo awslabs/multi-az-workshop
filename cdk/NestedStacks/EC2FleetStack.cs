@@ -219,6 +219,24 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     })
                 }
             });
+            ManagedPolicy ecrPolicy = new ManagedPolicy(this, "ecr-policy", new ManagedPolicyProps() {
+                Path = props.IAMResourcePath,
+                Statements = new PolicyStatement[] {
+                    new PolicyStatement(new PolicyStatementProps() { 
+                        Actions = new string[] { 
+                            "ecr:BatchCheckLayerAvailability",
+                            "ecr:GetDownloadUrlForLayer",
+                            "ecr:BatchGetImage",
+                            "ecr:GetAuthorizationToken",
+                            "s3:GetObject",
+                            "ecr:DescribeImages",
+                            "ecr:DescribeRepositories"
+                        },
+                        Effect = Effect.ALLOW,
+                        Resources = new string[] { "*" } 
+                    })
+                }
+            });
                      
             Role role = new Role(this, "InstanceRole", new RoleProps() {
                 Description = "The IAM role used by the front-end EC2 fleet",
@@ -231,7 +249,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     s3PatchingManagedPolicy,
                     codedeployManagedPolicy,
                     ssmParameterManagedPolicy,
-                    ssmPatchingManagedPolicy
+                    ssmPatchingManagedPolicy,
+                    ecrPolicy
                 }
             });                
             InstanceProfile profile = new InstanceProfile(this, "InstanceProfile", new InstanceProfileProps() {
