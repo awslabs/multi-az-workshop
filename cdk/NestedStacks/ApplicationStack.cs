@@ -60,7 +60,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
 
             // Create the repo for the container running the wild rydes app
             // and upload the container to the repo via the custom resource
-            Repository faultApplicationRepo = new Repository(this, "AppContainerImageRepo", new RepositoryProps() {
+            Repository faultApplicationRepo = new Repository(this, "AppFaultContainerImageRepo", new RepositoryProps() {
                 EmptyOnDelete = true,
                 RemovalPolicy = RemovalPolicy.DESTROY,
                 RepositoryName = "multi-az-workshop-fault"
