@@ -1,10 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
-using System;
+
 using System.Collections.Generic;
 using Amazon.CDK;
 using Amazon.CDK.AWS.CodeBuild;
-using Amazon.CDK.AWS.ECR;
 using Amazon.CDK.AWS.EKS;
 using Amazon.CDK.AWS.ElasticLoadBalancingV2;
 using Amazon.CDK.AWS.IAM;
@@ -22,6 +21,10 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
         public IDatabaseCluster DatabaseCluster {get; set;}
         public string Namespace {get; set;}
         public string ContainerObjectKey {get; set;}
+
+        public string ApplicationImage {get; set;}
+
+        public string CloudWatchContainerImage {get; set;}
     }
 
     public class EKSApplicationProps : IEKSApplicationProps
@@ -32,6 +35,9 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
         public IDatabaseCluster DatabaseCluster {get; set;}
         public string Namespace {get; set;}
         public string ContainerObjectKey {get; set;}
+
+        public string ApplicationImage {get; set;}
+        public string CloudWatchContainerImage {get; set;}
     }
 
     public class EKSApplication : Construct
@@ -46,7 +52,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
 
             // Create the repo for the container running the wild rydes app
             // and upload the container to the repo via the custom resource
-            Repository repo = new Repository(this, "AppContainerImageRepo", new RepositoryProps() {
+            /*Repository repo = new Repository(this, "AppContainerImageRepo", new RepositoryProps() {
                 EmptyOnDelete = true,
                 RemovalPolicy = RemovalPolicy.DESTROY,
                 RepositoryName = props.Namespace
@@ -77,7 +83,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                     { "ProjectName", props.ContainerBuildProject.ProjectName },
                     { "Repository", cloudwatchAgentRepo.RepositoryName }
                 }
-            });
+            });*/
 
             Role podRole = new Role(this, "PodRole", new RoleProps() {
                 Description = "The IAM role used by the front-end EKS fleet",
@@ -358,7 +364,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                                     }},
                                     {"containers", new Dictionary<string, object>[] {
                                         new Dictionary<string, object>() {
-                                            {"image", Fn.Sub("${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/") + repo.RepositoryName + ":" + "latest"},
+                                            {"image", props.ApplicationImage },
                                             {"imagePullPolicy", "Always"},
                                             {"name", props.Namespace },
                                             {"ports", new Dictionary<string, object>[] {
@@ -374,7 +380,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                                             }}
                                         },
                                         new Dictionary<string, object>() {
-                                            {"image", Fn.Sub("${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/cloudwatch-agent/cloudwatch-agent:latest")},
+                                            {"image", props.CloudWatchContainerImage },
                                             {"imagePullPolicy", "IfNotPresent"},
                                             {"name", "cloudwatch-agent" },
                                             {"resources", new Dictionary<string, object>() {
@@ -409,8 +415,6 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             });
 
             appDeployment.Node.AddDependency(appService);
-            appDeployment.Node.AddDependency(appContainerImage);
-            appDeployment.Node.AddDependency(cloudwatchAgentContainerImage);
             appDeployment.Node.AddDependency(istioVirtualService);
             appDeployment.Node.AddDependency(podIdentity);
             appDeployment.Node.AddDependency(agentConfigMap);
