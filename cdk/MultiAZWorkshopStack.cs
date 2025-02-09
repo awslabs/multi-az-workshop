@@ -346,7 +346,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 TotalEC2InstancesInFleet = fleetSize,
                 ApplicationName = "multi-az-workshop",
                 MinimumHealthyHostsPerZone = 1,     
-                Alarms = new IAlarm[] { multiAvailabilityZoneObservability.ServiceAlarms.RegionalAvailabilityCanaryAlarm}
+                //Alarms = new IAlarm[] { multiAvailabilityZoneObservability.ServiceAlarms.RegionalAvailabilityCanaryAlarm}
             });  
 
             CodeDeployStack.Node.AddDependency(listener);
