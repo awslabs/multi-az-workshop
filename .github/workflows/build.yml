@@ -291,7 +291,7 @@ jobs:
           fi
           echo WAITING FOR CHANGE SET
           aws cloudformation wait change-set-create-complete --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --region $AWS_REGION
-          aws cloudformation execute-change-set --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --region $AWS_REGION
+          aws cloudformation execute-change-set --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --region $AWS_REGION --disable-rollback
           echo "CHANGE_SET=$PROJECT_NAME-$date" >> "$GITHUB_OUTPUT"
           echo "STACK_NAME=$PROJECT_NAME" >> "$GITHUB_OUTPUT"
     outputs:

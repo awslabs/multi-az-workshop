@@ -601,10 +601,10 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                                 "/etc/environment",
                                 Fn.Join("\n",
                                     [
-                                        "export AWS_REGION=" + Aws.REGION,
-                                        "export URL_SUFFIX=" + Aws.URL_SUFFIX,
-                                        "export ONEBOX=false",
-                                        "export ACCOUNT_ID=" + Aws.ACCOUNT_ID
+                                        "AWS_REGION=" + Aws.REGION,
+                                        "URL_SUFFIX=" + Aws.URL_SUFFIX,
+                                        "ONEBOX=false",
+                                        "ACCOUNT_ID=" + Aws.ACCOUNT_ID
                                     ]
                                 ),
                                 new InitFileOptions() {
