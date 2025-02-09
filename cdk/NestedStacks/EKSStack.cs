@@ -37,10 +37,6 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
         public string IAMResourcePath {get; set;} = "/front-end/eks-fleet/";
 
         public string AdminRoleName {get; set;}
-
-        public IProject ContainerBuildProject {get; set;}
-
-        public IFunction UploaderFunction {get; set;}
     }
 
     public interface IEKSStackProps : INestedStackProps
@@ -56,10 +52,6 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
         public string IAMResourcePath {get; set;}
 
         public string AdminRoleName {get; set;}
-
-        public IProject ContainerBuildProject {get; set;}
-
-        public IFunction UploaderFunction {get; set;}
     }
 
     public class EKSStack : NestedStackWithSource
@@ -171,13 +163,20 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
             //     RemovalPolicy = RemovalPolicy.DESTROY
             // });
 
+            // Creates the Lambda function and CodeBuild project to create
+            // ECR repos and upload docker containers or helm charts to them
+            // TODO: Since the EC2 instances are going to get the container tgz images
+            // pushed to them with CodeDeploy from S3, creation of this can probably
+            // get pushed down into the EKS stack as well as the app and cw agent containers
+            var repoHelmContainerCreator = new ContainerAndRepo(this, "container-and-repo-builder");
+
             EKSCluster cluster = new EKSCluster(this, "Cluster", new EKSClusterProps() {
                 AdminRole = Role.FromRoleName(this, "AdminRole", props.AdminRoleName),
                 CpuArch = props.CpuArch,
                 DatabaseCluster = props.Database,
                 Vpc = props.Vpc,
-                ContainerBuildProject = props.ContainerBuildProject,
-                UploaderFunction = props.UploaderFunction,
+                ContainerBuildProject = repoHelmContainerCreator.ContainerBuildProject,
+                UploaderFunction = repoHelmContainerCreator.UploaderFunction,
                 LoadBalancerSecurityGroup = props.LoadBalancerSecurityGroup,
                 ClusterName = "multi-az-workshop-eks-cluster",
                 Version = versions["EKS"] 
@@ -187,15 +186,15 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
         
             Istio istio = new Istio(this, "Istio", new IstioProps() {
                 Cluster = cluster.Cluster,
-                ContainerBuildProject = props.ContainerBuildProject,
-                UploaderFunction = props.UploaderFunction,
+                ContainerBuildProject = repoHelmContainerCreator.ContainerBuildProject,
+                UploaderFunction = repoHelmContainerCreator.UploaderFunction,
                 Version = versions["ISTIO"]
             });
 
             AwsLoadBalancerController lbController = new AwsLoadBalancerController(this, "AwsLoadBalancerController", new AwsLoadBalancerControllerProps() {
                 Cluster = cluster.Cluster,
-                ContainerBuildProject = props.ContainerBuildProject,
-                UploaderFunction = props.UploaderFunction,
+                ContainerBuildProject = repoHelmContainerCreator.ContainerBuildProject,
+                UploaderFunction = repoHelmContainerCreator.UploaderFunction,
                 ContainerVersion = versions["LB_CONTROLLER_CONTAINER"],
                 HelmVersion = versions["LB_CONTROLLER_HELM"]
             });
@@ -203,9 +202,9 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
 
             EKSApplication app = new EKSApplication(this, "EKSApp", new EKSApplicationProps() {
                 Cluster = cluster.Cluster,
-                ContainerBuildProject = props.ContainerBuildProject,
+                ContainerBuildProject = repoHelmContainerCreator.ContainerBuildProject,
+                UploaderFunction = repoHelmContainerCreator.UploaderFunction,
                 DatabaseCluster = props.Database,
-                UploaderFunction = props.UploaderFunction,
                 ContainerObjectKey = "container.tar.gz",
                 Namespace = "multi-az-workshop"
             });
@@ -408,7 +407,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                 Code = Code.FromInline(File.ReadAllText("./uploader-src/index.py"))
             });
 
-            LogGroup logs = new LogGroup(this, "logGroup", new LogGroupProps() {
+            LogGroup logs = new LogGroup(this, "log-group", new LogGroupProps() {
                 LogGroupName = $"/aws/lambda/{uploader.FunctionName}",
                 Retention = RetentionDays.ONE_DAY,
                 RemovalPolicy = RemovalPolicy.DESTROY
