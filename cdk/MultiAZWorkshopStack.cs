@@ -168,7 +168,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 IAMResourcePath = "/front-end/ec2-fleet/",
                 Database = this.DatabaseStack.Database,
                 LoadBalancerSecurityGroup = albSG,
-                Subnets = new SubnetSelection() {  SubnetType = SubnetType.PRIVATE_ISOLATED }
+                Subnets = new SubnetSelection() {  SubnetType = SubnetType.PRIVATE_ISOLATED },
+                ApplicationImageUri = appStack.applicationImage
             });        
 
             this.EC2Stack.Node.AddDependency(this.AZTaggerStack);   

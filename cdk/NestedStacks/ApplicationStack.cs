@@ -58,15 +58,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                 }
             });
 
-            // Create the repo for the container running the wild rydes app
-            // and upload the container to the repo via the custom resource
-            Repository faultApplicationRepo = new Repository(this, "AppFaultContainerImageRepo", new RepositoryProps() {
-                EmptyOnDelete = true,
-                RemovalPolicy = RemovalPolicy.DESTROY,
-                RepositoryName = "multi-az-workshop-fault"
-            });
-
-            this.applicationFaultImage = faultApplicationRepo.RepositoryUri + ":latest";
+            this.applicationFaultImage = applicationRepo.RepositoryUri + ":fail";
 
             CustomResource appContainerWithFaultImage = new CustomResource(this, "AppFaultContainer", new CustomResourceProps() {
                 ServiceToken = this.uploaderFunction.FunctionArn,
@@ -75,7 +67,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     { "Bucket", Fn.Ref("AssetsBucketName") },
                     { "Key", Fn.Ref("AssetsBucketPrefix") + props.ContainerImageWithFaultObjectKey },
                     { "ProjectName", this.containerBuildProject.ProjectName },
-                    { "Repository", faultApplicationRepo.RepositoryName },
+                    { "Repository", applicationRepo.RepositoryName },
                     { "Nonce", new Random().NextInt64() }
                 }
             });
