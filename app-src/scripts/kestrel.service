@@ -11,7 +11,7 @@ Restart=always
 RestartSec=10
 KillSignal=SIGINT
 SyslogIdentifier=multi-az-workshop-application
-User=apache
+User=web
 Environment=ASPNETCORE_ENVIRONMENT=Production 
 
 [Install]

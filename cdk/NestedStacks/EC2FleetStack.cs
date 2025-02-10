@@ -64,15 +64,15 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     "06_restart-amazon-cloudwatch-agent",
                     "07_xray-daemon-download",
                     "08_xray-daemon-install",
-                    //"09_setup-httpd",
                     "10_setup-firewalld",
                     "11_install-codedeploy",
                     "12_start-codedeploy-agent",
                     "13_install_icu_support",
                     "14_set_database_details",
                     "15_install-docker",
-                    "16_verify-docker",
-                    "17_set-env"
+                    "16_setup-web-user",
+                    "17_verify-docker",
+                    "18_set-env"
                 }
             },
             {
@@ -511,17 +511,6 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     })                        
                 },
                 {
-                    "09_setup-httpd",
-                    new InitConfig(new InitElement[] {
-                        InitPackage.Yum("httpd"),
-                        InitService.Enable("httpd", new InitServiceOptions() {
-                            Enabled = true,
-                            EnsureRunning = true,
-                            ServiceManager = ServiceManager.SYSVINIT
-                        })
-                    })                        
-                },
-                {
                     "10_setup-firewalld",
                     new InitConfig(new InitElement[] {
                         InitPackage.Yum("firewalld"),
@@ -585,16 +574,23 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     )
                 },
                 {
-                    "16_verify-docker",
+                    "16_setup-web-user",
+                    new InitConfig(new InitElement[] {
+                        new InitUser("web", new InitUserOptions() {                 
+                        })
+                    })                        
+                },
+                {
+                    "17_verify-docker",
                     new InitConfig(
                         new InitElement[] {
-                            InitCommand.ShellCommand("usermod -a -G docker ec2-user"),
+                            InitCommand.ShellCommand("usermod -a -G docker web"),
                             InitCommand.ShellCommand("docker ps")
                         }
                     )
                 },
                 {
-                    "17_set-env",
+                    "18_set-env",
                     new InitConfig(
                         new InitElement[] {
                             InitFile.FromString(
