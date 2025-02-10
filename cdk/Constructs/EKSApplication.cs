@@ -16,28 +16,17 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
     public interface IEKSApplicationProps
     {
         public ICluster Cluster {get; set;}
-        public IFunction UploaderFunction {get; set;}
-        public IProject ContainerBuildProject {get; set;}
+        public ContainerAndRepo ContainerAndRepoBuilder {get; set;}
         public IDatabaseCluster DatabaseCluster {get; set;}
         public string Namespace {get; set;}
-        public string ContainerObjectKey {get; set;}
-
-        public string ApplicationImage {get; set;}
-
-        public string CloudWatchContainerImage {get; set;}
     }
 
     public class EKSApplicationProps : IEKSApplicationProps
     {
         public ICluster Cluster {get; set;}
-        public IFunction UploaderFunction {get; set;}
-        public IProject ContainerBuildProject {get; set;}
+        public ContainerAndRepo ContainerAndRepoBuilder {get; set;}
         public IDatabaseCluster DatabaseCluster {get; set;}
         public string Namespace {get; set;}
-        public string ContainerObjectKey {get; set;}
-
-        public string ApplicationImage {get; set;}
-        public string CloudWatchContainerImage {get; set;}
     }
 
     public class EKSApplication : Construct
@@ -84,6 +73,16 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                     { "Repository", cloudwatchAgentRepo.RepositoryName }
                 }
             });*/
+
+            var appContainer = props.ContainerAndRepoBuilder.AddContainerAndRepo(new RepoAndContainerProps() {
+                ContainerImageS3ObjectKey = "container.tar.gz",
+                RepositoryName = props.Namespace
+            });
+
+            var cwAgentContainer = props.ContainerAndRepoBuilder.AddContainerAndRepo(new RepoAndContainerProps() {
+                ContainerImageS3ObjectKey = "cloudwatch-agent.tar.gz",
+                RepositoryName = "cloudwatch-agent/cloudwatch-agent"
+            });
 
             Role podRole = new Role(this, "PodRole", new RoleProps() {
                 Description = "The IAM role used by the front-end EKS fleet",
@@ -364,7 +363,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                                     }},
                                     {"containers", new Dictionary<string, object>[] {
                                         new Dictionary<string, object>() {
-                                            {"image", props.ApplicationImage },
+                                            {"image", appContainer.Repository.RepositoryUri + ":latest" },
                                             {"imagePullPolicy", "Always"},
                                             {"name", props.Namespace },
                                             {"ports", new Dictionary<string, object>[] {
@@ -380,7 +379,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                                             }}
                                         },
                                         new Dictionary<string, object>() {
-                                            {"image", props.CloudWatchContainerImage },
+                                            {"image", cwAgentContainer.Repository.RepositoryUri + ":latest" },
                                             {"imagePullPolicy", "IfNotPresent"},
                                             {"name", "cloudwatch-agent" },
                                             {"resources", new Dictionary<string, object>() {
@@ -418,6 +417,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             appDeployment.Node.AddDependency(istioVirtualService);
             appDeployment.Node.AddDependency(podIdentity);
             appDeployment.Node.AddDependency(agentConfigMap);
+            appDeployment.Node.AddDependency(appContainer.Dependable);
+            appDeployment.Node.AddDependency(cwAgentContainer.Dependable);
 
             ApplicationTargetGroup tgp = new ApplicationTargetGroup(this, "AppTargetGroup", new ApplicationTargetGroupProps() {
                 HealthCheck = new HealthCheck() { 

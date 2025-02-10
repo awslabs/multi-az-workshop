@@ -8,6 +8,7 @@ using Constructs;
 using System.IO;
 using Amazon.CDK.AWS.ECR;
 using System;
+using Amazon.CDK.AWS.StepFunctions;
 
 namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
 {
@@ -20,8 +21,15 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
     public class RepoAndHelmChartProps
     {
         public string RepositoryName {get; set;}
-        public string HelmChartS3ObjectKey {get; set;}
+        public string HelmChartName {get; set;}
+        public string Version {get; set;}
+    }
 
+    public class WaitableResponse
+    {
+        public IDependable Dependable {get; set;}
+
+        public Repository Repository {get; set;}
     }
 
     public class ContainerAndRepo : Construct, IConstruct
@@ -41,7 +49,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
         /// </summary>
         /// <param name="props"></param>
         /// <returns>The image URI</returns>
-        public CustomResource AddContainerAndRepo(RepoAndContainerProps props)
+        public WaitableResponse AddContainerAndRepo(RepoAndContainerProps props)
         {
             Repository applicationRepo = new Repository(this, props.RepositoryName.Replace("/", "-") + "-repo", new RepositoryProps() {
                 EmptyOnDelete = true,
@@ -61,28 +69,34 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 }
             });
 
-            return appContainerImage;
+            return new WaitableResponse() {
+                Dependable = appContainerImage,
+                Repository = applicationRepo
+            };
         }
 
-        public CustomResource CreateRepoAndHelmChart(RepoAndHelmChartProps props)
+        public WaitableResponse CreateRepoAndHelmChart(RepoAndHelmChartProps props)
         {
-            Repository helmRepo = new Repository(this, props.RepositoryName.Replace("/", "-") + "-repo", new RepositoryProps() {
+            Repository repo = new Repository(this, props.HelmChartName + "-repo", new RepositoryProps() {
                 EmptyOnDelete = true,
                 RemovalPolicy = RemovalPolicy.DESTROY,
                 RepositoryName = props.RepositoryName
             });
 
-            CustomResource chart = new CustomResource(this, props.RepositoryName.Replace("/", "-") + "-container", new CustomResourceProps() {
+            CustomResource chart = new CustomResource(this, props.HelmChartName + "-helm-chart", new CustomResourceProps() {
                 ServiceToken = this.UploaderFunction.FunctionArn,
                 Properties = new Dictionary<string, object> {
                     { "Type", "Helm" },
                     { "Bucket", Fn.Ref("AssetsBucketName") },
-                    { "Key", Fn.Ref("AssetsBucketPrefix") + props.HelmChartS3ObjectKey },
-                    { "Repository", helmRepo.RepositoryName }
+                    { "Key", Fn.Ref("AssetsBucketPrefix") + props.HelmChartName + "-" + props.Version + ".tgz" },
+                    { "Repository", repo.RepositoryName }
                 }
             });
 
-            return chart;
+            return new WaitableResponse() {
+                Dependable = chart,
+                Repository = repo
+            };
         }
 
         private static IFunction SetupUploader(Construct scope)
