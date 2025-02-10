@@ -342,7 +342,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             this.CodeDeployStack = new CodeDeployApplicationStack(this, "codedeploy", new CodeDeployApplicationStackProps() {
                 EC2Fleet = this.EC2Stack,
                 //ApplicationKey = assetsBucketPrefix.ValueAsString + (arch == InstanceArchitecture.ARM_64 ? "app_arm64.zip" : "app_x64.zip"),
-                ApplicationKey = assetsBucketPrefix.ValueAsString + "app_deploy.zip",
+                ApplicationKey = assetsBucketPrefix.ValueAsString + "app_arm64.zip", // "app_deploy.zip",
                 AvailabilityZoneCount = availabilityZoneIds.Length,
                 TotalEC2InstancesInFleet = fleetSize,
                 ApplicationName = "multi-az-workshop",
