@@ -65,8 +65,6 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
 
             loadBalancerContollerPodIdentityAssociation.Node.AddDependency(loadBalancerServiceAccount);
 
-            //var loadBalancerControllerHelmChartRepo = CreateHelmRepoAndChart("aws-load-balancer-controller", props.HelmVersion, props.ContainerAndRepoBuilder.UploaderFunction);
-
             var loadBalancerControllerHelmChartRepo = props.ContainerAndRepoBuilder.CreateRepoAndHelmChart(new RepoAndHelmChartProps() {
                 HelmChartName = "aws-load-balancer-controller",
                 Version = props.HelmVersion,

@@ -31,15 +31,11 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
 
         public Istio(Construct scope, string id, IIstioProps props) : base(scope, id)
         {
-            //var istioBaseHelmChartRepo = CreateHelmRepoAndChart("base", props.Version, props.ContainerAndRepoBuilder.UploaderFunction);
-
             var istioBaseHelmChartRepo = props.ContainerAndRepoBuilder.CreateRepoAndHelmChart(new RepoAndHelmChartProps() {
                 HelmChartName = "base",
                 Version = props.Version,
                 RepositoryName = "base"
             });
-
-            //var istiodHelmChartRepo = CreateHelmRepoAndChart("istiod", props.Version, props.ContainerAndRepoBuilder.UploaderFunction);
 
             var istiodHelmChartRepo = props.ContainerAndRepoBuilder.CreateRepoAndHelmChart(new RepoAndHelmChartProps() {
                 HelmChartName = "istiod",
@@ -52,8 +48,6 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 Version = props.Version,
                 RepositoryName = "gateway"
             });*/
-
-            //var istioCniHelmChartRepo = CreateHelmRepoAndChart("cni", props.Version, props.ContainerAndRepoBuilder.UploaderFunction);
 
             var istioCniHelmChartRepo = props.ContainerAndRepoBuilder.CreateRepoAndHelmChart(new RepoAndHelmChartProps() {
                 HelmChartName = "cni",
@@ -112,7 +106,6 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             istiod.Node.AddDependency(cniContainer.Dependable);
             istiod.Node.AddDependency(istiodHelmChartRepo.Dependable);
 
-            // Proxy image used
             /*
             HelmChart gateway = eksCluster.AddHelmChart("IstioGateway", new HelmChartOptions() {
                 Chart = "gateway",
