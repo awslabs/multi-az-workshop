@@ -14,6 +14,8 @@ using Amazon.CDK.AWS.Logs;
 using Amazon.CDK.AWS.RDS;
 using Amazon.CDK.AWS.SSM;
 using Amazon.AWSLabs.MultiAZWorkshop.Constructs;
+using Amazon.CDK.AWS.Lightsail;
+using Amazon.CDK.AWS.S3;
 
 namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
 {
@@ -42,6 +44,10 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
         public ISecurityGroup LoadBalancerSecurityGroup {get; set;}
 
         public ISubnetSelection Subnets {get; set;}
+
+        public string AssetsBucketName {get; set;}
+
+        public string AssetsBucketPrefix {get; set;}
     }
 
     public class EC2FleetStack : NestedStack
@@ -565,6 +571,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     new InitConfig(
                         new InitElement[] {
                             InitPackage.Yum("docker"),
+                            InitCommand.ShellCommand("mkdir -p /usr/local/lib/docker/cli-plugins"),
                             InitService.Enable("docker", new InitServiceOptions() {
                                 Enabled = true,
                                 EnsureRunning = true,
@@ -584,8 +591,14 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     "17_verify-docker",
                     new InitConfig(
                         new InitElement[] {
+                            InitFile.FromUrl(
+                                "/usr/local/lib/docker/cli-plugins/docker-compose", 
+                                Fn.Sub("https://" + props.AssetsBucketName + ".s3.${AWS::Region}.${AWS::URLSuffix}/" + props.AssetsBucketPrefix + "docker-compose" ),
+                                new InitFileOptions() { Mode = "000755", Owner = "root", Group = "root"}    
+                            ),
                             InitCommand.ShellCommand("usermod -a -G docker web"),
-                            InitCommand.ShellCommand("docker ps")
+                            InitCommand.ShellCommand("docker ps"),
+                            InitCommand.ShellCommand("docker compose version")
                         }
                     )
                 },
