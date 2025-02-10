@@ -200,8 +200,8 @@ jobs:
           cd ${{ github.workspace }}/app-src/output
           docker build --tag $PROJECT_NAME:latest --platform linux/arm64 --build-arg SRC=src --file ${{ github.workspace }}/build/dockerfile .
           docker save $PROJECT_NAME:latest | gzip > ${{ github.workspace }}/assets/container.tar.gz
-          zip -r ${{ github.workspace }}/assets/app_deploy.zip ${{ github.workspace }}/assets/container.tar.gz
-          zip ${{ github.workspace }}/assets/app_deploy.zip ${{ github.workspace }}/assets/cloudwatch-agent.tar.gz
+          zip -j ${{ github.workspace }}/assets/app_deploy.zip ${{ github.workspace }}/assets/container.tar.gz
+          zip -j ${{ github.workspace }}/assets/app_deploy.zip ${{ github.workspace }}/assets/cloudwatch-agent.tar.gz
           cd ${{ github.workspace }}/app-src
           zip -r ${{ github.workspace }}/assets/app_deploy.zip docker/
           cd ${{ github.workspace }}/app-src/docker
@@ -218,8 +218,8 @@ jobs:
           cd ${{ github.workspace }}/app-src/output
           docker build --tag $PROJECT_NAME:latest --platform linux/arm64 --build-arg SRC=src --file ${{ github.workspace }}/build/dockerfile .
           docker save $PROJECT_NAME:latest | gzip > /tmp/container.tar.gz
-          zip -r ${{ github.workspace }}/assets/app_deploy_fail.zip /tmp/container.tar.gz
-          zip ${{ github.workspace }}/assets/app_deploy_fail.zip ${{ github.workspace }}/assets/cloudwatch-agent.tar.gz
+          zip -j ${{ github.workspace }}/assets/app_deploy_fail.zip /tmp/container.tar.gz
+          zip -j ${{ github.workspace }}/assets/app_deploy_fail.zip ${{ github.workspace }}/assets/cloudwatch-agent.tar.gz
           cd ${{ github.workspace }}/app-src
           zip -r ${{ github.workspace }}/assets/app_deploy_fail.zip docker/
           cd ${{ github.workspace }}/app-src/docker
