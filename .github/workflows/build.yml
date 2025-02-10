@@ -147,6 +147,9 @@ jobs:
           name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
           docker save $BASE/$file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
 
+      - name: Pull docker compose
+        run: curl -SL https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-aarch64 -o ${{ github.workspace }}/assets/docker-compose
+
       #- name: Pull AWS container images
       #  run: |
       #    aws_containers=("eks/aws-load-balancer-controller:$LB_CONTROLLER_CONTAINER-linux_arm64" "cloudwatch-agent/cloudwatch-agent:latest")
