@@ -175,8 +175,6 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                 CpuArch = props.CpuArch,
                 DatabaseCluster = props.Database,
                 Vpc = props.Vpc,
-                ContainerBuildProject = repoHelmContainerCreator.ContainerBuildProject,
-                UploaderFunction = repoHelmContainerCreator.UploaderFunction,
                 LoadBalancerSecurityGroup = props.LoadBalancerSecurityGroup,
                 ClusterName = "multi-az-workshop-eks-cluster",
                 Version = versions["EKS"] 
@@ -186,15 +184,13 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
         
             Istio istio = new Istio(this, "Istio", new IstioProps() {
                 Cluster = cluster.Cluster,
-                ContainerBuildProject = repoHelmContainerCreator.ContainerBuildProject,
-                UploaderFunction = repoHelmContainerCreator.UploaderFunction,
+                ContainerAndRepoBuilder = repoHelmContainerCreator,
                 Version = versions["ISTIO"]
             });
 
             AwsLoadBalancerController lbController = new AwsLoadBalancerController(this, "AwsLoadBalancerController", new AwsLoadBalancerControllerProps() {
                 Cluster = cluster.Cluster,
-                ContainerBuildProject = repoHelmContainerCreator.ContainerBuildProject,
-                UploaderFunction = repoHelmContainerCreator.UploaderFunction,
+                ContainerAndRepoBuilder = repoHelmContainerCreator,
                 ContainerVersion = versions["LB_CONTROLLER_CONTAINER"],
                 HelmVersion = versions["LB_CONTROLLER_HELM"]
             });
@@ -202,10 +198,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
 
             EKSApplication app = new EKSApplication(this, "EKSApp", new EKSApplicationProps() {
                 Cluster = cluster.Cluster,
-                ContainerBuildProject = repoHelmContainerCreator.ContainerBuildProject,
-                UploaderFunction = repoHelmContainerCreator.UploaderFunction,
+                ContainerAndRepoBuilder = repoHelmContainerCreator,
                 DatabaseCluster = props.Database,
-                ContainerObjectKey = "container.tar.gz",
                 Namespace = "multi-az-workshop"
             });
             app.Node.AddDependency(istio);

@@ -200,7 +200,9 @@ jobs:
           zip -r ${{ github.workspace }}/assets/app_deploy.zip ${{ github.workspace }}/assets/container.tar.gz
           zip ${{ github.workspace }}/assets/app_deploy.zip ${{ github.workspace }}/assets/cloudwatch-agent.tar.gz
           cd ${{ github.workspace }}/app-src
-          zip -r ${{ github.workspace }}/assets/app_deploy.zip docker/ docker/appspec.yml
+          zip -r ${{ github.workspace }}/assets/app_deploy.zip docker/
+          cd ${{ github.workspace }}/app-src/docker
+          zip ${{ github.workspace }}/assets/app_deploy.zip appspec.yml
           rm -rf ${{ github.workspace }}/app-src/output
 
       - name: Build failing arm64 container
@@ -216,7 +218,9 @@ jobs:
           zip -r ${{ github.workspace }}/assets/app_deploy_fail.zip /tmp/container.tar.gz
           zip ${{ github.workspace }}/assets/app_deploy_fail.zip ${{ github.workspace }}/assets/cloudwatch-agent.tar.gz
           cd ${{ github.workspace }}/app-src
-          zip -r ${{ github.workspace }}/assets/app_deploy_fail.zip docker/ docker/appspec.yml
+          zip -r ${{ github.workspace }}/assets/app_deploy_fail.zip docker/
+          cd ${{ github.workspace }}/app-src/docker
+          zip ${{ github.workspace }}/assets/app_deploy_fail.zip appspec.yml
           rm -f /tmp/container.tar.gz
           rm -rf ${{ github.workspace }}/app-src/output
 
