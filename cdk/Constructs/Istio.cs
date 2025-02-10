@@ -67,11 +67,11 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 RepositoryName = "istio/pilot"
             });
 
-            // Used by the istio gateway helm chart
-            /*var proxyContainer = props.ContainerAndRepoBuilder.AddContainerAndRepo(new RepoAndContainerProps() {
+            // Used by istio as a sidecar
+            var proxyContainer = props.ContainerAndRepoBuilder.AddContainerAndRepo(new RepoAndContainerProps() {
                 ContainerImageS3ObjectKey = "proxyv2.tar.gz",
                 RepositoryName = "istio/proxyv2"
-            });*/
+            });
 
             // Used by the CNI helm chart
             var installCniContainer = props.ContainerAndRepoBuilder.AddContainerAndRepo(new RepoAndContainerProps() {
