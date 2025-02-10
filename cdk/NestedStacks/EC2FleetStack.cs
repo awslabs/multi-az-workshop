@@ -27,7 +27,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
 
         public InstanceArchitecture CpuArch {get; set;} = InstanceArchitecture.ARM_64;
 
-        public int Port {get; set; } = 80;
+        public int Port {get; set; } = 5000;
 
         public string CloudWatchAgentConfigVersion {get; set;} = "0.01";
 
@@ -64,12 +64,15 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     "06_restart-amazon-cloudwatch-agent",
                     "07_xray-daemon-download",
                     "08_xray-daemon-install",
-                    "09_setup-httpd",
                     "10_setup-firewalld",
                     "11_install-codedeploy",
                     "12_start-codedeploy-agent",
                     "13_install_icu_support",
-                    "14_set_database_details"
+                    "14_set_database_details",
+                    "15_install-docker",
+                    "16_setup-web-user",
+                    "17_verify-docker",
+                    "18_set-env"
                 }
             },
             {
@@ -217,6 +220,24 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     })
                 }
             });
+            ManagedPolicy ecrPolicy = new ManagedPolicy(this, "ecr-policy", new ManagedPolicyProps() {
+                Path = props.IAMResourcePath,
+                Statements = new PolicyStatement[] {
+                    new PolicyStatement(new PolicyStatementProps() { 
+                        Actions = new string[] { 
+                            "ecr:BatchCheckLayerAvailability",
+                            "ecr:GetDownloadUrlForLayer",
+                            "ecr:BatchGetImage",
+                            "ecr:GetAuthorizationToken",
+                            "s3:GetObject",
+                            "ecr:DescribeImages",
+                            "ecr:DescribeRepositories"
+                        },
+                        Effect = Effect.ALLOW,
+                        Resources = new string[] { "*" } 
+                    })
+                }
+            });
                      
             Role role = new Role(this, "InstanceRole", new RoleProps() {
                 Description = "The IAM role used by the front-end EC2 fleet",
@@ -229,7 +250,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     s3PatchingManagedPolicy,
                     codedeployManagedPolicy,
                     ssmParameterManagedPolicy,
-                    ssmPatchingManagedPolicy
+                    ssmPatchingManagedPolicy,
+                    ecrPolicy
                 }
             });                
             InstanceProfile profile = new InstanceProfile(this, "InstanceProfile", new InstanceProfileProps() {
@@ -247,6 +269,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
             });
 
             sg.AddIngressRule(Peer.SecurityGroupId(props.LoadBalancerSecurityGroup.SecurityGroupId), Port.HTTP);
+            sg.AddIngressRule(Peer.SecurityGroupId(props.LoadBalancerSecurityGroup.SecurityGroupId), Port.Tcp(5000));
             
             #endregion
 
@@ -488,17 +511,6 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     })                        
                 },
                 {
-                    "09_setup-httpd",
-                    new InitConfig(new InitElement[] {
-                        InitPackage.Yum("httpd"),
-                        InitService.Enable("httpd", new InitServiceOptions() {
-                            Enabled = true,
-                            EnsureRunning = true,
-                            ServiceManager = ServiceManager.SYSVINIT
-                        })
-                    })                        
-                },
-                {
                     "10_setup-firewalld",
                     new InitConfig(new InitElement[] {
                         InitPackage.Yum("firewalld"),
@@ -506,6 +518,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                         InitCommand.ShellCommand("systemctl start firewalld"),
                         InitCommand.ShellCommand("firewall-cmd --state"),
                         InitCommand.ShellCommand($"firewall-cmd --add-port={props.Port}/tcp --permanent"),
+                        InitCommand.ShellCommand("firewall-cmd --add-port=80/tcp --permanent"),
                         InitCommand.ShellCommand("firewall-cmd --reload"),
                         InitCommand.ShellCommand("firewall-cmd --list-all"),
                     })                        
@@ -547,6 +560,58 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                         }
                     )                   
                 },
+                {
+                    "15_install-docker",
+                    new InitConfig(
+                        new InitElement[] {
+                            InitPackage.Yum("docker"),
+                            InitService.Enable("docker", new InitServiceOptions() {
+                                Enabled = true,
+                                EnsureRunning = true,
+                                ServiceManager = ServiceManager.SYSVINIT
+                            })
+                        }
+                    )
+                },
+                {
+                    "16_setup-web-user",
+                    new InitConfig(new InitElement[] {
+                        new InitUser("web", new InitUserOptions() {                 
+                        })
+                    })                        
+                },
+                {
+                    "17_verify-docker",
+                    new InitConfig(
+                        new InitElement[] {
+                            InitCommand.ShellCommand("usermod -a -G docker web"),
+                            InitCommand.ShellCommand("docker ps")
+                        }
+                    )
+                },
+                {
+                    "18_set-env",
+                    new InitConfig(
+                        new InitElement[] {
+                            InitFile.FromString(
+                                "/etc/environment",
+                                Fn.Join("\n",
+                                    [
+                                        "AWS_REGION=" + Aws.REGION,
+                                        "URL_SUFFIX=" + Aws.URL_SUFFIX,
+                                        "ONEBOX=false",
+                                        "ACCOUNT_ID=" + Aws.ACCOUNT_ID
+                                    ]
+                                ),
+                                new InitFileOptions() {
+                                    Mode = "0755",
+                                    Owner = "root",
+                                    Group = "root"
+                                }
+                            )
+                        }
+                    )
+                }
             };
         }
     }

@@ -7,48 +7,85 @@ using Amazon.CloudWatch.EMF.Model;
 using Amazon.SecretsManager;
 using Amazon.SecretsManager.Model;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 
-namespace BAMCIS.MultiAZApp.Utils
+namespace BAMCIS.MultiAZApp.Utilities
 {
     public class CacheRefreshWorker : IWorker
     {
-        private readonly ILogger<CacheRefreshWorker> logger;
-        private readonly IMemoryCache cache;
-        private readonly Stopwatch stopwatch = new Stopwatch();
-        private static readonly IAmazonSecretsManager client;
-        private static readonly int delayMilliseconds = 60000; // 1 minute
-        private static readonly int clientTimeoutSeconds = 4;
+        private readonly ILogger<CacheRefreshWorker> _logger;
+        private readonly IMemoryCache _cache;
+        private readonly Stopwatch _stopwatch = new Stopwatch();
+        private readonly IAmazonSecretsManager _client;
+        private readonly IEnvironment _environment;
+        private static readonly int _delayMilliseconds = 60000; // 1 minute
+        private static readonly int _clientTimeoutSeconds = 4;
 
         static CacheRefreshWorker()
         {
-            client = new AmazonSecretsManagerClient(region: RegionEndpoint.GetBySystemName(EnvironmentUtils.GetRegion()));
+            
         }
 
-        public CacheRefreshWorker(ILogger<CacheRefreshWorker> logger, IMemoryCache cache)
+        public CacheRefreshWorker(ILogger<CacheRefreshWorker> logger, IMemoryCache cache, IEnvironment environment)
         {
-            this.logger = logger;
-            this.cache = cache;
+            this._client = new AmazonSecretsManagerClient(region: RegionEndpoint.GetBySystemName(environment.GetRegion()));
+            this._logger = logger;
+            this._cache = cache;
+            this._environment = environment;
         }
 
         public async Task DoWork(CancellationToken cancellationToken)
         {
+            string hostId = this._environment.GetHostId();
+            string instanceId = this._environment.GetInstanceId();
+            string region = this._environment.GetRegion();
+            string azId = this._environment.GetAZId();
+            string az = this._environment.GetAZ();
+            bool oneBox = this._environment.IsOneBox();
+
             while (!cancellationToken.IsCancellationRequested)
             {
                 using (var metrics = new MetricsLogger())
                 {
-                    this.stopwatch.Restart();
-                    ConfigureMetricsLogger(metrics);
-                    metrics.PutProperty("LoggerSetupLatency", this.stopwatch.Elapsed.TotalMilliseconds);
+                    this._stopwatch.Restart();
+                    metrics.SetNamespace(oneBox ? Constants.METRIC_NAMESPACE_ONE_BOX : Constants.METRIC_NAMESPACE);
+                    
+                    metrics.PutProperty("HostId", hostId);
+                    metrics.PutProperty("Operation", "CacheRefresh");
 
-                    var ts = this.stopwatch.Elapsed;
+                    if (oneBox)
+                    {
+                        metrics.PutProperty("InstanceId", instanceId);
+                        metrics.PutProperty("AZ-ID", azId); 
+
+                        var regionDimensions = new DimensionSet();
+                        regionDimensions.AddDimension("Region", region);
+                        metrics.SetDimensions(regionDimensions);
+                    }
+                    else
+                    {
+                        var regionDimensions = new DimensionSet();
+                        var regionAZDimensions = new DimensionSet();
+                        var regionAZInstanceIdDimensions = new DimensionSet();
+
+                        regionAZInstanceIdDimensions.AddDimension("Region", region);
+                        regionAZDimensions.AddDimension("Region", region);
+                        regionDimensions.AddDimension("Region", region);
+
+                        regionAZDimensions.AddDimension("AZ-ID", azId);
+                        regionAZInstanceIdDimensions.AddDimension("AZ-ID", azId);
+
+                        regionAZInstanceIdDimensions.AddDimension("InstanceId", instanceId);
+
+                        metrics.SetDimensions(
+                            regionAZInstanceIdDimensions, 
+                            regionAZDimensions, 
+                            regionDimensions
+                        );
+                    }
+
+                    var ts = this._stopwatch.Elapsed;
                     int val = await RefreshCacheAsync(metrics, cancellationToken);
 
                     // This is a more precise measurement, typically varies 0.01 - 0.005 ms versus 2.0 - 0.1 ms measuring from
@@ -56,25 +93,25 @@ namespace BAMCIS.MultiAZApp.Utils
                     // and fault metrics a bit
                     if (val == 0)
                     {
-                        metrics.PutMetric("SuccessLatency", (this.stopwatch.Elapsed - ts).TotalMilliseconds, Unit.MILLISECONDS);
+                        metrics.PutMetric("SuccessLatency", (this._stopwatch.Elapsed - ts).TotalMilliseconds, Unit.MILLISECONDS);
                     }
                     else if (val == 1) 
                     {
-                        metrics.PutMetric("FaultLatency", (this.stopwatch.Elapsed - ts).TotalMilliseconds, Unit.MILLISECONDS);
+                        metrics.PutMetric("FaultLatency", (this._stopwatch.Elapsed - ts).TotalMilliseconds, Unit.MILLISECONDS);
                     }
 
-                    ts = this.stopwatch.Elapsed;
+                    ts = this._stopwatch.Elapsed;
                     metrics.PutMetric("TotalLatency", ts.TotalMilliseconds, Unit.MILLISECONDS);
-                    this.stopwatch.Stop();
+                    this._stopwatch.Stop();
                 }
 
-                await Task.Delay(delayMilliseconds, cancellationToken);
+                await Task.Delay(_delayMilliseconds, cancellationToken);
             }
         }
 
         private async Task<int> RefreshCacheAsync(IMetricsLogger metrics, CancellationToken cancellationToken)
         {
-            var ts = this.stopwatch.Elapsed;
+            var ts = this._stopwatch.Elapsed;
 
             DateTime now = DateTime.UtcNow;
             metrics.PutProperty("Now", now.ToString("yyyy-MM-ddTHH:mm:ss.ffffZ"));
@@ -82,9 +119,9 @@ namespace BAMCIS.MultiAZApp.Utils
             DateTime lastUpdate;
             DateTime nextUpdate = now;
 
-            if (cache.TryGetValue("LastCacheRefresh", out lastUpdate))
+            if (this._cache.TryGetValue("LastCacheRefresh", out lastUpdate))
             {
-                nextUpdate = lastUpdate.AddMilliseconds(delayMilliseconds);
+                nextUpdate = lastUpdate.AddMilliseconds(_delayMilliseconds);
             }
          
             metrics.PutProperty("LastCacheRefresh", lastUpdate.ToString("yyyy-MM-ddTHH:mm:ss.ffffZ"));
@@ -99,13 +136,13 @@ namespace BAMCIS.MultiAZApp.Utils
                 return 2;
             }
 
-            cache.Set("LastCacheRefresh", now);
+            this._cache.Set("LastCacheRefresh", now);
             metrics.PutProperty("CacheRefresh", true);
             
             try
             {
                 string connectionString = await GetConnectionStringAsync();
-                this.cache.Set("ConnectionString", connectionString);            
+                this._cache.Set("ConnectionString", connectionString);            
                 metrics.PutMetric("Fault", 0, Unit.COUNT);
                 metrics.PutMetric("Success", 1, Unit.COUNT);
                 metrics.PutMetric("Error", 0, Unit.COUNT);
@@ -113,7 +150,7 @@ namespace BAMCIS.MultiAZApp.Utils
             }
             catch (Exception ex)
             {
-                this.cache.Set("ConnectionString", "");
+                this._cache.Set("ConnectionString", "");
                 metrics.PutMetric("Fault", 1, Unit.COUNT);
                 metrics.PutMetric("Success", 0, Unit.COUNT);
                 metrics.PutMetric("Error", 0, Unit.COUNT);
@@ -122,43 +159,7 @@ namespace BAMCIS.MultiAZApp.Utils
             }
         }
 
-        private static void ConfigureMetricsLogger(IMetricsLogger metrics)
-        {
-            metrics.SetNamespace(EnvironmentUtils.IsOneBox() ? Constants.METRIC_NAMESPACE_ONE_BOX : Constants.METRIC_NAMESPACE);
-            metrics.PutProperty("Ec2InstanceId", EnvironmentUtils.GetInstanceId());
-            metrics.PutProperty("Operation", "CacheRefresh");
-
-            if (EnvironmentUtils.IsOneBox())
-            {
-                var regionDimensions = new DimensionSet();
-
-                regionDimensions.AddDimension("Region", EnvironmentUtils.GetRegion());
-
-                metrics.PutProperty("AZ-ID", EnvironmentUtils.GetAZId());
-                metrics.PutProperty("InstanceId", EnvironmentUtils.GetHostId());
-
-                metrics.SetDimensions(regionDimensions);
-            }
-            else
-            {
-                var regionDimensions = new DimensionSet();
-                var regionAZDimensions = new DimensionSet();
-                var regionAZInstanceIdDimensions = new DimensionSet();
-
-                regionAZInstanceIdDimensions.AddDimension("Region", EnvironmentUtils.GetRegion());
-                regionAZDimensions.AddDimension("Region", EnvironmentUtils.GetRegion());
-                regionDimensions.AddDimension("Region", EnvironmentUtils.GetRegion());
-
-                regionAZDimensions.AddDimension("AZ-ID", EnvironmentUtils.GetAZId());
-                regionAZInstanceIdDimensions.AddDimension("AZ-ID", EnvironmentUtils.GetAZId());
-
-                regionAZInstanceIdDimensions.AddDimension("InstanceId", EnvironmentUtils.GetHostId());
-
-                metrics.SetDimensions(regionAZInstanceIdDimensions, regionAZDimensions, regionDimensions);
-            }
-        }
-
-        private static async Task<string> GetConnectionStringAsync()
+        private async Task<string> GetConnectionStringAsync()
         {      
             string secretId;
 
@@ -181,17 +182,17 @@ namespace BAMCIS.MultiAZApp.Utils
                 VersionStage = "AWSCURRENT"
             };
 
-            var response = await client.GetSecretValueAsync(request);
+            var response = await this._client.GetSecretValueAsync(request);
             var secrets = JsonConvert.DeserializeObject<Dictionary<string, string>>(response.SecretString);
 
             return $"Host={secrets["host"]};Port={secrets["port"]};Username={secrets["username"]};" +
-                   $"Password={secrets["password"]};Database={secrets["dbname"]};Timeout={clientTimeoutSeconds};";
+                   $"Password={secrets["password"]};Database={secrets["dbname"]};Timeout={_clientTimeoutSeconds};";
         }
 
         private void LogError(IMetricsLogger metrics, Exception ex, string message)
         {
             try {
-                logger.LogError(ex, message);
+                this._logger.LogError(ex, message);
                 metrics.PutProperty("ErrorMessage", ex.Message);
             }
             catch (Exception e) {

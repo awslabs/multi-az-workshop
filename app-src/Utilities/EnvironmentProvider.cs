@@ -1,6 +1,7 @@
+using System;
 using Microsoft.Extensions.Logging;
 
-namespace BAMCIS.MultiAZApp.Utils
+namespace BAMCIS.MultiAZApp.Utilities
 {
     public class EnvironmentProvider: IEnvironmentProvider
     {
@@ -22,7 +23,10 @@ namespace BAMCIS.MultiAZApp.Utils
             }
 
             IEnvironment env = GetEnvironmentByProbe();
-            _cachedEnvironment = env;
+
+            if (env != null) {
+                _cachedEnvironment = env;
+            }
 
             return env;
         }

@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json;
 
-namespace BAMCIS.MultiAZApp.Utils
+namespace BAMCIS.MultiAZApp.Utilities
 {
     public class ResourceFetcher : IResourceFetcher
     {
@@ -19,7 +19,7 @@ namespace BAMCIS.MultiAZApp.Utils
 
         public ResourceFetcher(ILoggerFactory loggerFactory)
         {
-            loggerFactory ??= NullLoggerFactory.Instance;
+            //loggerFactory ??= NullLoggerFactory.Instance;
             _logger = loggerFactory.CreateLogger<ResourceFetcher>();
         }
 
