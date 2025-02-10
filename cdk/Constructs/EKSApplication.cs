@@ -3,11 +3,9 @@
 
 using System.Collections.Generic;
 using Amazon.CDK;
-using Amazon.CDK.AWS.CodeBuild;
 using Amazon.CDK.AWS.EKS;
 using Amazon.CDK.AWS.ElasticLoadBalancingV2;
 using Amazon.CDK.AWS.IAM;
-using Amazon.CDK.AWS.Lambda;
 using Amazon.CDK.AWS.RDS;
 using Constructs;
 
@@ -38,41 +36,6 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             string app = props.Namespace + "-app";
             string svc = props.Namespace + "-service";
             string sa = props.Namespace + "-sa";
-
-            // Create the repo for the container running the wild rydes app
-            // and upload the container to the repo via the custom resource
-            /*Repository repo = new Repository(this, "AppContainerImageRepo", new RepositoryProps() {
-                EmptyOnDelete = true,
-                RemovalPolicy = RemovalPolicy.DESTROY,
-                RepositoryName = props.Namespace
-            });
-            CustomResource appContainerImage = new CustomResource(this, "AppContainer", new CustomResourceProps() {
-                ServiceToken = props.UploaderFunction.FunctionArn,
-                Properties = new Dictionary<string, object> {
-                    { "Type", "Docker" },
-                    { "Bucket", Fn.Ref("AssetsBucketName") },
-                    { "Key", Fn.Ref("AssetsBucketPrefix") + props.ContainerObjectKey },
-                    { "ProjectName", props.ContainerBuildProject.ProjectName },
-                    { "Repository", repo.RepositoryName },
-                    { "Nonce", new Random().NextInt64() }
-                }
-            });
-
-            Repository cloudwatchAgentRepo = new Repository(this, "CloudWatchAgentRepository", new RepositoryProps() {
-                EmptyOnDelete = true,
-                RemovalPolicy = RemovalPolicy.DESTROY,
-                RepositoryName = "cloudwatch-agent/cloudwatch-agent"
-            });
-            CustomResource cloudwatchAgentContainerImage = new CustomResource(this, "CloudWatchAgentContainerImage", new CustomResourceProps() {
-                ServiceToken = props.UploaderFunction.FunctionArn,
-                Properties = new Dictionary<string, object> {
-                    { "Type", "Docker" },
-                    { "Bucket", Fn.Ref("AssetsBucketName") },
-                    { "Key", Fn.Ref("AssetsBucketPrefix") + "cloudwatch-agent.tar.gz" },
-                    { "ProjectName", props.ContainerBuildProject.ProjectName },
-                    { "Repository", cloudwatchAgentRepo.RepositoryName }
-                }
-            });*/
 
             var appContainer = props.ContainerAndRepoBuilder.AddContainerAndRepo(new RepoAndContainerProps() {
                 ContainerImageS3ObjectKey = "container.tar.gz",
