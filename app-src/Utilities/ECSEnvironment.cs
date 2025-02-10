@@ -3,12 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 
-namespace BAMCIS.MultiAZApp.Utils
+namespace BAMCIS.MultiAZApp.Utilities
 {
     public class ECSEnvironment : BaseEnvironment, IEnvironment
     {
-        private string _host;
-
         public ECSEnvironment(ILogger logger) : this(logger, new ResourceFetcher())
         {
 
@@ -28,18 +26,18 @@ namespace BAMCIS.MultiAZApp.Utils
                     // :task/1dc5c17a-422b-4dc4-b493-371970c6c4d6
                     string taskArn = data["TaskARN"] as string;
 
-                    _host = service + "-" + taskArn.Split(":").Last().Split("/").Last();
+                    _hostid = service + "-" + taskArn.Split(":").Last().Split("/").Last();
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogDebug("Failed to get metadata from: " + ecsMetadata + "/task", ex);
+                    _logger.LogDebug(ex, "Failed to get metadata from: {ecs}/task", ecsMetadata);
                 }
             }
         }
 
         public override string GetHostId()
         {
-            return _host;
+            return _hostid;
         }
 
         public override bool Probe()
@@ -50,12 +48,12 @@ namespace BAMCIS.MultiAZApp.Utils
 
                 if (!String.IsNullOrEmpty(ecsMetadata)) 
                 {
-                    return !String.IsNullOrEmpty(_host);
+                    return !String.IsNullOrEmpty(_hostid);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogDebug("Failed to lookup ECS environment variables.", ex);
+                _logger.LogDebug(ex, "Failed to lookup ECS environment variables.");
             }
 
             return false;

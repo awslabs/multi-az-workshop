@@ -1,14 +1,11 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
-using System;
+
 using System.Collections.Generic;
 using Amazon.CDK;
-using Amazon.CDK.AWS.CodeBuild;
-using Amazon.CDK.AWS.ECR;
 using Amazon.CDK.AWS.EKS;
 using Amazon.CDK.AWS.ElasticLoadBalancingV2;
 using Amazon.CDK.AWS.IAM;
-using Amazon.CDK.AWS.Lambda;
 using Amazon.CDK.AWS.RDS;
 using Constructs;
 
@@ -17,21 +14,17 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
     public interface IEKSApplicationProps
     {
         public ICluster Cluster {get; set;}
-        public IFunction UploaderFunction {get; set;}
-        public IProject ContainerBuildProject {get; set;}
+        public ContainerAndRepo ContainerAndRepoBuilder {get; set;}
         public IDatabaseCluster DatabaseCluster {get; set;}
         public string Namespace {get; set;}
-        public string ContainerObjectKey {get; set;}
     }
 
     public class EKSApplicationProps : IEKSApplicationProps
     {
         public ICluster Cluster {get; set;}
-        public IFunction UploaderFunction {get; set;}
-        public IProject ContainerBuildProject {get; set;}
+        public ContainerAndRepo ContainerAndRepoBuilder {get; set;}
         public IDatabaseCluster DatabaseCluster {get; set;}
         public string Namespace {get; set;}
-        public string ContainerObjectKey {get; set;}
     }
 
     public class EKSApplication : Construct
@@ -44,39 +37,14 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             string svc = props.Namespace + "-service";
             string sa = props.Namespace + "-sa";
 
-            // Create the repo for the container running the wild rydes app
-            // and upload the container to the repo via the custom resource
-            Repository repo = new Repository(this, "AppContainerImageRepo", new RepositoryProps() {
-                EmptyOnDelete = true,
-                RemovalPolicy = RemovalPolicy.DESTROY,
+            var appContainer = props.ContainerAndRepoBuilder.AddContainerAndRepo(new RepoAndContainerProps() {
+                ContainerImageS3ObjectKey = "container.tar.gz",
                 RepositoryName = props.Namespace
             });
-            CustomResource appContainerImage = new CustomResource(this, "AppContainer", new CustomResourceProps() {
-                ServiceToken = props.UploaderFunction.FunctionArn,
-                Properties = new Dictionary<string, object> {
-                    { "Type", "Docker" },
-                    { "Bucket", Fn.Ref("AssetsBucketName") },
-                    { "Key", Fn.Ref("AssetsBucketPrefix") + props.ContainerObjectKey },
-                    { "ProjectName", props.ContainerBuildProject.ProjectName },
-                    { "Repository", repo.RepositoryName },
-                    { "Nonce", new Random().NextInt64() }
-                }
-            });
 
-            Repository cloudwatchAgentRepo = new Repository(this, "CloudWatchAgentRepository", new RepositoryProps() {
-                EmptyOnDelete = true,
-                RemovalPolicy = RemovalPolicy.DESTROY,
+            var cwAgentContainer = props.ContainerAndRepoBuilder.AddContainerAndRepo(new RepoAndContainerProps() {
+                ContainerImageS3ObjectKey = "cloudwatch-agent.tar.gz",
                 RepositoryName = "cloudwatch-agent/cloudwatch-agent"
-            });
-            CustomResource cloudwatchAgentContainerImage = new CustomResource(this, "CloudWatchAgentContainerImage", new CustomResourceProps() {
-                ServiceToken = props.UploaderFunction.FunctionArn,
-                Properties = new Dictionary<string, object> {
-                    { "Type", "Docker" },
-                    { "Bucket", Fn.Ref("AssetsBucketName") },
-                    { "Key", Fn.Ref("AssetsBucketPrefix") + "cloudwatch-agent.tar.gz" },
-                    { "ProjectName", props.ContainerBuildProject.ProjectName },
-                    { "Repository", cloudwatchAgentRepo.RepositoryName }
-                }
             });
 
             Role podRole = new Role(this, "PodRole", new RoleProps() {
@@ -358,7 +326,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                                     }},
                                     {"containers", new Dictionary<string, object>[] {
                                         new Dictionary<string, object>() {
-                                            {"image", Fn.Sub("${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/") + repo.RepositoryName + ":" + "latest"},
+                                            {"image", appContainer.Repository.RepositoryUri + ":latest" },
                                             {"imagePullPolicy", "Always"},
                                             {"name", props.Namespace },
                                             {"ports", new Dictionary<string, object>[] {
@@ -374,7 +342,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                                             }}
                                         },
                                         new Dictionary<string, object>() {
-                                            {"image", Fn.Sub("${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/cloudwatch-agent/cloudwatch-agent:latest")},
+                                            {"image", cwAgentContainer.Repository.RepositoryUri + ":latest" },
                                             {"imagePullPolicy", "IfNotPresent"},
                                             {"name", "cloudwatch-agent" },
                                             {"resources", new Dictionary<string, object>() {
@@ -409,11 +377,11 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             });
 
             appDeployment.Node.AddDependency(appService);
-            appDeployment.Node.AddDependency(appContainerImage);
-            appDeployment.Node.AddDependency(cloudwatchAgentContainerImage);
             appDeployment.Node.AddDependency(istioVirtualService);
             appDeployment.Node.AddDependency(podIdentity);
             appDeployment.Node.AddDependency(agentConfigMap);
+            appDeployment.Node.AddDependency(appContainer.Dependable);
+            appDeployment.Node.AddDependency(cwAgentContainer.Dependable);
 
             ApplicationTargetGroup tgp = new ApplicationTargetGroup(this, "AppTargetGroup", new ApplicationTargetGroupProps() {
                 HealthCheck = new HealthCheck() { 

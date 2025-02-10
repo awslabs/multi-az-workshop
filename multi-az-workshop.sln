@@ -5,7 +5,7 @@ VisualStudioVersion = 17.5.002.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MultiAzWorkshop", "cdk\MultiAzWorkshop.csproj", "{101D6A66-599D-451B-9354-E621ECE1EE74}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "multi-az-application", "app-src\multi-az-application.csproj", "{01298A78-ADE5-4637-B7FE-1B0471A022E8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "multi-az-workshop-application", "app-src\multi-az-workshop-application.csproj", "{01298A78-ADE5-4637-B7FE-1B0471A022E8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

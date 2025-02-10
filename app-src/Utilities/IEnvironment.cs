@@ -1,4 +1,4 @@
-namespace BAMCIS.MultiAZApp.Utils
+namespace BAMCIS.MultiAZApp.Utilities
 {
     public interface IEnvironment
     {
@@ -15,5 +15,7 @@ namespace BAMCIS.MultiAZApp.Utils
         string GetAZId();
 
         string GetAZ();
+
+        bool IsOneBox();
     }
 }

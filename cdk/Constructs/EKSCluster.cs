@@ -3,7 +3,6 @@
 using System.Collections.Generic;
 using System.IO;
 using Amazon.CDK;
-using Amazon.CDK.AWS.CodeBuild;
 using Amazon.CDK.AWS.EC2;
 using Amazon.CDK.AWS.EKS;
 using Amazon.CDK.AWS.Events;
@@ -13,7 +12,7 @@ using Amazon.CDK.AWS.Logs;
 using Amazon.CDK.AWS.RDS;
 using Amazon.CDK.AWS.SSM;
 using Amazon.CDK.LambdaLayer.KubectlV31;
-using Amazon.CDK.LambdaLayer.KubectlV32;
+//using Amazon.CDK.LambdaLayer.KubectlV32;
 using Constructs;
 
 namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
@@ -27,10 +26,6 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
         public InstanceArchitecture CpuArch {get; set;}
 
         public IRole AdminRole {get; set;}
-
-        public IFunction UploaderFunction {get; set;}
-
-        public IProject ContainerBuildProject {get; set;}
 
         public ISecurityGroup LoadBalancerSecurityGroup {get; set;}
 
@@ -48,10 +43,6 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
         public InstanceArchitecture CpuArch {get; set;}
 
         public IRole AdminRole {get; set;}
-
-        public IFunction UploaderFunction {get; set;}
-
-        public IProject ContainerBuildProject {get; set;}
 
         public ISecurityGroup LoadBalancerSecurityGroup {get; set;}
 
@@ -78,7 +69,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             
             ILayerVersion kubetctlLayer = new KubectlV31Layer(this, "KubectlV31Layer");        
 
-            ILogGroup clusterLogGroup = new LogGroup(this, "ClusterLogGroup", new LogGroupProps() {
+            ILogGroup clusterLogGroup = new LogGroup(this, "cluster-log-group", new LogGroupProps() {
                 LogGroupName = "/aws/eks/" + props.ClusterName + "/cluster",
                 RemovalPolicy = RemovalPolicy.DESTROY,
                 Retention = RetentionDays.ONE_WEEK

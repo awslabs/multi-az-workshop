@@ -1,13 +1,26 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
+version: "3.9"
 services:
-  app:
-    image: multi-az-workshop/app:latest
+  multi-az-workshop-application:
+    image: multi-az-workshop:latest
+    restart: always
     ports:
       - 5000:5000
-    healthcheck:
-      test: curl --fail --location http://localhost:5000/home || exit 1
-      interval: 5s
-      timeout: 1s
-      retries: 5
-      start_period: 10s
+    environment:
+      - AWS_EMF_AGENT_ENDPOINT=tcp://cwagent:25888
+  # healthcheck:
+  #    test: curl --fail --location http://localhost:5000/health || exit 1
+  #    interval: 5s
+  #    timeout: 1s
+  #    retries: 5
+  #    start_period: 10s
+  cwagent:
+    image: cloudwatch-agent/cloudwatch-agent:latest
+    mem_limit: 256M
+    cpus: 0.25
+    restart: always
+    ports: 
+      - 25888:25888/tcp
+    environment:
+      - "CW_CONFIG_CONTENT={\"logs\": {\"metrics_collected\": {\"emf\": { }}}}"

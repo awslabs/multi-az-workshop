@@ -2,10 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 using System.Collections.Generic;
 using Amazon.CDK;
-using Amazon.CDK.AWS.CodeBuild;
-using Amazon.CDK.AWS.ECR;
 using Amazon.CDK.AWS.EKS;
-using Amazon.CDK.AWS.Lambda;
 using Constructs;
 
 namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
@@ -14,9 +11,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
     {
         public ICluster Cluster {get; set;}
 
-        public IFunction UploaderFunction {get; set;}
-
-        public IProject ContainerBuildProject {get; set;}
+        public ContainerAndRepo ContainerAndRepoBuilder {get; set;}
 
         public string Version {get; set;}
     }
@@ -25,9 +20,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
     {
         public ICluster Cluster {get; set;}
 
-        public IFunction UploaderFunction {get; set;}
-
-        public IProject ContainerBuildProject {get; set;}
+        public ContainerAndRepo ContainerAndRepoBuilder {get; set;}
 
         public string Version {get; set;} = "1.24.1";
     }
@@ -38,73 +31,57 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
 
         public Istio(Construct scope, string id, IIstioProps props) : base(scope, id)
         {
-            var istioBaseHelmChartRepo = CreateHelmRepoAndChart("base", props.Version, props.UploaderFunction);
+            var istioBaseHelmChartRepo = props.ContainerAndRepoBuilder.CreateRepoAndHelmChart(new RepoAndHelmChartProps() {
+                HelmChartName = "base",
+                Version = props.Version,
+                RepositoryName = "base"
+            });
 
-            var istiodHelmChartRepo = CreateHelmRepoAndChart("istiod", props.Version, props.UploaderFunction);
+            var istiodHelmChartRepo = props.ContainerAndRepoBuilder.CreateRepoAndHelmChart(new RepoAndHelmChartProps() {
+                HelmChartName = "istiod",
+                Version = props.Version,
+                RepositoryName = "istiod"
+            });
 
-            //var istioGatewayHelmChartRepo = CreateHelmRepoAndChart("gateway", uploader);
+            /*var istioGatewayHelmChartRepo = props.ContainerAndRepoBuilder.CreateRepoAndHelmChart(new RepoAndHelmChartProps() {
+                HelmChartName = "gateway",
+                Version = props.Version,
+                RepositoryName = "gateway"
+            });*/
 
-            var istioCniHelmChartRepo = CreateHelmRepoAndChart("cni", props.Version, props.UploaderFunction);
+            var istioCniHelmChartRepo = props.ContainerAndRepoBuilder.CreateRepoAndHelmChart(new RepoAndHelmChartProps() {
+                HelmChartName = "cni",
+                Version = props.Version,
+                RepositoryName = "cni"
+            });
 
             // Used by the istiod helm chart
-            Repository cniPilotContainerImageRepo = new Repository(this, "CniPilotContainerImageRepo", new RepositoryProps() {
-                EmptyOnDelete = true,
-                RemovalPolicy = RemovalPolicy.DESTROY,
+            var cniContainer = props.ContainerAndRepoBuilder.AddContainerAndRepo(new RepoAndContainerProps() {
+                ContainerImageS3ObjectKey = "pilot.tar.gz",
                 RepositoryName = "istio/pilot"
             });
-            CustomResource cniPilotContainerImage = new CustomResource(this, "PilotContainer", new CustomResourceProps() {
-                ServiceToken = props.UploaderFunction.FunctionArn,
-                Properties = new Dictionary<string, object> {
-                    { "Type", "Docker" },
-                    { "Bucket", Fn.Ref("AssetsBucketName") },
-                    { "Key", Fn.Ref("AssetsBucketPrefix") + "pilot.tar.gz" },
-                    { "ProjectName", props.ContainerBuildProject.ProjectName },
-                    { "Repository", cniPilotContainerImageRepo.RepositoryName }
-                }
-            });
 
-            // Used by the istio gateway helm chart
-            Repository proxyContainerImageRepo = new Repository(this, "ProxyContainerImageRepo", new RepositoryProps() {
-                EmptyOnDelete = true,
-                RemovalPolicy = RemovalPolicy.DESTROY,
+            // Used by istio as a sidecar
+            var proxyContainer = props.ContainerAndRepoBuilder.AddContainerAndRepo(new RepoAndContainerProps() {
+                ContainerImageS3ObjectKey = "proxyv2.tar.gz",
                 RepositoryName = "istio/proxyv2"
-            });
-            CustomResource proxyContainerImage = new CustomResource(this, "ProxyContainer", new CustomResourceProps() {
-                ServiceToken = props.UploaderFunction.FunctionArn,
-                Properties = new Dictionary<string, object> {
-                    { "Type", "Docker" },
-                    { "Bucket", Fn.Ref("AssetsBucketName") },
-                    { "Key", Fn.Ref("AssetsBucketPrefix") + "proxyv2.tar.gz" },
-                    { "ProjectName", props.ContainerBuildProject.ProjectName },
-                    { "Repository", proxyContainerImageRepo.RepositoryName }
-                }
             });
 
             // Used by the CNI helm chart
-            Repository cniInstallContainerImageRepo = new Repository(this, "CniInstallContainerImageRepo", new RepositoryProps() {
-                EmptyOnDelete = true,
-                RemovalPolicy = RemovalPolicy.DESTROY,
+            var installCniContainer = props.ContainerAndRepoBuilder.AddContainerAndRepo(new RepoAndContainerProps() {
+                ContainerImageS3ObjectKey = "install-cni.tar.gz",
                 RepositoryName = "istio/install-cni"
-            });
-            CustomResource installCniContainerImage = new CustomResource(this, "InstallCNIContainer", new CustomResourceProps() {
-                ServiceToken = props.UploaderFunction.FunctionArn,
-                Properties = new Dictionary<string, object> {
-                    { "Type", "Docker" },
-                    { "Bucket", Fn.Ref("AssetsBucketName") },
-                    { "Key", Fn.Ref("AssetsBucketPrefix") + "install-cni.tar.gz" },
-                    { "ProjectName", props.ContainerBuildProject.ProjectName },
-                    { "Repository", cniInstallContainerImageRepo.RepositoryName }
-                }
             });
 
             // No image required
             HelmChart baseChart = props.Cluster.AddHelmChart("IstioBaseHelmChart", new HelmChartOptions() {
                 Chart = "base",
                 Version = props.Version,
-                Repository = "oci://" + istioBaseHelmChartRepo.RepositoryUri,
+                Repository = "oci://" + istioBaseHelmChartRepo.Repository.RepositoryUri,
                 Namespace = "istio-system",
                 Wait = true
             });
+            baseChart.Node.AddDependency(istioBaseHelmChartRepo.Dependable);
 
             // Starting with istio version 1.24.0, the helm chart is configured to fail
             // if "defaults" is set
@@ -113,7 +90,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             HelmChart istiod = props.Cluster.AddHelmChart("Istiod", new HelmChartOptions() {
                 Chart = "istiod",
                 Version = props.Version,
-                Repository = "oci://" + istiodHelmChartRepo.RepositoryUri,
+                Repository = "oci://" + istiodHelmChartRepo.Repository.RepositoryUri,
                 Namespace = "istio-system",
                 Wait = true,
                 Values = new Dictionary<string, object>() {
@@ -126,9 +103,9 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             });
 
             istiod.Node.AddDependency(baseChart);
-            istiod.Node.AddDependency(cniPilotContainerImage);
+            istiod.Node.AddDependency(cniContainer.Dependable);
+            istiod.Node.AddDependency(istiodHelmChartRepo.Dependable);
 
-            // Proxy image used
             /*
             HelmChart gateway = eksCluster.AddHelmChart("IstioGateway", new HelmChartOptions() {
                 Chart = "gateway",
@@ -152,7 +129,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             HelmChart cni = props.Cluster.AddHelmChart("IstioCNI", new HelmChartOptions() {
                 Chart = "cni",
                 Version = props.Version,
-                Repository = "oci://" + istioCniHelmChartRepo.RepositoryUri,
+                Repository = "oci://" + istioCniHelmChartRepo.Repository.RepositoryUri,
                 Namespace = "istio-system",
                 Wait = true,
                 Values = new Dictionary<string, object>() {
@@ -165,7 +142,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             });
 
             cni.Node.AddDependency(istiod);   
-            cni.Node.AddDependency(installCniContainerImage);
+            cni.Node.AddDependency(installCniContainer.Dependable);
+            cni.Node.AddDependency(istioCniHelmChartRepo.Dependable);
 
             this.WaitableNode = cni;
         }

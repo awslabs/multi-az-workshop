@@ -5,11 +5,8 @@ using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Amazon.CDK;
-using Amazon.CDK.AWS.CodeBuild;
-using Amazon.CDK.AWS.ECR;
 using Amazon.CDK.AWS.EKS;
 using Amazon.CDK.AWS.IAM;
-using Amazon.CDK.AWS.Lambda;
 using Constructs;
 using Newtonsoft.Json;
 
@@ -18,8 +15,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
     public interface IAwsLoadBalancerControllerProps
     {
         public ICluster Cluster {get; set;}
-        public IFunction UploaderFunction {get; set;}
-        public IProject ContainerBuildProject {get; set;}
+        public ContainerAndRepo ContainerAndRepoBuilder {get; set;}
         public string ContainerVersion {get; set;}
         public string HelmVersion {get; set;}
     }
@@ -27,8 +23,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
     public class AwsLoadBalancerControllerProps : IAwsLoadBalancerControllerProps
     {
         public ICluster Cluster {get; set;}
-        public IFunction UploaderFunction {get; set;}
-        public IProject ContainerBuildProject {get; set;}
+        public ContainerAndRepo ContainerAndRepoBuilder {get; set;}
         public string ContainerVersion {get; set;} = "v2.8.1";
         public string HelmVersion {get; set;} = "1.10.1";
     }
@@ -70,29 +65,22 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
 
             loadBalancerContollerPodIdentityAssociation.Node.AddDependency(loadBalancerServiceAccount);
 
-            var loadBalancerControllerHelmChartRepo = CreateHelmRepoAndChart("aws-load-balancer-controller", props.HelmVersion, props.UploaderFunction);
+            var loadBalancerControllerHelmChartRepo = props.ContainerAndRepoBuilder.CreateRepoAndHelmChart(new RepoAndHelmChartProps() {
+                HelmChartName = "aws-load-balancer-controller",
+                Version = props.HelmVersion,
+                RepositoryName = "aws-load-balancer-controller"
+            });
 
             // Used by the aws-load-balancer-controller helm chart
-            Repository loadBalancerControllerContainerImageRepo = new Repository(this, "LoadBalancerControllerContainerImageRepo", new RepositoryProps() {
-                EmptyOnDelete = true,
-                RemovalPolicy = RemovalPolicy.DESTROY,
+            var awsLB = props.ContainerAndRepoBuilder.AddContainerAndRepo(new RepoAndContainerProps() {
+                ContainerImageS3ObjectKey = "aws-load-balancer-controller.tar.gz",
                 RepositoryName = "eks/aws-load-balancer-controller"
-            });
-            CustomResource loadBalancerControllerContainerImage = new CustomResource(this, "AWSLoadBalancerControllerContainer", new CustomResourceProps() {
-                ServiceToken = props.UploaderFunction.FunctionArn,
-                Properties = new Dictionary<string, object> {
-                    { "Type", "Docker" },
-                    { "Bucket", Fn.Ref("AssetsBucketName") },
-                    { "Key", Fn.Ref("AssetsBucketPrefix") + "aws-load-balancer-controller.tar.gz" },
-                    { "ProjectName", props.ContainerBuildProject.ProjectName },
-                    { "Repository", loadBalancerControllerContainerImageRepo.RepositoryName }
-                }
             });
 
             // Uses the aws-load-balancer-controller image
             HelmChart loadBalancerController = props.Cluster.AddHelmChart("AwsLoadBalancerController", new HelmChartOptions() {
                 Chart = "aws-load-balancer-controller",
-                Repository = "oci://" + loadBalancerControllerHelmChartRepo.RepositoryUri,
+                Repository = "oci://" + loadBalancerControllerHelmChartRepo.Repository.RepositoryUri,
                 Namespace = "kube-system",
                 Wait = true,
                 Version = props.HelmVersion,
@@ -114,8 +102,9 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             });
 
             loadBalancerController.Node.AddDependency(loadBalancerContollerPodIdentityAssociation);
-            loadBalancerController.Node.AddDependency(loadBalancerControllerContainerImage);
+            loadBalancerController.Node.AddDependency(awsLB.Dependable);
             loadBalancerController.Node.AddDependency(loadBalancerControllerManagedPolicy);
+            loadBalancerController.Node.AddDependency(loadBalancerControllerHelmChartRepo.Dependable);
 
             this.WaitableNode = loadBalancerController;
         }

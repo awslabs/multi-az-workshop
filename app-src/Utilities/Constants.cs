@@ -1,5 +1,5 @@
 
-namespace BAMCIS.MultiAZApp.Utils
+namespace BAMCIS.MultiAZApp.Utilities
 {
     public static class Constants
     {
