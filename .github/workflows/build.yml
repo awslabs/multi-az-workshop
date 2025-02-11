@@ -110,27 +110,45 @@ jobs:
       #      docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
       #    done
 
-      - name: Pull install-cni container image
-        run: |
-          file="istio/install-cni:$ISTIO"
-          docker pull $file
-          name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
-          docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
+      #- name: Pull install-cni container image
+      #  run: |
+      #    file="istio/install-cni:$ISTIO"
+      #    ACCOUNT_ID=$(echo "$CODEBUILD_BUILD_ARN" | cut -d':' -f5)
+      #    aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+      #    docker pull $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/docker-hub/$file
+      #    name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
+      #    docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
 
-      - name: Pull pilot container image
-        run: |
-          file="istio/pilot:$ISTIO"
-          docker pull $file
-          name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
-          docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
+      #- name: Pull pilot container image
+      #  run: |
+      #    file="istio/pilot:$ISTIO"
+      #    ACCOUNT_ID=$(echo "$CODEBUILD_BUILD_ARN" | cut -d':' -f5)
+      #    aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+      #    docker pull $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/docker-hub/$file
+      #    name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
+      #    docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
 
-      - name: Pull proxy container image
-        run: |
-          file="istio/proxyv2:$ISTIO"
-          docker pull $file
-          name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
-          docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
+      #- name: Pull proxy container image
+      #  run: |
+      #    file="istio/proxyv2:$ISTIO"
+      #    ACCOUNT_ID=$(echo "$CODEBUILD_BUILD_ARN" | cut -d':' -f5)
+      #    aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+      #    docker pull $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/docker-hub/$file
+      #    name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
+      #    docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
 
+      - name: Pull istio containers
+        run: |
+            ACCOUNT_ID=$(echo "$CODEBUILD_BUILD_ARN" | cut -d':' -f5)
+            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+            IMAGES=(install-cni proxyv2 pilot operator)
+            for image in $IMAGES; do
+              file=$image:$ISTIO
+              docker pull $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/docker-hub/$file
+              name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
+              docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
+            done
+            
       - name: Pull load balancer controller container image
         run: |
           BASE=public.ecr.aws
