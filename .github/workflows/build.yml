@@ -143,7 +143,7 @@ jobs:
             SLEEP_INTERVAL=2
             ACCOUNT_ID=$(echo "$CODEBUILD_BUILD_ARN" | cut -d':' -f5)
             aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-            IMAGES=(install-cni proxyv2 pilot operator)
+            IMAGES=(install-cni proxyv2 pilot)
             BASE=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/docker-hub
             for image in "${IMAGES[@]}"; do
               SOURCE=$BASE/istio/$image:$ISTIO
