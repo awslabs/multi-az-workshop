@@ -144,7 +144,7 @@ jobs:
             IMAGES=(install-cni proxyv2 pilot operator)
             for image in $IMAGES; do
               file=$image:$ISTIO
-              docker pull $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/docker-hub/$file
+              docker pull $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/docker-hub/library/$file
               name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
               docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
             done
