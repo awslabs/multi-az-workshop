@@ -101,42 +101,6 @@ jobs:
           file=aws-load-balancer-controller-$LB_CONTROLLER_HELM.tgz
           curl --location https://aws.github.io/eks-charts/$file --output ${{ github.workspace }}/assets/$file
 
-      #- name: Pull istio container images
-      #  run: |
-      #    istio_containers=("istio/install-cni:$ISTIO" "istio/pilot:$ISTIO" "istio/proxyv2:$ISTIO")
-      #    for file in ${istio_containers[@]}; do
-      #      docker pull $file
-      #      name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
-      #      docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
-      #    done
-
-      #- name: Pull install-cni container image
-      #  run: |
-      #    file="istio/install-cni:$ISTIO"
-      #    ACCOUNT_ID=$(echo "$CODEBUILD_BUILD_ARN" | cut -d':' -f5)
-      #    aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-      #    docker pull $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/docker-hub/$file
-      #    name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
-      #    docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
-
-      #- name: Pull pilot container image
-      #  run: |
-      #    file="istio/pilot:$ISTIO"
-      #    ACCOUNT_ID=$(echo "$CODEBUILD_BUILD_ARN" | cut -d':' -f5)
-      #    aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-      #    docker pull $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/docker-hub/$file
-      #    name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
-      #    docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
-
-      #- name: Pull proxy container image
-      #  run: |
-      #    file="istio/proxyv2:$ISTIO"
-      #    ACCOUNT_ID=$(echo "$CODEBUILD_BUILD_ARN" | cut -d':' -f5)
-      #    aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-      #    docker pull $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/docker-hub/$file
-      #    name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
-      #    docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
-
       - name: Pull istio containers
         run: |
             MAX_RETRIES=10
@@ -183,16 +147,6 @@ jobs:
 
       - name: Pull docker compose
         run: curl -SL https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-aarch64 -o ${{ github.workspace }}/assets/docker-compose
-
-      #- name: Pull AWS container images
-      #  run: |
-      #    aws_containers=("eks/aws-load-balancer-controller:$LB_CONTROLLER_CONTAINER-linux_arm64" "cloudwatch-agent/cloudwatch-agent:latest")
-      #    BASE=public.ecr.aws
-      #    for file in ${aws_containers[@]}; do
-      #      docker pull $BASE/$file
-      #      name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
-      #      docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
-      #    done
 
       - name: Build arm64 web app
         run: |
