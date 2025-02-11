@@ -593,7 +593,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                         new InitElement[] {
                             InitFile.FromUrl(
                                 "/usr/local/lib/docker/cli-plugins/docker-compose", 
-                                Fn.Sub("https://" + props.AssetsBucketName + ".s3.${AWS::Region}.${AWS::URLSuffix}/" + props.AssetsBucketPrefix + "docker-compose" ),
+                                "https://" + props.AssetsBucketName + Fn.Sub(".s3.${AWS::Region}.${AWS::URLSuffix}/") + props.AssetsBucketPrefix + "docker-compose",
                                 new InitFileOptions() { Mode = "000755", Owner = "root", Group = "root"}    
                             ),
                             InitCommand.ShellCommand("usermod -a -G docker web"),
