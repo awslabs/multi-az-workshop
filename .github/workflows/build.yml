@@ -142,9 +142,10 @@ jobs:
             ACCOUNT_ID=$(echo "$CODEBUILD_BUILD_ARN" | cut -d':' -f5)
             aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
             IMAGES=(install-cni proxyv2 pilot operator)
-            for image in $IMAGES; do
-              docker pull $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/docker-hub/istio/$image:$ISTIO
-              docker tag docker-hub/istio/install-cni:$ISTIO istio/install-cni:$ISTIO
+            BASE=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/docker-hub
+            for image in "${IMAGES[@]}"; do
+              docker pull $BASE/istio/$image:$ISTIO
+              docker tag $BASE/istio/install-cni:$ISTIO istio/install-cni:$ISTIO
               docker save istio/$image:$ISTIO | gzip > ${{ github.workspace }}/assets/$image.tar.gz
             done
             
