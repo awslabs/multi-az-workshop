@@ -166,11 +166,12 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 IAMResourcePath = "/front-end/ec2-fleet/",
                 Database = this.DatabaseStack.Database,
                 LoadBalancerSecurityGroup = albSG,
-                Subnets = new SubnetSelection() {  SubnetType = SubnetType.PRIVATE_ISOLATED }
+                Subnets = new SubnetSelection() {  SubnetType = SubnetType.PRIVATE_ISOLATED },
+                AssetsBucketName = assetsBucketName.ValueAsString,
+                AssetsBucketPrefix = assetsBucketPrefix.ValueAsString
             });        
 
-            this.EC2Stack.Node.AddDependency(this.AZTaggerStack);   
-            this.EC2Stack.Node.AddDependency(frontEndLogGroup);   
+            this.EC2Stack.Node.AddDependency(this.AZTaggerStack);    
 
             this.EKSStack = new EKSStack(this, "eks", new EKSStackProps() {
                 CpuArch = arch,
@@ -341,8 +342,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             //to the servers
             this.CodeDeployStack = new CodeDeployApplicationStack(this, "codedeploy", new CodeDeployApplicationStackProps() {
                 EC2Fleet = this.EC2Stack,
-                //ApplicationKey = assetsBucketPrefix.ValueAsString + (arch == InstanceArchitecture.ARM_64 ? "app_arm64.zip" : "app_x64.zip"),
-                ApplicationKey = assetsBucketPrefix.ValueAsString + "app_deploy.zip",
+                ApplicationKey = assetsBucketPrefix.ValueAsString + (arch == InstanceArchitecture.ARM_64 ? "app_arm64.zip" : "app_x64.zip"),
+                //ApplicationKey = assetsBucketPrefix.ValueAsString + "app_deploy.zip",
                 AvailabilityZoneCount = availabilityZoneIds.Length,
                 TotalEC2InstancesInFleet = fleetSize,
                 ApplicationName = "multi-az-workshop",
