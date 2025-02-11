@@ -16,6 +16,7 @@ using Amazon.CDK.AWS.SSM;
 using Amazon.AWSLabs.MultiAZWorkshop.Constructs;
 using Amazon.CDK.AWS.Lightsail;
 using Amazon.CDK.AWS.S3;
+using Constructs;
 
 namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
 {
@@ -283,12 +284,6 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
 
             UserData userData = UserData.ForLinux(new LinuxUserDataOptions() { Shebang =  "#!/bin/bash" });
 
-            userData.AddCommands(
-                $"echo 'export ONEBOX=false' >> /etc/profile.d/onebox.sh",
-                "chmod +x /etc/profile.d/onebox.sh",
-                "echo 'ONEBOX=false' >> /etc/onebox"
-            );
-            
             this.LaunchTemplate = new LaunchTemplate(this, "front-end-launch-template", new LaunchTemplateProps() {
                 UserData = userData,
                 MachineImage = MachineImage.LatestAmazonLinux2023(new AmazonLinux2023ImageSsmParameterProps() { CpuType = props.CpuArch == InstanceArchitecture.ARM_64 ? AmazonLinuxCpuType.ARM_64 : AmazonLinuxCpuType.X86_64 }),
@@ -334,7 +329,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
 
             asg.ApplyCloudFormationInit(CloudFormationInit.FromConfigSets(new ConfigSetProps() {
                     ConfigSets = configSets,
-                    Configs = asg.GenerateInitConfig(props, this.CWAgentConfig.ParameterName)
+                    Configs = asg.GenerateInitConfig(this, props, this.CWAgentConfig.ParameterName)
                 }),
                 new Amazon.CDK.AWS.AutoScaling.ApplyCloudFormationInitOptions() {
                     ConfigSets = new string[] { "setup" },
@@ -397,6 +392,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
     {
         internal static Dictionary<string, InitConfig> GenerateInitConfig(
             this IAutoScalingGroup resource,
+            Construct scope,
             EC2FleetStackProps props,
             string cwAgentConfigParameterName
         )
@@ -591,11 +587,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     "17_verify-docker",
                     new InitConfig(
                         new InitElement[] {
-                            InitFile.FromUrl(
-                                "/usr/local/lib/docker/cli-plugins/docker-compose", 
-                                "https://" + props.AssetsBucketName + Fn.Sub(".s3.${AWS::Region}.${AWS::URLSuffix}/") + props.AssetsBucketPrefix + "docker-compose",
-                                new InitFileOptions() { Mode = "000755", Owner = "root", Group = "root"}    
-                            ),
+                            InitCommand.ShellCommand("aws s3 cp s3://" + props.AssetsBucketName + "/" + props.AssetsBucketPrefix + "docker-compose /usr/local/lib/docker/cli-plugins/docker-compose --region " + Aws.REGION),
                             InitCommand.ShellCommand("usermod -a -G docker web"),
                             InitCommand.ShellCommand("docker ps"),
                             InitCommand.ShellCommand("docker compose version")
@@ -621,6 +613,10 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                                     Owner = "root",
                                     Group = "root"
                                 }
+                            ),
+                            InitFile.FromString(
+                                "/etc/onebox",
+                                "ONEBOX=false"
                             )
                         }
                     )
