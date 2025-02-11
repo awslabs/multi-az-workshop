@@ -14,6 +14,9 @@ using Amazon.CDK.AWS.Logs;
 using Amazon.CDK.AWS.RDS;
 using Amazon.CDK.AWS.SSM;
 using Amazon.AWSLabs.MultiAZWorkshop.Constructs;
+using Amazon.CDK.AWS.Lightsail;
+using Amazon.CDK.AWS.S3;
+using Constructs;
 
 namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
 {
@@ -42,6 +45,10 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
         public ISecurityGroup LoadBalancerSecurityGroup {get; set;}
 
         public ISubnetSelection Subnets {get; set;}
+
+        public string AssetsBucketName {get; set;}
+
+        public string AssetsBucketPrefix {get; set;}
     }
 
     public class EC2FleetStack : NestedStack
@@ -277,12 +284,6 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
 
             UserData userData = UserData.ForLinux(new LinuxUserDataOptions() { Shebang =  "#!/bin/bash" });
 
-            userData.AddCommands(
-                $"echo 'export ONEBOX=false' >> /etc/profile.d/onebox.sh",
-                "chmod +x /etc/profile.d/onebox.sh",
-                "echo 'ONEBOX=false' >> /etc/onebox"
-            );
-            
             this.LaunchTemplate = new LaunchTemplate(this, "front-end-launch-template", new LaunchTemplateProps() {
                 UserData = userData,
                 MachineImage = MachineImage.LatestAmazonLinux2023(new AmazonLinux2023ImageSsmParameterProps() { CpuType = props.CpuArch == InstanceArchitecture.ARM_64 ? AmazonLinuxCpuType.ARM_64 : AmazonLinuxCpuType.X86_64 }),
@@ -328,7 +329,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
 
             asg.ApplyCloudFormationInit(CloudFormationInit.FromConfigSets(new ConfigSetProps() {
                     ConfigSets = configSets,
-                    Configs = asg.GenerateInitConfig(props, this.CWAgentConfig.ParameterName)
+                    Configs = asg.GenerateInitConfig(this, props, this.CWAgentConfig.ParameterName)
                 }),
                 new Amazon.CDK.AWS.AutoScaling.ApplyCloudFormationInitOptions() {
                     ConfigSets = new string[] { "setup" },
@@ -391,6 +392,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
     {
         internal static Dictionary<string, InitConfig> GenerateInitConfig(
             this IAutoScalingGroup resource,
+            Construct scope,
             EC2FleetStackProps props,
             string cwAgentConfigParameterName
         )
@@ -565,6 +567,9 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     new InitConfig(
                         new InitElement[] {
                             InitPackage.Yum("docker"),
+                            InitCommand.ShellCommand("mkdir -p /usr/libexec/docker/cli-plugins"),
+                            InitCommand.ShellCommand("aws s3 cp s3://" + props.AssetsBucketName + "/" + props.AssetsBucketPrefix + "docker-compose /usr/libexec/docker/cli-plugins/docker-compose --region " + Aws.REGION),
+                            InitCommand.ShellCommand("chmod +x /usr/libexec/docker/cli-plugins/docker-compose"),
                             InitService.Enable("docker", new InitServiceOptions() {
                                 Enabled = true,
                                 EnsureRunning = true,
@@ -576,7 +581,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                 {
                     "16_setup-web-user",
                     new InitConfig(new InitElement[] {
-                        new InitUser("web", new InitUserOptions() {                 
+                        new InitUser("web", new InitUserOptions() {      
+                            Groups = ["docker"]           
                         })
                     })                        
                 },
@@ -584,8 +590,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     "17_verify-docker",
                     new InitConfig(
                         new InitElement[] {
-                            InitCommand.ShellCommand("usermod -a -G docker web"),
-                            InitCommand.ShellCommand("docker ps")
+                            InitCommand.ShellCommand("docker ps"),
+                            //InitCommand.ShellCommand("docker compose version")
                         }
                     )
                 },
@@ -608,6 +614,10 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                                     Owner = "root",
                                     Group = "root"
                                 }
+                            ),
+                            InitFile.FromString(
+                                "/etc/onebox",
+                                "ONEBOX=false"
                             )
                         }
                     )

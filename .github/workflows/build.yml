@@ -101,36 +101,34 @@ jobs:
           file=aws-load-balancer-controller-$LB_CONTROLLER_HELM.tgz
           curl --location https://aws.github.io/eks-charts/$file --output ${{ github.workspace }}/assets/$file
 
-      #- name: Pull istio container images
-      #  run: |
-      #    istio_containers=("istio/install-cni:$ISTIO" "istio/pilot:$ISTIO" "istio/proxyv2:$ISTIO")
-      #    for file in ${istio_containers[@]}; do
-      #      docker pull $file
-      #      name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
-      #      docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
-      #    done
-
-      - name: Pull install-cni container image
+      - name: Pull istio containers
         run: |
-          file="istio/install-cni:$ISTIO"
-          docker pull $file
-          name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
-          docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
+            MAX_RETRIES=10
+            SLEEP_INTERVAL=2
+            ACCOUNT_ID=$(echo "$CODEBUILD_BUILD_ARN" | cut -d':' -f5)
+            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+            IMAGES=(install-cni proxyv2 pilot)
+            BASE=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/docker-hub
+            for image in "${IMAGES[@]}"; do
+              SOURCE=$BASE/istio/$image:$ISTIO
+              docker pull $SOURCE
+              
+              retries=0
+              while ! docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^$SOURCE$"; do
+                if [ "$retries" -ge "$MAX_RETRIES" ]; then
+                  echo "Image $SOURCE did not appear in 'docker images' after $((MAX_RETRIES * SLEEP_INTERVAL)) seconds. Exiting."
+                  exit 1
+                fi
 
-      - name: Pull pilot container image
-        run: |
-          file="istio/pilot:$ISTIO"
-          docker pull $file
-          name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
-          docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
+                echo "Retry $((retries+1))/$MAX_RETRIES - Image not found yet. Retrying in $SLEEP_INTERVAL seconds..."
+                sleep "$SLEEP_INTERVAL"
+                retries=$((retries+1))
+              done
 
-      - name: Pull proxy container image
-        run: |
-          file="istio/proxyv2:$ISTIO"
-          docker pull $file
-          name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
-          docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
-
+              docker tag $SOURCE istio/$image:$ISTIO
+              docker save istio/$image:$ISTIO | gzip > ${{ github.workspace }}/assets/$image.tar.gz
+            done
+            
       - name: Pull load balancer controller container image
         run: |
           BASE=public.ecr.aws
@@ -147,15 +145,8 @@ jobs:
           name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
           docker save $BASE/$file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
 
-      #- name: Pull AWS container images
-      #  run: |
-      #    aws_containers=("eks/aws-load-balancer-controller:$LB_CONTROLLER_CONTAINER-linux_arm64" "cloudwatch-agent/cloudwatch-agent:latest")
-      #    BASE=public.ecr.aws
-      #    for file in ${aws_containers[@]}; do
-      #      docker pull $BASE/$file
-      #      name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
-      #      docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
-      #    done
+      - name: Pull docker compose
+        run: curl -SL https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-aarch64 -o ${{ github.workspace }}/assets/docker-compose
 
       - name: Build arm64 web app
         run: |
@@ -197,8 +188,8 @@ jobs:
           cd ${{ github.workspace }}/app-src/output
           docker build --tag $PROJECT_NAME:latest --platform linux/arm64 --build-arg SRC=src --file ${{ github.workspace }}/build/dockerfile .
           docker save $PROJECT_NAME:latest | gzip > ${{ github.workspace }}/assets/container.tar.gz
-          zip -r ${{ github.workspace }}/assets/app_deploy.zip ${{ github.workspace }}/assets/container.tar.gz
-          zip ${{ github.workspace }}/assets/app_deploy.zip ${{ github.workspace }}/assets/cloudwatch-agent.tar.gz
+          zip -j ${{ github.workspace }}/assets/app_deploy.zip ${{ github.workspace }}/assets/container.tar.gz
+          zip -j ${{ github.workspace }}/assets/app_deploy.zip ${{ github.workspace }}/assets/cloudwatch-agent.tar.gz
           cd ${{ github.workspace }}/app-src
           zip -r ${{ github.workspace }}/assets/app_deploy.zip docker/
           cd ${{ github.workspace }}/app-src/docker
@@ -215,8 +206,8 @@ jobs:
           cd ${{ github.workspace }}/app-src/output
           docker build --tag $PROJECT_NAME:latest --platform linux/arm64 --build-arg SRC=src --file ${{ github.workspace }}/build/dockerfile .
           docker save $PROJECT_NAME:latest | gzip > /tmp/container.tar.gz
-          zip -r ${{ github.workspace }}/assets/app_deploy_fail.zip /tmp/container.tar.gz
-          zip ${{ github.workspace }}/assets/app_deploy_fail.zip ${{ github.workspace }}/assets/cloudwatch-agent.tar.gz
+          zip -j ${{ github.workspace }}/assets/app_deploy_fail.zip /tmp/container.tar.gz
+          zip -j ${{ github.workspace }}/assets/app_deploy_fail.zip ${{ github.workspace }}/assets/cloudwatch-agent.tar.gz
           cd ${{ github.workspace }}/app-src
           zip -r ${{ github.workspace }}/assets/app_deploy_fail.zip docker/
           cd ${{ github.workspace }}/app-src/docker
