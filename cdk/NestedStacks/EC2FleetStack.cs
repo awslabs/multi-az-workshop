@@ -567,7 +567,9 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     new InitConfig(
                         new InitElement[] {
                             InitPackage.Yum("docker"),
-                            InitCommand.ShellCommand("mkdir -p /usr/local/lib/docker/cli-plugins"),
+                            InitCommand.ShellCommand("mkdir -p /usr/libexec/docker/cli-plugins"),
+                            InitCommand.ShellCommand("aws s3 cp s3://" + props.AssetsBucketName + "/" + props.AssetsBucketPrefix + "docker-compose /usr/libexec/docker/cli-plugins/docker-compose --region " + Aws.REGION),
+                            InitCommand.ShellCommand("chmod +x /usr/libexec/docker/cli-plugins/docker-compose"),
                             InitService.Enable("docker", new InitServiceOptions() {
                                 Enabled = true,
                                 EnsureRunning = true,
@@ -579,7 +581,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                 {
                     "16_setup-web-user",
                     new InitConfig(new InitElement[] {
-                        new InitUser("web", new InitUserOptions() {                 
+                        new InitUser("web", new InitUserOptions() {      
+                            Groups = ["docker"]           
                         })
                     })                        
                 },
@@ -587,10 +590,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     "17_verify-docker",
                     new InitConfig(
                         new InitElement[] {
-                            InitCommand.ShellCommand("aws s3 cp s3://" + props.AssetsBucketName + "/" + props.AssetsBucketPrefix + "docker-compose /usr/local/lib/docker/cli-plugins/docker-compose --region " + Aws.REGION),
-                            InitCommand.ShellCommand("usermod -a -G docker web"),
                             InitCommand.ShellCommand("docker ps"),
-                            InitCommand.ShellCommand("docker compose version")
+                            //InitCommand.ShellCommand("docker compose version")
                         }
                     )
                 },
