@@ -12,6 +12,9 @@ permissions:
   - object: /var/www/multi-az-workshop-application/multi-az-workshop-application
     mode: 755
 hooks:
+  ApplicationStop:
+    - location: scripts/stop-kestrel-service.sh
+      runas: root
   BeforeInstall:
     - location: scripts/stop-kestrel-service.sh
       runas: root
