@@ -143,11 +143,8 @@ jobs:
             aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
             IMAGES=(install-cni proxyv2 pilot operator)
             for image in $IMAGES; do
-              echo Pulling image $image:$ISTIO
-              file=$image:$ISTIO
-              docker pull $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/docker-hub/istio/$file
-              name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
-              docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
+              docker pull $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/docker-hub/istio/$image:$ISTIO
+              docker save istio/$image:$ISTIO | gzip > ${{ github.workspace }}/assets/$image.tar.gz
             done
             
       - name: Pull load balancer controller container image
