@@ -2,4 +2,4 @@
 
 rootDirectory="/opt/codedeploy-agent/deployment-root"
 compose="$rootDirectory/$DEPLOYMENT_GROUP_ID/$DEPLOYMENT_ID/deployment-archive/docker/docker-compose.yml"
-docker compose down -f $compose
+docker compose -f $compose down
