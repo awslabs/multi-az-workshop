@@ -3,11 +3,13 @@
 services:
   multi-az-workshop-application:
     image: multi-az-workshop:latest
+    container_name: multi-az-workshop-application
     restart: always
     ports:
       - 5000:5000
     environment:
-      - AWS_EMF_AGENT_ENDPOINT=tcp://cwagent:25889
+      - "AWS_EMF_AGENT_ENDPOINT=tcp://cwagent:25889"
+      - "DB_SECRET=${DB_SECRET}"
   # healthcheck:
   #    test: curl --fail --location http://localhost:5000/health || exit 1
   #    interval: 5s
@@ -16,10 +18,11 @@ services:
   #    start_period: 10s
   cwagent:
     image: cloudwatch-agent/cloudwatch-agent:latest
+    container_name: cwagent
     mem_limit: 256M
     cpus: 0.25
     restart: always
     ports: 
-      - 25889:25888/tcp
+      - 25889:25889/tcp
     environment:
-      - "CW_CONFIG_CONTENT={\"logs\": {\"metrics_collected\": {\"emf\": { }}}}"
+      - "CW_CONFIG_CONTENT={\"logs\": {\"metrics_collected\": {\"emf\": { \"service_address\": \"tcp://127.0.0.1:25889\" }}}}"
