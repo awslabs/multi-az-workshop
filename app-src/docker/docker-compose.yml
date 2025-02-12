@@ -1,6 +1,5 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
-version: "3.9"
 services:
   multi-az-workshop-application:
     image: multi-az-workshop:latest
