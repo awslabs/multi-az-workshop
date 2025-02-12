@@ -7,7 +7,7 @@ services:
     ports:
       - 5000:5000
     environment:
-      - AWS_EMF_AGENT_ENDPOINT=tcp://cwagent:25888
+      - AWS_EMF_AGENT_ENDPOINT=tcp://cwagent:25889
   # healthcheck:
   #    test: curl --fail --location http://localhost:5000/health || exit 1
   #    interval: 5s
@@ -20,6 +20,6 @@ services:
     cpus: 0.25
     restart: always
     ports: 
-      - 25888:25888/tcp
+      - 25889:25888/tcp
     environment:
       - "CW_CONFIG_CONTENT={\"logs\": {\"metrics_collected\": {\"emf\": { }}}}"
