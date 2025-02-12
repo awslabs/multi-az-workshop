@@ -1,3 +1,5 @@
 #!/bin/bash
 
-docker compose --detach --file docker/docker-compose.yml up
+rootDirectory="/opt/codedeploy-agent/deployment-root"
+compose="$rootDirectory/$DEPLOYMENT_GROUP_ID/$DEPLOYMENT_ID/deployment-archive/docker/docker-compose.yml"
+docker compose --file $compose up --detach
