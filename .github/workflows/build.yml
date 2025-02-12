@@ -142,8 +142,9 @@ jobs:
           BASE=public.ecr.aws
           file="cloudwatch-agent/cloudwatch-agent:latest"
           docker pull $BASE/$file
+          docker tag $BASE/$file $file
           name=$(echo $file | cut -d '/' -f2 | cut -d ':' -f1)
-          docker save $BASE/$file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
+          docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
 
       - name: Pull docker compose
         run: curl -SL https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-aarch64 -o ${{ github.workspace }}/assets/docker-compose
