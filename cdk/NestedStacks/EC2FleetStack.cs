@@ -451,7 +451,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                             InitService.Enable("cfn-hup", new InitServiceOptions() {
                                 Enabled = true,
                                 EnsureRunning = true,
-                                ServiceManager = ServiceManager.SYSVINIT
+                                ServiceManager = ServiceManager.SYSTEMD
                                 /*
                                     Missing a "Files" option for these
                                     "/etc/cfn/cfn-hup.conf",
@@ -544,7 +544,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                         InitService.Enable("codedeploy-agent", new InitServiceOptions() {
                             Enabled = true,
                             EnsureRunning = true,
-                            ServiceManager = ServiceManager.SYSVINIT
+                            ServiceManager = ServiceManager.SYSTEMD
                         })
                     })                        
                 },
@@ -573,7 +573,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                             InitService.Enable("docker", new InitServiceOptions() {
                                 Enabled = true,
                                 EnsureRunning = true,
-                                ServiceManager = ServiceManager.SYSVINIT
+                                ServiceManager = ServiceManager.SYSTEMD
                             })
                         }
                     )
