@@ -139,7 +139,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                             Key = props.ApplicationKey,
                             BundleType = "zip"
                         }
-                    }
+                    },
+                    IgnoreApplicationStopFailures = true
                 },
                 DeploymentStyle = new DeploymentStyleProperty() {
                     DeploymentOption = "WITH_TRAFFIC_CONTROL",
