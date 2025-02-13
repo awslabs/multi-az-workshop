@@ -492,7 +492,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     new InitConfig(new InitElement[] {
                     //    InitCommand.ShellCommand(Fn.Sub("rpm --upgrade --force -v -h  https://s3.${AWS::Region}.${AWS::URLSuffix}/amazoncloudwatch-agent-${AWS::Region}/amazon_linux/${arch}/latest/amazon-cloudwatch-agent.rpm", new Dictionary<string, string>(){ { "arch", props.CpuArch == InstanceArchitecture.ARM_64 ? "arm64" : "amd64" } }))
                         InitPackage.Yum("amazon-cloudwatch-agent"),
-                        InitCommand.ShellCommand("/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a set-log-level -l DEBUG"),
+                        //InitCommand.ShellCommand("/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a set-log-level -l DEBUG"),
                     })
                     
                 },
