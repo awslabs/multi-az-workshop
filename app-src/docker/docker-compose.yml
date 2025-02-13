@@ -8,7 +8,7 @@ services:
     ports:
       - 5000:5000
     environment:
-      - "AWS_EMF_AGENT_ENDPOINT=tcp://localhost:25888"
+      - "AWS_EMF_AGENT_ENDPOINT=tcp://172.17.0.1:25888"
       - "DB_SECRET=${DB_SECRET}"
       - "AWS_EMF_LOG_STREAM_NAME=${AWS_EMF_LOG_STREAM_NAME}"
       - "AWS_EMF_ENVIRONMENT=Agent"
@@ -18,15 +18,15 @@ services:
   #    timeout: 1s
   #    retries: 5
   #    start_period: 10s
-  cwagent:
-    image: cloudwatch-agent/cloudwatch-agent:latest
-    container_name: cwagent
-    mem_limit: 256M
-    cpus: 0.25
-    restart: always
-    ports: 
-      #- 25889:25889/tcp
-      - 25889:25888/tcp
-    environment:
-      #- "CW_CONFIG_CONTENT={\"logs\": {\"metrics_collected\": {\"emf\": { \"service_address\": \"tcp://0.0.0.0:25889\" }}}}"
-      - "CW_CONFIG_CONTENT={\"logs\": {\"metrics_collected\": {\"emf\": { } } } }"
+  #cwagent:
+  #  image: cloudwatch-agent/cloudwatch-agent:latest
+  #  container_name: cwagent
+  #  mem_limit: 256M
+  #  cpus: 0.25
+  #  restart: always
+  #  ports: 
+  #    #- 25889:25889/tcp
+  #    - 25889:25888/tcp
+  #  environment:
+  #    #- "CW_CONFIG_CONTENT={\"logs\": {\"metrics_collected\": {\"emf\": { \"service_address\": \"tcp://0.0.0.0:25889\" }}}}"
+  #    - "CW_CONFIG_CONTENT={\"logs\": {\"metrics_collected\": {\"emf\": { } } } }"
