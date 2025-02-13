@@ -145,7 +145,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             });
 
             // Security group for the ALB
-            SecurityGroup albSG = new SecurityGroup(this, "alb-security-group", new SecurityGroupProps() {
+            SecurityGroup albSecurityGroup = new SecurityGroup(this, "alb-security-group", new SecurityGroupProps() {
                 Vpc = this.NetworkStack.Vpc,
                 AllowAllOutbound = true,
                 AllowAllIpv6Outbound = this.NetworkStack.Vpc.IpV6Enabled ? true : false
@@ -153,16 +153,15 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
 
             // Allow inbound port 80 connections from the VPC
             // for the Lambda canary tests
-            albSG.AddIngressRule(Peer.Ipv4(this.NetworkStack.Vpc.VpcCidrBlock), Port.Tcp(80));
+            albSecurityGroup.AddIngressRule(Peer.Ipv4(this.NetworkStack.Vpc.VpcCidrBlock), Port.Tcp(80));
 
             if (this.NetworkStack.Vpc.IpV6Enabled)
             {
-                albSG.AddIngressRule(Peer.Ipv6(Fn.Select(0, this.NetworkStack.Vpc.VpcIpv6CidrBlocks)), Port.Tcp(80));
+                albSecurityGroup.AddIngressRule(Peer.Ipv6(Fn.Select(0, this.NetworkStack.Vpc.VpcIpv6CidrBlocks)), Port.Tcp(80));
             }
 
-            // Deploys the EC2 auto scaling groups, load balancer, and target group
-            // with accompanying resources like IAM and log groups
-            /*
+            // Creates the EC2 launch template, the auto scaling group, and load balancer
+            // target group         
             this.EC2Stack = new EC2FleetStack(this, "ec2", new EC2FleetStackProps() {
                 Vpc = this.NetworkStack.Vpc,
                 InstanceSize = InstanceSize.NANO,
@@ -171,13 +170,13 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 CpuArch = arch,
                 IAMResourcePath = "/front-end/ec2-fleet/",
                 Database = this.DatabaseStack.Database,
-                LoadBalancerSecurityGroup = albSG,
-                Subnets = new SubnetSelection() {  SubnetType = SubnetType.PRIVATE_ISOLATED },
+                LoadBalancerSecurityGroup = albSecurityGroup,
+                Subnets = new SubnetSelection() { SubnetType = SubnetType.PRIVATE_ISOLATED },
                 AssetsBucketName = assetsBucketName.ValueAsString,
                 AssetsBucketPrefix = assetsBucketPrefix.ValueAsString
             });        
 
-            this.EC2Stack.Node.AddDependency(this.AZTaggerStack);*/
+            this.EC2Stack.Node.AddDependency(this.AZTaggerStack);
 
             /*
             this.EKSStack = new EKSStack(this, "eks", new EKSStackProps() {
@@ -197,7 +196,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 Vpc = this.NetworkStack.Vpc,
                 VpcSubnets = new SubnetSelection() { SubnetType = SubnetType.PRIVATE_ISOLATED },
                 Http2Enabled = true,
-                SecurityGroup = albSG 
+                SecurityGroup = albSecurityGroup 
             });
 
             alb.SetAttribute("zonal_shift.config.enabled", "true");
