@@ -64,20 +64,20 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     "01_metadata-version",
                     "02_setup-cfn-hup",
                     "03_check-cfn-hup",
-                    "04_install-cloudwatch-agent",
-                    "05_config-amazon-cloudwatch-agent",
-                    "06_restart-amazon-cloudwatch-agent",
+                    //"04_install-cloudwatch-agent",
+                    //"05_config-amazon-cloudwatch-agent",
+                    //"06_restart-amazon-cloudwatch-agent",
                     "07_xray-daemon-download",
                     "08_xray-daemon-install",
-                    "10_setup-firewalld",
-                    "11_install-codedeploy",
-                    "12_start-codedeploy-agent",
+                    "10_setup-firewalld",                
                     "13_install_icu_support",
                     "14_set_database_details",
                     "15_install-docker",
                     "16_setup-web-user",
                     "17_verify-docker",
-                    "18_set-env"
+                    "18_install-codedeploy",
+                    "19_start-codedeploy-agent",
+                    "20_set-env"
                 }
             },
             {
@@ -544,29 +544,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                         InitCommand.ShellCommand("firewall-cmd --list-all"),
                     })                        
                 },
-                {
-                    "11_install-codedeploy",
-                    new InitConfig(new InitElement[] {
-                        InitCommand.ShellCommand("yum -y install ruby"),
-                        InitCommand.ShellCommand(Fn.Sub("curl https://aws-codedeploy-${AWS::Region}.s3.${AWS::Region}.${AWS::URLSuffix}/latest/install --output /tmp/codedeploy")),
-                        InitCommand.ShellCommand("chmod +x /tmp/codedeploy"),
-                        InitCommand.ShellCommand("/tmp/codedeploy auto"),
-                        InitCommand.ShellCommand("echo \"\" >> /etc/codedeploy-agent/conf/codedeployagent.yml"),
-                        InitCommand.ShellCommand("echo \":enable_auth_policy: true\" >> /etc/codedeploy-agent/conf/codedeployagent.yml"),
-                        InitCommand.ShellCommand("service codedeploy-agent stop"),
-                        InitCommand.ShellCommand("rm /tmp/codedeploy")
-                    })                        
-                },
-                {
-                    "12_start-codedeploy-agent",
-                    new InitConfig(new InitElement[] {
-                        InitService.Enable("codedeploy-agent", new InitServiceOptions() {
-                            Enabled = true,
-                            EnsureRunning = true,
-                            ServiceManager = ServiceManager.SYSTEMD
-                        })
-                    })                        
-                },
+                
                 {
                     "13_install_icu_support",
                     new InitConfig(new InitElement[] {
@@ -620,7 +598,30 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     )
                 },
                 {
-                    "18_set-env",
+                    "18_install-codedeploy",
+                    new InitConfig(new InitElement[] {
+                        InitCommand.ShellCommand("yum -y install ruby"),
+                        InitCommand.ShellCommand(Fn.Sub("curl https://aws-codedeploy-${AWS::Region}.s3.${AWS::Region}.${AWS::URLSuffix}/latest/install --output /tmp/codedeploy")),
+                        InitCommand.ShellCommand("chmod +x /tmp/codedeploy"),
+                        InitCommand.ShellCommand("/tmp/codedeploy auto"),
+                        InitCommand.ShellCommand("echo \"\" >> /etc/codedeploy-agent/conf/codedeployagent.yml"),
+                        InitCommand.ShellCommand("echo \":enable_auth_policy: true\" >> /etc/codedeploy-agent/conf/codedeployagent.yml"),
+                        InitCommand.ShellCommand("service codedeploy-agent stop"),
+                        InitCommand.ShellCommand("rm /tmp/codedeploy")
+                    })                        
+                },
+                {
+                    "19_start-codedeploy-agent",
+                    new InitConfig(new InitElement[] {
+                        InitService.Enable("codedeploy-agent", new InitServiceOptions() {
+                            Enabled = true,
+                            EnsureRunning = true,
+                            ServiceManager = ServiceManager.SYSTEMD
+                        })
+                    })                        
+                },
+                {
+                    "20_set-env",
                     new InitConfig(
                         new InitElement[] {
                             InitFile.FromString(

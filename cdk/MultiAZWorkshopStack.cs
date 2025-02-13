@@ -160,6 +160,11 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 albSecurityGroup.AddIngressRule(Peer.Ipv6(Fn.Select(0, this.NetworkStack.Vpc.VpcIpv6CidrBlocks)), Port.Tcp(80));
             }
 
+            bool installEC2 = false;
+
+            if (installEC2)
+            {
+
             // Creates the EC2 launch template, the auto scaling group, and load balancer
             // target group         
             this.EC2Stack = new EC2FleetStack(this, "ec2", new EC2FleetStackProps() {
@@ -177,6 +182,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             });        
 
             this.EC2Stack.Node.AddDependency(this.AZTaggerStack);
+            }
 
             /*
             this.EKSStack = new EKSStack(this, "eks", new EKSStackProps() {
@@ -297,6 +303,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 Interval = Duration.Minutes(60),          
             });*/
 
+            if (installEC2)
+            {
             ApplicationListener listener = this.LoadBalancer.AddListener("http-listener", new BaseApplicationListenerProps() {
                 Port = 80,
                 Protocol = ApplicationProtocol.HTTP,
@@ -306,6 +314,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                     Order = 255
                 })                     
             });
+            }
 
             // Make sure the alarms used for CodeDeploy are created before creating the listener,
             // otherwise the listener gets created and the CodeDeploy stack is still waiting for the
@@ -349,6 +358,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             
             //Creates the CodeDeploy application that is deployed
             //to the servers
+            if (installEC2)
+            {
             this.CodeDeployStack = new CodeDeployApplicationStack(this, "codedeploy", new CodeDeployApplicationStackProps() {
                 EC2Fleet = this.EC2Stack,
                 //ApplicationKey = assetsBucketPrefix.ValueAsString + (arch == InstanceArchitecture.ARM_64 ? "app_arm64.zip" : "app_x64.zip"),
@@ -360,7 +371,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 //Alarms = new IAlarm[] { multiAvailabilityZoneObservability.ServiceAlarms.RegionalAvailabilityCanaryAlarm}
             });  
 
-            CodeDeployStack.Node.AddDependency(listener);
+            //CodeDeployStack.Node.AddDependency(listener);
+            }
 
             
 
