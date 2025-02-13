@@ -105,9 +105,9 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 StringValue = Fn.Sub("s3://${AssetsBucketName}/${AssetsBucketPrefix}")
             });
 
-            // Creates the VPC network, subnets, routes, and VPC endpoints
-            this.NetworkStack = new IpV6NetworkStack(this, "network", new IPV6NetworkStackProps() {
-                AvailabilityZoneNames = availabilityZoneNames,        
+            StringParameter deploymentAsset = new StringParameter(this, "deployment-asset", new StringParameterProps() {
+                ParameterName = "DeploymentAsset",
+                StringValue = Fn.Sub("s3://${AssetsBucketName}/${AssetsBucketPrefix}") + (arch == InstanceArchitecture.ARM_64 ? "app_arm64_fail.zip" : "app_x64_fail.zip")
             });
 
             AvailabilityZoneMapper azMapper =new AvailabilityZoneMapper(this, "az-mapper", new AvailabilityZoneMapperProps() {
@@ -127,6 +127,11 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             this.AZTaggerStack = new AZTaggerStack(this, "az-tagger", new NestedStackProps() {
             });
 
+            // Creates the VPC network, subnets, routes, and VPC endpoints
+            this.NetworkStack = new IpV6NetworkStack(this, "network", new IPV6NetworkStackProps() {
+                AvailabilityZoneNames = availabilityZoneNames,        
+            });
+
             // Create the aurora database
             this.DatabaseStack = new DatabaseStack(this, "database", new DatabaseStackProps() {
                 Vpc = this.NetworkStack.Vpc
@@ -140,7 +145,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             });
 
             // Security group for the ALB
-            SecurityGroup albSG = new SecurityGroup(this, "alb-security-group", new SecurityGroupProps() {
+            SecurityGroup albSecurityGroup = new SecurityGroup(this, "alb-security-group", new SecurityGroupProps() {
                 Vpc = this.NetworkStack.Vpc,
                 AllowAllOutbound = true,
                 AllowAllIpv6Outbound = this.NetworkStack.Vpc.IpV6Enabled ? true : false
@@ -148,15 +153,20 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
 
             // Allow inbound port 80 connections from the VPC
             // for the Lambda canary tests
-            albSG.AddIngressRule(Peer.Ipv4(this.NetworkStack.Vpc.VpcCidrBlock), Port.Tcp(80));
+            albSecurityGroup.AddIngressRule(Peer.Ipv4(this.NetworkStack.Vpc.VpcCidrBlock), Port.Tcp(80));
 
             if (this.NetworkStack.Vpc.IpV6Enabled)
             {
-                albSG.AddIngressRule(Peer.Ipv6(Fn.Select(0, this.NetworkStack.Vpc.VpcIpv6CidrBlocks)), Port.Tcp(80));
+                albSecurityGroup.AddIngressRule(Peer.Ipv6(Fn.Select(0, this.NetworkStack.Vpc.VpcIpv6CidrBlocks)), Port.Tcp(80));
             }
 
-            // Deploys the EC2 auto scaling groups, load balancer, and target group
-            // with accompanying resources like IAM and log groups
+            bool installEC2 = true;
+
+            if (installEC2)
+            {
+
+            // Creates the EC2 launch template, the auto scaling group, and load balancer
+            // target group         
             this.EC2Stack = new EC2FleetStack(this, "ec2", new EC2FleetStackProps() {
                 Vpc = this.NetworkStack.Vpc,
                 InstanceSize = InstanceSize.NANO,
@@ -165,14 +175,16 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 CpuArch = arch,
                 IAMResourcePath = "/front-end/ec2-fleet/",
                 Database = this.DatabaseStack.Database,
-                LoadBalancerSecurityGroup = albSG,
-                Subnets = new SubnetSelection() {  SubnetType = SubnetType.PRIVATE_ISOLATED },
+                LoadBalancerSecurityGroup = albSecurityGroup,
+                Subnets = new SubnetSelection() { SubnetType = SubnetType.PRIVATE_ISOLATED },
                 AssetsBucketName = assetsBucketName.ValueAsString,
                 AssetsBucketPrefix = assetsBucketPrefix.ValueAsString
             });        
 
-            this.EC2Stack.Node.AddDependency(this.AZTaggerStack);    
+            this.EC2Stack.Node.AddDependency(this.AZTaggerStack);
+            }
 
+            /*
             this.EKSStack = new EKSStack(this, "eks", new EKSStackProps() {
                 CpuArch = arch,
                 Vpc = this.NetworkStack.Vpc,
@@ -183,14 +195,14 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             });
 
             this.EKSStack.Node.AddDependency(this.AZTaggerStack);
-            this.EKSStack.Node.AddDependency(frontEndLogGroup);        
+            this.EKSStack.Node.AddDependency(frontEndLogGroup);*/     
 
             EnhancedApplicationLoadBalancer alb = new EnhancedApplicationLoadBalancer(this, "alb", new ApplicationLoadBalancerProps() {
                 InternetFacing = false,
                 Vpc = this.NetworkStack.Vpc,
                 VpcSubnets = new SubnetSelection() { SubnetType = SubnetType.PRIVATE_ISOLATED },
                 Http2Enabled = true,
-                SecurityGroup = albSG 
+                SecurityGroup = albSecurityGroup 
             });
 
             alb.SetAttribute("zonal_shift.config.enabled", "true");
@@ -263,7 +275,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
 
             IService wildRydesService = CreateService(this.LoadBalancer, this.NetworkStack.Vpc, new ILogGroup[] {frontEndLogGroup});
 
-            var mazNestedStack = new NestedStackWithSource(this, "multi-az-observability-");
+            /*var mazNestedStack = new NestedStackWithSource(this, "multi-az-observability-");
             InstrumentedServiceMultiAZObservability multiAvailabilityZoneObservability = new InstrumentedServiceMultiAZObservability(mazNestedStack, "instrumented-service-", new InstrumentedServiceMultiAZObservabilityProps() {
                 Service = wildRydesService,
                 OutlierThreshold = .70,
@@ -272,7 +284,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 AssetsBucketParameterName = "AssetsBucketName",
                 AssetsBucketPrefixParameterName = "AssetsBucketPrefix",
                 OutlierDetectionAlgorithm = OutlierDetectionAlgorithm.STATIC
-            });
+            });*/
           
             /*
             BasicServiceMultiAZObservability multiAZObservability = new BasicServiceMultiAZObservability(this, "basic-service-", new BasicServiceMultiAZObservabilityProps() {
@@ -291,21 +303,25 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 Interval = Duration.Minutes(60),          
             });*/
 
+            if (installEC2)
+            {
             ApplicationListener listener = this.LoadBalancer.AddListener("http-listener", new BaseApplicationListenerProps() {
                 Port = 80,
                 Protocol = ApplicationProtocol.HTTP,
                 DefaultAction = new ListenerAction(new CfnListener.ActionProperty() {
                     TargetGroupArn = this.EC2Stack.TargetGroup.TargetGroupArn,
                     Type = "forward",
-                    Order = 2
+                    Order = 255
                 })                     
             });
+            }
 
             // Make sure the alarms used for CodeDeploy are created before creating the listener,
             // otherwise the listener gets created and the CodeDeploy stack is still waiting for the
             // the alarms to finish and nodes start to fail their health checks while it waits
-            listener.Node.AddDependency(mazNestedStack);
+            //listener.Node.AddDependency(mazNestedStack);
 
+            /*
             ApplicationListenerRule eksRoutes = new ApplicationListenerRule(this, "eks-alb-routes", new ApplicationListenerRuleProps() {
                 Action = ListenerAction.Forward(new IApplicationTargetGroup[] { this.EKSStack.EKSAppTargetGroup }),
                 Conditions = new ListenerCondition[] {
@@ -313,8 +329,9 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 },
                 Priority = 1,
                 Listener = listener
-            });
+            });*/
 
+            /*
             this.FaultInjectionStack = new FaultInjectionStack(this, "fault-injection", new FaultInjectionStackProps() {
                 AZCount = availabilityZoneNames.Length,
                 AZNames = this.NetworkStack.Vpc.AvailabilityZones,
@@ -329,17 +346,20 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             SSMRandomFaultStack randomFaultStack = new SSMRandomFaultStack(this, "ssm-random-fault", new SSMRandomFaultStackProps() {
                 LatencyExperiments = this.FaultInjectionStack.LatencyExperiments,
                 PacketLossExperiments = this.FaultInjectionStack.PacketLossExperiments
-            });
+            });*/
         
+            /*
             this.LogQueryStack = new LogQueryStack(this, "log-query-", new LogQueryStackProps() {
                 CanaryLogGroup = multiAvailabilityZoneObservability.CanaryLogGroup,
                 ServerSideLogGroup = frontEndLogGroup,
                 Service = wildRydesService,
                 AvailabilityZoneIds = availabilityZoneIds
-            });
+            });*/
             
             //Creates the CodeDeploy application that is deployed
             //to the servers
+            if (installEC2)
+            {
             this.CodeDeployStack = new CodeDeployApplicationStack(this, "codedeploy", new CodeDeployApplicationStackProps() {
                 EC2Fleet = this.EC2Stack,
                 //ApplicationKey = assetsBucketPrefix.ValueAsString + (arch == InstanceArchitecture.ARM_64 ? "app_arm64.zip" : "app_x64.zip"),
@@ -348,15 +368,13 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 TotalEC2InstancesInFleet = fleetSize,
                 ApplicationName = "multi-az-workshop",
                 MinimumHealthyHostsPerZone = 1,     
-                Alarms = new IAlarm[] { multiAvailabilityZoneObservability.ServiceAlarms.RegionalAvailabilityCanaryAlarm}
+                //Alarms = new IAlarm[] { multiAvailabilityZoneObservability.ServiceAlarms.RegionalAvailabilityCanaryAlarm}
             });  
 
-            CodeDeployStack.Node.AddDependency(listener);
+            //CodeDeployStack.Node.AddDependency(listener);
+            }
 
-            StringParameter deploymentAsset = new StringParameter(this, "deployment-asset", new StringParameterProps() {
-                ParameterName = "DeploymentAsset",
-                StringValue = Fn.Sub("s3://${AssetsBucketName}/${AssetsBucketPrefix}") + (arch == InstanceArchitecture.ARM_64 ? "app_arm64_fail.zip" : "app_x64_fail.zip")
-            });
+            
 
             #endregion
         }

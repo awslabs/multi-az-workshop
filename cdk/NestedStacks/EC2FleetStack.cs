@@ -14,8 +14,6 @@ using Amazon.CDK.AWS.Logs;
 using Amazon.CDK.AWS.RDS;
 using Amazon.CDK.AWS.SSM;
 using Amazon.AWSLabs.MultiAZWorkshop.Constructs;
-using Amazon.CDK.AWS.Lightsail;
-using Amazon.CDK.AWS.S3;
 using Constructs;
 
 namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
@@ -69,17 +67,15 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     "04_install-cloudwatch-agent",
                     "05_config-amazon-cloudwatch-agent",
                     "06_restart-amazon-cloudwatch-agent",
-                    "07_xray-daemon-download",
-                    "08_xray-daemon-install",
-                    "10_setup-firewalld",
-                    "11_install-codedeploy",
-                    "12_start-codedeploy-agent",
+                    "10_setup-firewalld",                
                     "13_install_icu_support",
                     "14_set_database_details",
                     "15_install-docker",
                     "16_setup-web-user",
                     "17_verify-docker",
-                    "18_set-env"
+                    "18_install-codedeploy",
+                    "19_start-codedeploy-agent",
+                    "20_set-env"
                 }
             },
             {
@@ -275,12 +271,11 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                 Vpc = props.Vpc
             });
 
-            sg.AddIngressRule(Peer.SecurityGroupId(props.LoadBalancerSecurityGroup.SecurityGroupId), Port.HTTP);
             sg.AddIngressRule(Peer.SecurityGroupId(props.LoadBalancerSecurityGroup.SecurityGroupId), Port.Tcp(5000));
             
             #endregion
 
-            #region Launch Templates
+            #region Launch Template
 
             UserData userData = UserData.ForLinux(new LinuxUserDataOptions() { Shebang =  "#!/bin/bash" });
 
@@ -302,7 +297,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                 },
                 RequireImdsv2 = true,
                 InstanceMetadataTags = true,
-                HttpTokens = LaunchTemplateHttpTokens.REQUIRED,
+                HttpTokens = LaunchTemplateHttpTokens.REQUIRED                
             });    
         
             TagManager.Of(this.LaunchTemplate).SetTag("arch", props.CpuArch.ToString(), null, true);   
@@ -310,54 +305,9 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
 
             #endregion
 
-            #region Autoscaling Resources
-
-            GroupMetrics asgMetrics = new GroupMetrics(GroupMetric.MIN_SIZE, GroupMetric.MAX_SIZE, GroupMetric.DESIRED_CAPACITY, GroupMetric.IN_SERVICE_INSTANCES, GroupMetric.PENDING_INSTANCES, GroupMetric.STANDBY_INSTANCES, GroupMetric.TERMINATING_INSTANCES, GroupMetric.TOTAL_INSTANCES);
-
-            AutoScalingGroup asg = new AutoScalingGroup(this, "FrontEndASG", new AutoScalingGroupProps() {
-                LaunchTemplate = this.LaunchTemplate,
-                MinCapacity = props.FleetSize,
-                MaxCapacity = props.FleetSize,
-                Vpc = props.Vpc,
-                VpcSubnets = props.Subnets,
-                // Typically takes 3.5 - 4 minutes to deploy the application to a new instance
-                HealthCheck = Amazon.CDK.AWS.AutoScaling.HealthCheck.Elb(new ElbHealthCheckOptions() { Grace = Duration.Seconds(240) }),
-                GroupMetrics = new GroupMetrics[] { asgMetrics },
-                Signals = Signals.WaitForCount(Math.Ceiling((double)(props.FleetSize / 2)), new SignalsOptions(){ Timeout = Duration.Minutes(10)}),
-                DefaultInstanceWarmup = Duration.Seconds(120)
-            });
-
-            asg.ApplyCloudFormationInit(CloudFormationInit.FromConfigSets(new ConfigSetProps() {
-                    ConfigSets = configSets,
-                    Configs = asg.GenerateInitConfig(this, props, this.CWAgentConfig.ParameterName)
-                }),
-                new Amazon.CDK.AWS.AutoScaling.ApplyCloudFormationInitOptions() {
-                    ConfigSets = new string[] { "setup" },
-                    PrintLog = true             
-                }
-            );
-
-            string[] script = File.ReadAllLines("./NestedStacks/send_cfn_init_to_logs.sh");
-            userData.AddCommands(script);
-
-            this.AutoScalingGroup = asg;
-
-            CfnAutoScalingGroup node = this.AutoScalingGroup.Node.DefaultChild as CfnAutoScalingGroup;           
-            node.CfnOptions.UpdatePolicy = new CfnUpdatePolicy() {
-                AutoScalingRollingUpdate = new CfnAutoScalingRollingUpdate() {
-                    MinInstancesInService = 1,
-                    MaxBatchSize = 6,
-                    PauseTime = "PT10M",
-                    WaitOnResourceSignals = true,
-                    SuspendProcesses = new string[] { "HealthCheck", "ReplaceUnhealthy", "AZRebalance", "AlarmNotification", "ScheduledActions"}
-                }
-            };
-
-            #endregion
-
             #region Target Group
 
-            ApplicationTargetGroup atg = new ApplicationTargetGroup(this, "FrontendTargetGroup", new ApplicationTargetGroupProps() {
+            ApplicationTargetGroup atg = new ApplicationTargetGroup(this, "front-end-target-group", new ApplicationTargetGroupProps() {
                 HealthCheck = new Amazon.CDK.AWS.ElasticLoadBalancingV2.HealthCheck() { 
                     Enabled = true,
                     Port = "traffic-port",
@@ -380,11 +330,62 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
             atg.SetAttribute("load_balancing.cross_zone.enabled", "true");
             atg.SetAttribute("target_group_health.dns_failover.minimum_healthy_targets.count", "1");
 
-            asg.AttachToApplicationTargetGroup(atg);
-
             this.TargetGroup = atg;
 
             #endregion
+
+            #region Autoscaling Resources
+
+            GroupMetrics asgMetrics = new GroupMetrics(GroupMetric.MIN_SIZE, GroupMetric.MAX_SIZE, GroupMetric.DESIRED_CAPACITY, GroupMetric.IN_SERVICE_INSTANCES, GroupMetric.PENDING_INSTANCES, GroupMetric.STANDBY_INSTANCES, GroupMetric.TERMINATING_INSTANCES, GroupMetric.TOTAL_INSTANCES);
+
+            AutoScalingGroup asg = new AutoScalingGroup(this, "FrontEndASG", new AutoScalingGroupProps() {
+                LaunchTemplate = this.LaunchTemplate,
+                MinCapacity = props.FleetSize,
+                MaxCapacity = props.FleetSize,
+                Vpc = props.Vpc,
+                VpcSubnets = props.Subnets,
+                // Typically takes 3.5 - 4 minutes to deploy the application to a new instance
+                HealthCheck = Amazon.CDK.AWS.AutoScaling.HealthCheck.Elb(new ElbHealthCheckOptions() { Grace = Duration.Seconds(240) }),
+                GroupMetrics = new GroupMetrics[] { asgMetrics },
+                Signals = Signals.WaitForCount(Math.Ceiling((double)(props.FleetSize / 2)), new SignalsOptions(){ Timeout = Duration.Minutes(10)}),
+                DefaultInstanceWarmup = Duration.Seconds(120),
+                UpdatePolicy = UpdatePolicy.RollingUpdate(new RollingUpdateOptions() {
+                    MinInstancesInService = 1,
+                    MaxBatchSize = 6,
+                    PauseTime = Duration.Minutes(5),
+                    WaitOnResourceSignals = true,
+                    SuspendProcesses = [
+                        ScalingProcess.ALARM_NOTIFICATION,
+                        ScalingProcess.AZ_REBALANCE,
+                        ScalingProcess.HEALTH_CHECK,
+                        ScalingProcess.REPLACE_UNHEALTHY,
+                        ScalingProcess.SCHEDULED_ACTIONS
+                    ]     
+                })
+            });
+
+            asg.AddLifecycleHook("terminate", new BasicLifecycleHookProps() {
+                LifecycleTransition = LifecycleTransition.INSTANCE_TERMINATING,
+                HeartbeatTimeout = Duration.Minutes(10)
+            });
+
+            asg.ApplyCloudFormationInit(CloudFormationInit.FromConfigSets(new ConfigSetProps() {
+                    ConfigSets = configSets,
+                    Configs = asg.GenerateInitConfig(this, props, this.CWAgentConfig.ParameterName)
+                }),
+                new Amazon.CDK.AWS.AutoScaling.ApplyCloudFormationInitOptions() {
+                    ConfigSets = new string[] { "setup" },
+                    PrintLog = true           
+                }
+            );
+
+            userData.AddCommands(File.ReadAllLines("./NestedStacks/send_cfn_init_to_logs.sh"));
+
+            asg.AttachToApplicationTargetGroup(atg);
+
+            this.AutoScalingGroup = asg;
+
+            #endregion         
         }
     }
 
@@ -397,6 +398,9 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
             string cwAgentConfigParameterName
         )
         {
+            InitServiceRestartHandle cfnHupHandle = new InitServiceRestartHandle();
+            InitServiceRestartHandle dockerHandle = new InitServiceRestartHandle();
+
             return new Dictionary<string, InitConfig>() {
                 {
                     "01_metadata-version", 
@@ -419,7 +423,12 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                                 .AppendLine("verbose=true")
                                 .AppendLine("umaks=022")
                                 .ToString(),
-                                new InitFileOptions() { Mode = "000400", Owner = "root", Group = "root"}
+                                new InitFileOptions() { 
+                                    Mode = "000400", 
+                                    Owner = "root", 
+                                    Group = "root", 
+                                    ServiceRestartHandles = [ cfnHupHandle ]
+                                }
                             ),
                             InitFile.FromString("/etc/cfn/hooks.d/amazon-cloudwatch-agent-auto-reloader.conf", new StringBuilder()
                                 .AppendLine("[amazon-cloudwatch-agent-auto-reloader-hook]")
@@ -428,7 +437,12 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                                 .AppendLine(Fn.Sub("action=/opt/aws/bin/cfn-init --verbose --stack ${AWS::StackId} --resource " + Names.UniqueId(resource) + " --region ${AWS::Region} --configsets update"))
                                 .AppendLine("runas=root")
                                 .ToString(),
-                                new InitFileOptions() { Mode = "000400", Owner = "root", Group = "root"}
+                                new InitFileOptions() { 
+                                    Mode = "000400", 
+                                    Owner = "root", 
+                                    Group = "root",
+                                    ServiceRestartHandles = [ cfnHupHandle ]
+                                }
                             ),
                             InitFile.FromString("/etc/cfn/hooks.d/cfn-auto-reloader-configsets.conf", new StringBuilder()
                                 .AppendLine("[cfn-configset-auto-reloader-hook]")
@@ -437,7 +451,12 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                                 .AppendLine(Fn.Sub("action=/opt/aws/bin/cfn-init --verbose --stack ${AWS::StackId} --resource " + Names.UniqueId(resource) + " --region ${AWS::Region} --configsets setup"))
                                 .AppendLine("runas=root")
                                 .ToString(),
-                                new InitFileOptions() { Mode = "000400", Owner = "root", Group = "root"}
+                                new InitFileOptions() { 
+                                    Mode = "000400", 
+                                    Owner = "root", 
+                                    Group = "root",
+                                    ServiceRestartHandles = [ cfnHupHandle ]
+                                }
                             ),
                             InitFile.FromString("/etc/cfn/hooks.d/cfn-auto-reloader-version.conf", new StringBuilder()
                                 .AppendLine("[cfn-version-auto-reloader-hook]")
@@ -446,20 +465,18 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                                 .AppendLine(Fn.Sub("action=/opt/aws/bin/cfn-init --verbose --stack ${AWS::StackId} --resource " + Names.UniqueId(resource) + " --region ${AWS::Region} --configsets setup"))
                                 .AppendLine("runas=root")
                                 .ToString(),
-                                new InitFileOptions() { Mode = "000400", Owner = "root", Group = "root"}
+                                new InitFileOptions() { 
+                                    Mode = "000400", 
+                                    Owner = "root", 
+                                    Group = "root",
+                                    ServiceRestartHandles = [ cfnHupHandle ]
+                                }
                             ),
                             InitService.Enable("cfn-hup", new InitServiceOptions() {
                                 Enabled = true,
                                 EnsureRunning = true,
-                                ServiceManager = ServiceManager.SYSVINIT
-                                /*
-                                    Missing a "Files" option for these
-                                    "/etc/cfn/cfn-hup.conf",
-                                    "/etc/cfn/hooks.d/amazon-cloudwatch-agent-auto-reloader.conf",
-                                    "/etc/cfn/hooks.d/cfn-auto-reloader-configsets.conf",
-                                    "/etc/cfn/hooks.d/cfn-auto-reloader-version.conf",
-                                    "/lib/systemd/system/cfn-hup.service"
-                                */
+                                ServiceManager = ServiceManager.SYSTEMD,
+                                ServiceRestartHandle = cfnHupHandle
                             })
                         }
                     )                           
@@ -473,43 +490,32 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                 {
                     "04_install-cloudwatch-agent",
                     new InitConfig(new InitElement[] {
-                        InitCommand.ShellCommand(Fn.Sub("rpm --upgrade --force -v -h  https://s3.${AWS::Region}.${AWS::URLSuffix}/amazoncloudwatch-agent-${AWS::Region}/amazon_linux/${arch}/latest/amazon-cloudwatch-agent.rpm", new Dictionary<string, string>(){ { "arch", props.CpuArch == InstanceArchitecture.ARM_64 ? "arm64" : "amd64" } }))
-                    })                        
+                    //    InitCommand.ShellCommand(Fn.Sub("rpm --upgrade --force -v -h  https://s3.${AWS::Region}.${AWS::URLSuffix}/amazoncloudwatch-agent-${AWS::Region}/amazon_linux/${arch}/latest/amazon-cloudwatch-agent.rpm", new Dictionary<string, string>(){ { "arch", props.CpuArch == InstanceArchitecture.ARM_64 ? "arm64" : "amd64" } }))
+                        InitPackage.Yum("amazon-cloudwatch-agent"),
+                        //InitCommand.ShellCommand("/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a set-log-level -l DEBUG"),
+                    })
+                    
                 },
                 {
                     "05_config-amazon-cloudwatch-agent",
                     new InitConfig(new InitElement[] {
-                        InitFile.FromString("/opt/aws/amazon-cloudwatch-agent/etc/dummy.version", new StringBuilder()
-                                .AppendLine($"VERSION=${props.CloudWatchAgentConfigVersion}")
-                                .ToString(),
-                                new InitFileOptions() { Mode = "000400", Owner = "root", Group = "root"}
+                        InitFile.FromString(
+                            "/opt/aws/amazon-cloudwatch-agent/etc/dummy.version", 
+                            $"VERSION=${props.CloudWatchAgentConfigVersion}",
+                            new InitFileOptions() { 
+                                Mode = "000400", 
+                                Owner = "root",
+                                Group = "root"
+                            }
                         )
                     })                        
                 },
                 {
                     "06_restart-amazon-cloudwatch-agent",
                     new InitConfig(new InitElement[] {
-                        InitCommand.ShellCommand("/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a stop"),
-                        InitCommand.ShellCommand(Fn.Sub("/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c ssm:${ssm} -s", new Dictionary<string, string>(){ {"ssm", cwAgentConfigParameterName} }))
-                    })                        
-                },
-                {
-                    "07_xray-daemon-download",
-                    new InitConfig(new InitElement[] {
-                        //TODO: This was the original configuration, but has since stopped working, results in an S3 403 error
-                        //InitFile.FromUrl("/tmp/xray.rpm", new StringBuilder()
-                        //    .AppendLine(Fn.Sub("https://s3.${AWS::Region}.amazonaws.com/aws-xray-assets.${AWS::Region}/xray-daemon/aws-xray-daemon${arch}-3.x.rpm", new Dictionary<string, string>(){ { "arch", props.CpuArch == CpuArch.ARM_64 ? "-arm64" : "" } }))
-                        //    .ToString(),
-                        //    new InitFileOptions() { Mode = "000400", Owner = "root", Group = "root"}
-                        //)
-                        InitCommand.ShellCommand(Fn.Sub("curl https://s3.${AWS::Region}.${AWS::URLSuffix}/aws-xray-assets.${AWS::Region}/xray-daemon/aws-xray-daemon${arch}-3.x.rpm --output /tmp/xray.rpm", new Dictionary<string, string>(){ { "arch", props.CpuArch == InstanceArchitecture.ARM_64 ? "-arm64" : "" } }))
-                    })                        
-                },
-                {
-                    "08_xray-daemon-install",
-                    new InitConfig(new InitElement[] {
-                       InitPackage.Rpm("/tmp/xray.rpm"),
-                       InitCommand.ShellCommand("rm /tmp/xray.rpm")
+                        InitCommand.ShellCommand("/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -m ec2 -a stop"),
+                        InitCommand.ShellCommand(Fn.Sub("/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c ssm:${ssm} -s", new Dictionary<string, string>(){ {"ssm", cwAgentConfigParameterName} })),
+                        InitCommand.ShellCommand("/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a status")
                     })                        
                 },
                 {
@@ -525,29 +531,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                         InitCommand.ShellCommand("firewall-cmd --list-all"),
                     })                        
                 },
-                {
-                    "11_install-codedeploy",
-                    new InitConfig(new InitElement[] {
-                        InitCommand.ShellCommand("yum -y install ruby"),
-                        InitCommand.ShellCommand(Fn.Sub("curl https://aws-codedeploy-${AWS::Region}.s3.${AWS::Region}.${AWS::URLSuffix}/latest/install --output /tmp/codedeploy")),
-                        InitCommand.ShellCommand("chmod +x /tmp/codedeploy"),
-                        InitCommand.ShellCommand("/tmp/codedeploy auto"),
-                        InitCommand.ShellCommand("echo \"\" >> /etc/codedeploy-agent/conf/codedeployagent.yml"),
-                        InitCommand.ShellCommand("echo \":enable_auth_policy: true\" >> /etc/codedeploy-agent/conf/codedeployagent.yml"),
-                        InitCommand.ShellCommand("service codedeploy-agent stop"),
-                        InitCommand.ShellCommand("rm /tmp/codedeploy")
-                    })                        
-                },
-                {
-                    "12_start-codedeploy-agent",
-                    new InitConfig(new InitElement[] {
-                        InitService.Enable("codedeploy-agent", new InitServiceOptions() {
-                            Enabled = true,
-                            EnsureRunning = true,
-                            ServiceManager = ServiceManager.SYSVINIT
-                        })
-                    })                        
-                },
+                
                 {
                     "13_install_icu_support",
                     new InitConfig(new InitElement[] {
@@ -566,14 +550,19 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     "15_install-docker",
                     new InitConfig(
                         new InitElement[] {
-                            InitPackage.Yum("docker"),
+                            InitPackage.Yum("docker", new NamedPackageOptions(){
+                                ServiceRestartHandles = [ dockerHandle ]
+                            }),
                             InitCommand.ShellCommand("mkdir -p /usr/libexec/docker/cli-plugins"),
                             InitCommand.ShellCommand("aws s3 cp s3://" + props.AssetsBucketName + "/" + props.AssetsBucketPrefix + "docker-compose /usr/libexec/docker/cli-plugins/docker-compose --region " + Aws.REGION),
                             InitCommand.ShellCommand("chmod +x /usr/libexec/docker/cli-plugins/docker-compose"),
+                            //InitCommand.ShellCommand("systemctl enable docker"),
+                            //InitCommand.ShellCommand("systemctl start docker")
                             InitService.Enable("docker", new InitServiceOptions() {
                                 Enabled = true,
                                 EnsureRunning = true,
-                                ServiceManager = ServiceManager.SYSVINIT
+                                ServiceManager = ServiceManager.SYSTEMD,
+                                ServiceRestartHandle = dockerHandle                      
                             })
                         }
                     )
@@ -596,7 +585,30 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     )
                 },
                 {
-                    "18_set-env",
+                    "18_install-codedeploy",
+                    new InitConfig(new InitElement[] {
+                        InitCommand.ShellCommand("yum -y install ruby"),
+                        InitCommand.ShellCommand(Fn.Sub("curl https://aws-codedeploy-${AWS::Region}.s3.${AWS::Region}.${AWS::URLSuffix}/latest/install --output /tmp/codedeploy")),
+                        InitCommand.ShellCommand("chmod +x /tmp/codedeploy"),
+                        InitCommand.ShellCommand("/tmp/codedeploy auto"),
+                        InitCommand.ShellCommand("echo \"\" >> /etc/codedeploy-agent/conf/codedeployagent.yml"),
+                        InitCommand.ShellCommand("echo \":enable_auth_policy: true\" >> /etc/codedeploy-agent/conf/codedeployagent.yml"),
+                        InitCommand.ShellCommand("service codedeploy-agent stop"),
+                        InitCommand.ShellCommand("rm /tmp/codedeploy")
+                    })                        
+                },
+                {
+                    "19_start-codedeploy-agent",
+                    new InitConfig(new InitElement[] {
+                        InitService.Enable("codedeploy-agent", new InitServiceOptions() {
+                            Enabled = true,
+                            EnsureRunning = true,
+                            ServiceManager = ServiceManager.SYSTEMD
+                        })
+                    })                        
+                },
+                {
+                    "20_set-env",
                     new InitConfig(
                         new InitElement[] {
                             InitFile.FromString(
