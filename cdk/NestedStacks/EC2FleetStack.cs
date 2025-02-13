@@ -61,28 +61,27 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
 
         private static IDictionary<string, string[]> configSets = new Dictionary<string, string[]>() {
             { "setup", new string[] {
-                    "01_metadata-version",
-                    "02_setup-cfn-hup",
-                    "03_check-cfn-hup",
-                    "04_install-cloudwatch-agent",
-                    "05_config-amazon-cloudwatch-agent",
-                    "06_restart-amazon-cloudwatch-agent",
-                    "10_setup-firewalld",                
-                    "13_install_icu_support",
-                    "14_set_database_details",
-                    "15_install-docker",
-                    "16_setup-web-user",
-                    "17_verify-docker",
-                    "18_install-codedeploy",
-                    "19_start-codedeploy-agent",
-                    "20_set-env"
+                    "01_metadata_version",
+                    "02_setup_cfn_hup",
+                    "03_check_cfn_hup",
+                    "04_install_cloudwatch_agent",
+                    "05_config_amazon_cloudwatch_agent",
+                    "06_restart_amazon_cloudwatch_agent",
+                    "07_setup_firewalld",                
+                    "08_set_database_details",
+                    "09_install_docker",
+                    "10_setup_web_user",
+                    "11_verify_docker",
+                    "12_install_codedeploy",
+                    "13_start_codedeploy_agent",
+                    "14_set_env"
                 }
             },
             {
                 "update", new string[] {
-                    "05_config-amazon-cloudwatch-agent",
-                    "06_restart-amazon-cloudwatch-agent",
-                    "14_set_database_details"
+                    "05_config_amazon_cloudwatch_agent",
+                    "06_restart_amazon_cloudwatch_agent",
+                    "08_set_database_details"
                 }
             }
         };     
@@ -403,7 +402,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
 
             return new Dictionary<string, InitConfig>() {
                 {
-                    "01_metadata-version", 
+                    "01_metadata_version", 
                     new InitConfig( 
                         new InitElement[] {
                             // Update the version to simulate the update of metadata
@@ -412,7 +411,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     )                           
                 },
                 {
-                    "02_setup-cfn-hup", 
+                    "02_setup_cfn_hup", 
                     new InitConfig( 
                         new InitElement[] {
                             InitFile.FromString("/etc/cfn/cfn-hup.conf", new StringBuilder()
@@ -482,13 +481,13 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     )                           
                 },
                 {
-                    "03_check-cfn-hup",
+                    "03_check_cfn_hup",
                     new InitConfig(new InitElement[] {
                         InitCommand.ShellCommand("systemctl status cfn-hup.service")
                     })                        
                 },
                 {
-                    "04_install-cloudwatch-agent",
+                    "04_install_cloudwatch_agent",
                     new InitConfig(new InitElement[] {
                         InitPackage.Yum("amazon-cloudwatch-agent"),
                         //InitCommand.ShellCommand("/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a set-log-level -l DEBUG"),
@@ -496,7 +495,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     
                 },
                 {
-                    "05_config-amazon-cloudwatch-agent",
+                    "05_config_amazon_cloudwatch_agent",
                     new InitConfig(new InitElement[] {
                         InitFile.FromString(
                             "/opt/aws/amazon-cloudwatch-agent/etc/dummy.version", 
@@ -510,7 +509,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     })                        
                 },
                 {
-                    "06_restart-amazon-cloudwatch-agent",
+                    "06_restart_amazon_cloudwatch_agent",
                     new InitConfig(new InitElement[] {
                         InitCommand.ShellCommand("/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -m ec2 -a stop"),
                         InitCommand.ShellCommand(Fn.Sub("/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c ssm:${ssm} -s", new Dictionary<string, string>(){ {"ssm", cwAgentConfigParameterName} })),
@@ -518,27 +517,19 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     })                        
                 },
                 {
-                    "10_setup-firewalld",
+                    "07_setup_firewalld",
                     new InitConfig(new InitElement[] {
                         InitPackage.Yum("firewalld"),
                         InitCommand.ShellCommand("systemctl enable firewalld"),
                         InitCommand.ShellCommand("systemctl start firewalld"),
                         InitCommand.ShellCommand("firewall-cmd --state"),
                         InitCommand.ShellCommand($"firewall-cmd --add-port={props.Port}/tcp --permanent"),
-                        InitCommand.ShellCommand("firewall-cmd --add-port=80/tcp --permanent"),
                         InitCommand.ShellCommand("firewall-cmd --reload"),
                         InitCommand.ShellCommand("firewall-cmd --list-all"),
                     })                        
                 },
-                
                 {
-                    "13_install_icu_support",
-                    new InitConfig(new InitElement[] {
-                        InitPackage.Yum("icu")
-                    })                        
-                },
-                {
-                    "14_set_database_details",
+                    "08_set_database_details",
                     new InitConfig( 
                         new InitElement[] {
                             InitFile.FromString("/etc/secret", props.Database.Secret.SecretName, new InitFileOptions() { Mode = "000444", Owner = "root", Group = "root"}) 
@@ -546,7 +537,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     )                   
                 },
                 {
-                    "15_install-docker",
+                    "09_install_docker",
                     new InitConfig(
                         new InitElement[] {
                             InitPackage.Yum("docker", new NamedPackageOptions(){
@@ -565,7 +556,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     )
                 },
                 {
-                    "16_setup-web-user",
+                    "10_setup_web_user",
                     new InitConfig(new InitElement[] {
                         new InitUser("web", new InitUserOptions() {      
                             Groups = ["docker"]           
@@ -573,7 +564,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     })                        
                 },
                 {
-                    "17_verify-docker",
+                    "11_verify_docker",
                     new InitConfig(
                         new InitElement[] {
                             InitCommand.ShellCommand("docker ps"),
@@ -582,7 +573,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     )
                 },
                 {
-                    "18_install-codedeploy",
+                    "12_install_codedeploy",
                     new InitConfig(new InitElement[] {
                         InitCommand.ShellCommand("yum -y install ruby"),
                         InitCommand.ShellCommand(Fn.Sub("curl https://aws-codedeploy-${AWS::Region}.s3.${AWS::Region}.${AWS::URLSuffix}/latest/install --output /tmp/codedeploy")),
@@ -595,7 +586,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     })                        
                 },
                 {
-                    "19_start-codedeploy-agent",
+                    "13_start_codedeploy_agent",
                     new InitConfig(new InitElement[] {
                         InitService.Enable("codedeploy-agent", new InitServiceOptions() {
                             Enabled = true,
@@ -605,7 +596,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     })                        
                 },
                 {
-                    "20_set-env",
+                    "14_set_env",
                     new InitConfig(
                         new InitElement[] {
                             InitFile.FromString(
