@@ -5,4 +5,4 @@ compose="$rootDirectory/$DEPLOYMENT_GROUP_ID/$DEPLOYMENT_ID/deployment-archive/d
 env="$rootDirectory/$DEPLOYMENT_GROUP_ID/$DEPLOYMENT_ID/deployment-archive/docker/.env"
 DB_SECRET=$(cat /etc/secret)
 echo "DB_SECRET=$DB_SECRET" >> $env
-docker compose --file $compose --env-file $env up --detach
+/usr/bin/docker compose --file $compose --env-file $env up --detach
