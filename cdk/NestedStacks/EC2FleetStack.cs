@@ -67,8 +67,6 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     "04_install-cloudwatch-agent",
                     "05_config-amazon-cloudwatch-agent",
                     "06_restart-amazon-cloudwatch-agent",
-                    "07_xray-daemon-download",
-                    "08_xray-daemon-install",
                     "10_setup-firewalld",                
                     "13_install_icu_support",
                     "14_set_database_details",
@@ -492,43 +490,31 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                 {
                     "04_install-cloudwatch-agent",
                     new InitConfig(new InitElement[] {
-                        InitCommand.ShellCommand(Fn.Sub("rpm --upgrade --force -v -h  https://s3.${AWS::Region}.${AWS::URLSuffix}/amazoncloudwatch-agent-${AWS::Region}/amazon_linux/${arch}/latest/amazon-cloudwatch-agent.rpm", new Dictionary<string, string>(){ { "arch", props.CpuArch == InstanceArchitecture.ARM_64 ? "arm64" : "amd64" } }))
-                    })                        
+                    //    InitCommand.ShellCommand(Fn.Sub("rpm --upgrade --force -v -h  https://s3.${AWS::Region}.${AWS::URLSuffix}/amazoncloudwatch-agent-${AWS::Region}/amazon_linux/${arch}/latest/amazon-cloudwatch-agent.rpm", new Dictionary<string, string>(){ { "arch", props.CpuArch == InstanceArchitecture.ARM_64 ? "arm64" : "amd64" } }))
+                        InitPackage.Yum("amazon-cloudwatch-agent")
+                    })
+                    
                 },
                 {
                     "05_config-amazon-cloudwatch-agent",
                     new InitConfig(new InitElement[] {
-                        InitFile.FromString("/opt/aws/amazon-cloudwatch-agent/etc/dummy.version", new StringBuilder()
-                                .AppendLine($"VERSION=${props.CloudWatchAgentConfigVersion}")
-                                .ToString(),
-                                new InitFileOptions() { Mode = "000400", Owner = "root", Group = "root"}
+                        InitFile.FromString(
+                            "/opt/aws/amazon-cloudwatch-agent/etc/dummy.version", 
+                            $"VERSION=${props.CloudWatchAgentConfigVersion}",
+                            new InitFileOptions() { 
+                                Mode = "000400", 
+                                Owner = "root",
+                                Group = "root"
+                            }
                         )
                     })                        
                 },
                 {
                     "06_restart-amazon-cloudwatch-agent",
                     new InitConfig(new InitElement[] {
-                        InitCommand.ShellCommand("/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a stop"),
-                        InitCommand.ShellCommand(Fn.Sub("/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c ssm:${ssm} -s", new Dictionary<string, string>(){ {"ssm", cwAgentConfigParameterName} }))
-                    })                        
-                },
-                {
-                    "07_xray-daemon-download",
-                    new InitConfig(new InitElement[] {
-                        //TODO: This was the original configuration, but has since stopped working, results in an S3 403 error
-                        //InitFile.FromUrl("/tmp/xray.rpm", new StringBuilder()
-                        //    .AppendLine(Fn.Sub("https://s3.${AWS::Region}.amazonaws.com/aws-xray-assets.${AWS::Region}/xray-daemon/aws-xray-daemon${arch}-3.x.rpm", new Dictionary<string, string>(){ { "arch", props.CpuArch == CpuArch.ARM_64 ? "-arm64" : "" } }))
-                        //    .ToString(),
-                        //    new InitFileOptions() { Mode = "000400", Owner = "root", Group = "root"}
-                        //)
-                        InitCommand.ShellCommand(Fn.Sub("curl https://s3.${AWS::Region}.${AWS::URLSuffix}/aws-xray-assets.${AWS::Region}/xray-daemon/aws-xray-daemon${arch}-3.x.rpm --output /tmp/xray.rpm", new Dictionary<string, string>(){ { "arch", props.CpuArch == InstanceArchitecture.ARM_64 ? "-arm64" : "" } }))
-                    })                        
-                },
-                {
-                    "08_xray-daemon-install",
-                    new InitConfig(new InitElement[] {
-                       InitPackage.Rpm("/tmp/xray.rpm"),
-                       InitCommand.ShellCommand("rm /tmp/xray.rpm")
+                        InitCommand.ShellCommand("/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -m ec2 -a stop"),
+                        InitCommand.ShellCommand(Fn.Sub("/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c ssm:${ssm} -s", new Dictionary<string, string>(){ {"ssm", cwAgentConfigParameterName} })),
+                        InitCommand.ShellCommand("/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a status")
                     })                        
                 },
                 {
