@@ -61,24 +61,23 @@ namespace BAMCIS.MultiAZApp.Utilities
             builder.Services.AddControllers();        
 
             //builder.Services.AddSerilog();
-            builder.Services.AddEmf();
+            builder.Services.AddEmf(builder.Environment);
             builder.Services.AddOpenApi();
 
             return builder;
         }
 
-        private static void AddEmf(this IServiceCollection services)
+        private static void AddEmf(this IServiceCollection services, IWebHostEnvironment env)
         {
             EnvironmentConfigurationProvider.Config = new Configuration
             {
                 ServiceName = Constants.SERVICE_NAME,
                 LogGroupName = Constants.LOG_GROUP_NAME,
                 ServiceType =  "WebApi",
-                EnvironmentOverride = Amazon.CloudWatch.EMF.Environment.Environments.Agent,
                 //AgentEndPoint = "tcp://cwagent:25888"
-                //EnvironmentOverride = builder.Environment.IsDevelopment() ? 
-                //    Amazon.CloudWatch.EMF.Environment.Environments.Local :
-                //    Amazon.CloudWatch.EMF.Environment.Environments.Agent
+                EnvironmentOverride = env != null && env.IsDevelopment() ? 
+                    Amazon.CloudWatch.EMF.Environment.Environments.Local :
+                    Amazon.CloudWatch.EMF.Environment.Environments.Agent
             };
             services.AddScoped<IMetricsLogger, MetricsLogger>();
             services.AddSingleton<Amazon.CloudWatch.EMF.Environment.IEnvironmentProvider, Amazon.CloudWatch.EMF.Environment.EnvironmentProvider>();
