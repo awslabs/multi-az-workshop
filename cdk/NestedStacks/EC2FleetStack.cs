@@ -14,8 +14,6 @@ using Amazon.CDK.AWS.Logs;
 using Amazon.CDK.AWS.RDS;
 using Amazon.CDK.AWS.SSM;
 using Amazon.AWSLabs.MultiAZWorkshop.Constructs;
-using Amazon.CDK.AWS.Lightsail;
-using Amazon.CDK.AWS.S3;
 using Constructs;
 
 namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
@@ -275,12 +273,11 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                 Vpc = props.Vpc
             });
 
-            sg.AddIngressRule(Peer.SecurityGroupId(props.LoadBalancerSecurityGroup.SecurityGroupId), Port.HTTP);
             sg.AddIngressRule(Peer.SecurityGroupId(props.LoadBalancerSecurityGroup.SecurityGroupId), Port.Tcp(5000));
             
             #endregion
 
-            #region Launch Templates
+            #region Launch Template
 
             UserData userData = UserData.ForLinux(new LinuxUserDataOptions() { Shebang =  "#!/bin/bash" });
 
@@ -302,7 +299,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                 },
                 RequireImdsv2 = true,
                 InstanceMetadataTags = true,
-                HttpTokens = LaunchTemplateHttpTokens.REQUIRED,
+                HttpTokens = LaunchTemplateHttpTokens.REQUIRED                
             });    
         
             TagManager.Of(this.LaunchTemplate).SetTag("arch", props.CpuArch.ToString(), null, true);   
@@ -310,54 +307,9 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
 
             #endregion
 
-            #region Autoscaling Resources
-
-            GroupMetrics asgMetrics = new GroupMetrics(GroupMetric.MIN_SIZE, GroupMetric.MAX_SIZE, GroupMetric.DESIRED_CAPACITY, GroupMetric.IN_SERVICE_INSTANCES, GroupMetric.PENDING_INSTANCES, GroupMetric.STANDBY_INSTANCES, GroupMetric.TERMINATING_INSTANCES, GroupMetric.TOTAL_INSTANCES);
-
-            AutoScalingGroup asg = new AutoScalingGroup(this, "FrontEndASG", new AutoScalingGroupProps() {
-                LaunchTemplate = this.LaunchTemplate,
-                MinCapacity = props.FleetSize,
-                MaxCapacity = props.FleetSize,
-                Vpc = props.Vpc,
-                VpcSubnets = props.Subnets,
-                // Typically takes 3.5 - 4 minutes to deploy the application to a new instance
-                HealthCheck = Amazon.CDK.AWS.AutoScaling.HealthCheck.Elb(new ElbHealthCheckOptions() { Grace = Duration.Seconds(240) }),
-                GroupMetrics = new GroupMetrics[] { asgMetrics },
-                Signals = Signals.WaitForCount(Math.Ceiling((double)(props.FleetSize / 2)), new SignalsOptions(){ Timeout = Duration.Minutes(10)}),
-                DefaultInstanceWarmup = Duration.Seconds(120)
-            });
-
-            asg.ApplyCloudFormationInit(CloudFormationInit.FromConfigSets(new ConfigSetProps() {
-                    ConfigSets = configSets,
-                    Configs = asg.GenerateInitConfig(this, props, this.CWAgentConfig.ParameterName)
-                }),
-                new Amazon.CDK.AWS.AutoScaling.ApplyCloudFormationInitOptions() {
-                    ConfigSets = new string[] { "setup" },
-                    PrintLog = true             
-                }
-            );
-
-            string[] script = File.ReadAllLines("./NestedStacks/send_cfn_init_to_logs.sh");
-            userData.AddCommands(script);
-
-            this.AutoScalingGroup = asg;
-
-            CfnAutoScalingGroup node = this.AutoScalingGroup.Node.DefaultChild as CfnAutoScalingGroup;           
-            node.CfnOptions.UpdatePolicy = new CfnUpdatePolicy() {
-                AutoScalingRollingUpdate = new CfnAutoScalingRollingUpdate() {
-                    MinInstancesInService = 1,
-                    MaxBatchSize = 6,
-                    PauseTime = "PT10M",
-                    WaitOnResourceSignals = true,
-                    SuspendProcesses = new string[] { "HealthCheck", "ReplaceUnhealthy", "AZRebalance", "AlarmNotification", "ScheduledActions"}
-                }
-            };
-
-            #endregion
-
             #region Target Group
 
-            ApplicationTargetGroup atg = new ApplicationTargetGroup(this, "FrontendTargetGroup", new ApplicationTargetGroupProps() {
+            ApplicationTargetGroup atg = new ApplicationTargetGroup(this, "front-end-target-group", new ApplicationTargetGroupProps() {
                 HealthCheck = new Amazon.CDK.AWS.ElasticLoadBalancingV2.HealthCheck() { 
                     Enabled = true,
                     Port = "traffic-port",
@@ -380,11 +332,62 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
             atg.SetAttribute("load_balancing.cross_zone.enabled", "true");
             atg.SetAttribute("target_group_health.dns_failover.minimum_healthy_targets.count", "1");
 
-            asg.AttachToApplicationTargetGroup(atg);
-
             this.TargetGroup = atg;
 
             #endregion
+
+            #region Autoscaling Resources
+
+            GroupMetrics asgMetrics = new GroupMetrics(GroupMetric.MIN_SIZE, GroupMetric.MAX_SIZE, GroupMetric.DESIRED_CAPACITY, GroupMetric.IN_SERVICE_INSTANCES, GroupMetric.PENDING_INSTANCES, GroupMetric.STANDBY_INSTANCES, GroupMetric.TERMINATING_INSTANCES, GroupMetric.TOTAL_INSTANCES);
+
+            AutoScalingGroup asg = new AutoScalingGroup(this, "FrontEndASG", new AutoScalingGroupProps() {
+                LaunchTemplate = this.LaunchTemplate,
+                MinCapacity = props.FleetSize,
+                MaxCapacity = props.FleetSize,
+                Vpc = props.Vpc,
+                VpcSubnets = props.Subnets,
+                // Typically takes 3.5 - 4 minutes to deploy the application to a new instance
+                HealthCheck = Amazon.CDK.AWS.AutoScaling.HealthCheck.Elb(new ElbHealthCheckOptions() { Grace = Duration.Seconds(240) }),
+                GroupMetrics = new GroupMetrics[] { asgMetrics },
+                Signals = Signals.WaitForCount(Math.Ceiling((double)(props.FleetSize / 2)), new SignalsOptions(){ Timeout = Duration.Minutes(10)}),
+                DefaultInstanceWarmup = Duration.Seconds(120),
+                UpdatePolicy = UpdatePolicy.RollingUpdate(new RollingUpdateOptions() {
+                    MinInstancesInService = 1,
+                    MaxBatchSize = 6,
+                    PauseTime = Duration.Minutes(5),
+                    WaitOnResourceSignals = true,
+                    SuspendProcesses = [
+                        ScalingProcess.ALARM_NOTIFICATION,
+                        ScalingProcess.AZ_REBALANCE,
+                        ScalingProcess.HEALTH_CHECK,
+                        ScalingProcess.REPLACE_UNHEALTHY,
+                        ScalingProcess.SCHEDULED_ACTIONS
+                    ]     
+                })
+            });
+
+            asg.AddLifecycleHook("terminate", new BasicLifecycleHookProps() {
+                LifecycleTransition = LifecycleTransition.INSTANCE_TERMINATING,
+                HeartbeatTimeout = Duration.Minutes(10)
+            });
+
+            asg.ApplyCloudFormationInit(CloudFormationInit.FromConfigSets(new ConfigSetProps() {
+                    ConfigSets = configSets,
+                    Configs = asg.GenerateInitConfig(this, props, this.CWAgentConfig.ParameterName)
+                }),
+                new Amazon.CDK.AWS.AutoScaling.ApplyCloudFormationInitOptions() {
+                    ConfigSets = new string[] { "setup" },
+                    PrintLog = true           
+                }
+            );
+
+            userData.AddCommands(File.ReadAllLines("./NestedStacks/send_cfn_init_to_logs.sh"));
+
+            asg.AttachToApplicationTargetGroup(atg);
+
+            this.AutoScalingGroup = asg;
+
+            #endregion         
         }
     }
 
@@ -397,6 +400,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
             string cwAgentConfigParameterName
         )
         {
+            InitServiceRestartHandle cfnHupHandle = new InitServiceRestartHandle();
+
             return new Dictionary<string, InitConfig>() {
                 {
                     "01_metadata-version", 
@@ -419,7 +424,12 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                                 .AppendLine("verbose=true")
                                 .AppendLine("umaks=022")
                                 .ToString(),
-                                new InitFileOptions() { Mode = "000400", Owner = "root", Group = "root"}
+                                new InitFileOptions() { 
+                                    Mode = "000400", 
+                                    Owner = "root", 
+                                    Group = "root", 
+                                    ServiceRestartHandles = [ cfnHupHandle ]
+                                }
                             ),
                             InitFile.FromString("/etc/cfn/hooks.d/amazon-cloudwatch-agent-auto-reloader.conf", new StringBuilder()
                                 .AppendLine("[amazon-cloudwatch-agent-auto-reloader-hook]")
@@ -428,7 +438,12 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                                 .AppendLine(Fn.Sub("action=/opt/aws/bin/cfn-init --verbose --stack ${AWS::StackId} --resource " + Names.UniqueId(resource) + " --region ${AWS::Region} --configsets update"))
                                 .AppendLine("runas=root")
                                 .ToString(),
-                                new InitFileOptions() { Mode = "000400", Owner = "root", Group = "root"}
+                                new InitFileOptions() { 
+                                    Mode = "000400", 
+                                    Owner = "root", 
+                                    Group = "root",
+                                    ServiceRestartHandles = [ cfnHupHandle ]
+                                }
                             ),
                             InitFile.FromString("/etc/cfn/hooks.d/cfn-auto-reloader-configsets.conf", new StringBuilder()
                                 .AppendLine("[cfn-configset-auto-reloader-hook]")
@@ -437,7 +452,12 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                                 .AppendLine(Fn.Sub("action=/opt/aws/bin/cfn-init --verbose --stack ${AWS::StackId} --resource " + Names.UniqueId(resource) + " --region ${AWS::Region} --configsets setup"))
                                 .AppendLine("runas=root")
                                 .ToString(),
-                                new InitFileOptions() { Mode = "000400", Owner = "root", Group = "root"}
+                                new InitFileOptions() { 
+                                    Mode = "000400", 
+                                    Owner = "root", 
+                                    Group = "root",
+                                    ServiceRestartHandles = [ cfnHupHandle ]
+                                }
                             ),
                             InitFile.FromString("/etc/cfn/hooks.d/cfn-auto-reloader-version.conf", new StringBuilder()
                                 .AppendLine("[cfn-version-auto-reloader-hook]")
@@ -446,20 +466,18 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                                 .AppendLine(Fn.Sub("action=/opt/aws/bin/cfn-init --verbose --stack ${AWS::StackId} --resource " + Names.UniqueId(resource) + " --region ${AWS::Region} --configsets setup"))
                                 .AppendLine("runas=root")
                                 .ToString(),
-                                new InitFileOptions() { Mode = "000400", Owner = "root", Group = "root"}
+                                new InitFileOptions() { 
+                                    Mode = "000400", 
+                                    Owner = "root", 
+                                    Group = "root",
+                                    ServiceRestartHandles = [ cfnHupHandle ]
+                                }
                             ),
                             InitService.Enable("cfn-hup", new InitServiceOptions() {
                                 Enabled = true,
                                 EnsureRunning = true,
-                                ServiceManager = ServiceManager.SYSTEMD
-                                /*
-                                    Missing a "Files" option for these
-                                    "/etc/cfn/cfn-hup.conf",
-                                    "/etc/cfn/hooks.d/amazon-cloudwatch-agent-auto-reloader.conf",
-                                    "/etc/cfn/hooks.d/cfn-auto-reloader-configsets.conf",
-                                    "/etc/cfn/hooks.d/cfn-auto-reloader-version.conf",
-                                    "/lib/systemd/system/cfn-hup.service"
-                                */
+                                ServiceManager = ServiceManager.SYSTEMD,
+                                ServiceRestartHandle = cfnHupHandle
                             })
                         }
                     )                           
@@ -570,13 +588,13 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                             InitCommand.ShellCommand("mkdir -p /usr/libexec/docker/cli-plugins"),
                             InitCommand.ShellCommand("aws s3 cp s3://" + props.AssetsBucketName + "/" + props.AssetsBucketPrefix + "docker-compose /usr/libexec/docker/cli-plugins/docker-compose --region " + Aws.REGION),
                             InitCommand.ShellCommand("chmod +x /usr/libexec/docker/cli-plugins/docker-compose"),
-                            InitCommand.ShellCommand("systemctl enable docker"),
-                            InitCommand.ShellCommand("systemctl start docker")
-                            //InitService.Enable("docker", new InitServiceOptions() {
-                            //    Enabled = true,
-                            //    EnsureRunning = true,
-                            //    ServiceManager = ServiceManager.SYSTEMD
-                            //})
+                            //InitCommand.ShellCommand("systemctl enable docker"),
+                            //InitCommand.ShellCommand("systemctl start docker")
+                            InitService.Enable("docker", new InitServiceOptions() {
+                                Enabled = true,
+                                EnsureRunning = true,
+                                ServiceManager = ServiceManager.SYSTEMD                        
+                            })
                         }
                     )
                 },
