@@ -401,6 +401,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
         )
         {
             InitServiceRestartHandle cfnHupHandle = new InitServiceRestartHandle();
+            InitServiceRestartHandle dockerHandle = new InitServiceRestartHandle();
 
             return new Dictionary<string, InitConfig>() {
                 {
@@ -584,7 +585,9 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                     "15_install-docker",
                     new InitConfig(
                         new InitElement[] {
-                            InitPackage.Yum("docker"),
+                            InitPackage.Yum("docker", new NamedPackageOptions(){
+                                ServiceRestartHandles = [ dockerHandle ]
+                            }),
                             InitCommand.ShellCommand("mkdir -p /usr/libexec/docker/cli-plugins"),
                             InitCommand.ShellCommand("aws s3 cp s3://" + props.AssetsBucketName + "/" + props.AssetsBucketPrefix + "docker-compose /usr/libexec/docker/cli-plugins/docker-compose --region " + Aws.REGION),
                             InitCommand.ShellCommand("chmod +x /usr/libexec/docker/cli-plugins/docker-compose"),
@@ -593,7 +596,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                             InitService.Enable("docker", new InitServiceOptions() {
                                 Enabled = true,
                                 EnsureRunning = true,
-                                ServiceManager = ServiceManager.SYSTEMD                        
+                                ServiceManager = ServiceManager.SYSTEMD,
+                                ServiceRestartHandle = dockerHandle                      
                             })
                         }
                     )
