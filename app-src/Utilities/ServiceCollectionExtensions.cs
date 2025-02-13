@@ -69,6 +69,8 @@ namespace BAMCIS.MultiAZApp.Utilities
 
         private static void AddEmf(this IServiceCollection services, IWebHostEnvironment env)
         {
+            Console.WriteLine("IS DEVELOPMENT: " + env.IsDevelopment());
+            Console.WriteLine("ENV: " + env.EnvironmentName);
             EnvironmentConfigurationProvider.Config = new Configuration
             {
                 ServiceName = Constants.SERVICE_NAME,
@@ -79,6 +81,12 @@ namespace BAMCIS.MultiAZApp.Utilities
                     Amazon.CloudWatch.EMF.Environment.Environments.Local :
                     Amazon.CloudWatch.EMF.Environment.Environments.Agent
             };
+
+            Console.WriteLine("AGENT ENDPOINT: " + EnvironmentConfigurationProvider.Config.AgentEndPoint);
+            Console.WriteLine("EMF ENV: " + EnvironmentConfigurationProvider.Config.EnvironmentOverride.ToString());
+            Console.WriteLine("AWS_EMF_AGENT_ENDPOINT: " + System.Environment.GetEnvironmentVariable("AWS_EMF_AGENT_ENDPOINT"));
+            Console.WriteLine("AWS_EMF_ENVIRONMENT: " + System.Environment.GetEnvironmentVariable("AWS_EMF_ENVIRONMENT"));
+
             services.AddScoped<IMetricsLogger, MetricsLogger>();
             services.AddSingleton<Amazon.CloudWatch.EMF.Environment.IEnvironmentProvider, Amazon.CloudWatch.EMF.Environment.EnvironmentProvider>();
             services.AddSingleton<Amazon.CloudWatch.EMF.Environment.IResourceFetcher, Amazon.CloudWatch.EMF.Environment.ResourceFetcher>();
