@@ -5,6 +5,7 @@ using Amazon.XRay.Recorder.Core;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Extensions.Primitives;
+using Serilog;
 
 namespace BAMCIS.MultiAZApp.Utilities
 {
@@ -57,6 +58,8 @@ namespace BAMCIS.MultiAZApp.Utilities
             // cache refresh worker
             builder.Services.AddHostedService<BackgroundWorker>();
             builder.Services.AddControllers();        
+
+            //builder.Services.AddSerilog();
             builder.Services.AddEmf();
             builder.Services.AddOpenApi();
 
