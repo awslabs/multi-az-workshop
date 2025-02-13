@@ -267,7 +267,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 }
             }
 
-            //IService wildRydesService = CreateService(this.LoadBalancer, this.NetworkStack.Vpc, new ILogGroup[] {frontEndLogGroup});
+            IService wildRydesService = CreateService(this.LoadBalancer, this.NetworkStack.Vpc, new ILogGroup[] {frontEndLogGroup});
 
             /*var mazNestedStack = new NestedStackWithSource(this, "multi-az-observability-");
             InstrumentedServiceMultiAZObservability multiAvailabilityZoneObservability = new InstrumentedServiceMultiAZObservability(mazNestedStack, "instrumented-service-", new InstrumentedServiceMultiAZObservabilityProps() {
@@ -297,16 +297,15 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 Interval = Duration.Minutes(60),          
             });*/
 
-            /*
             ApplicationListener listener = this.LoadBalancer.AddListener("http-listener", new BaseApplicationListenerProps() {
                 Port = 80,
                 Protocol = ApplicationProtocol.HTTP,
                 DefaultAction = new ListenerAction(new CfnListener.ActionProperty() {
                     TargetGroupArn = this.EC2Stack.TargetGroup.TargetGroupArn,
                     Type = "forward",
-                    Order = 2
+                    Order = 255
                 })                     
-            });*/
+            });
 
             // Make sure the alarms used for CodeDeploy are created before creating the listener,
             // otherwise the listener gets created and the CodeDeploy stack is still waiting for the
@@ -350,7 +349,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             
             //Creates the CodeDeploy application that is deployed
             //to the servers
-            /*this.CodeDeployStack = new CodeDeployApplicationStack(this, "codedeploy", new CodeDeployApplicationStackProps() {
+            this.CodeDeployStack = new CodeDeployApplicationStack(this, "codedeploy", new CodeDeployApplicationStackProps() {
                 EC2Fleet = this.EC2Stack,
                 //ApplicationKey = assetsBucketPrefix.ValueAsString + (arch == InstanceArchitecture.ARM_64 ? "app_arm64.zip" : "app_x64.zip"),
                 ApplicationKey = assetsBucketPrefix.ValueAsString + "app_deploy.zip",
@@ -358,10 +357,10 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 TotalEC2InstancesInFleet = fleetSize,
                 ApplicationName = "multi-az-workshop",
                 MinimumHealthyHostsPerZone = 1,     
-                Alarms = new IAlarm[] { multiAvailabilityZoneObservability.ServiceAlarms.RegionalAvailabilityCanaryAlarm}
+                //Alarms = new IAlarm[] { multiAvailabilityZoneObservability.ServiceAlarms.RegionalAvailabilityCanaryAlarm}
             });  
 
-            CodeDeployStack.Node.AddDependency(listener);*/
+            CodeDeployStack.Node.AddDependency(listener);
 
             
 
