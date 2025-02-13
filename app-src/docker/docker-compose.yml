@@ -8,10 +8,10 @@ services:
     ports:
       - 5000:5000
     environment:
-      - "AWS_EMF_AGENT_ENDPOINT=tcp://172.17.0.1:25888"
-      - "DB_SECRET=${DB_SECRET}"
+      - "AWS_EMF_AGENT_ENDPOINT=tcp://cwagent:25888"
       - "AWS_EMF_LOG_STREAM_NAME=${AWS_EMF_LOG_STREAM_NAME}"
       - "AWS_EMF_ENVIRONMENT=Agent"
+      - "DB_SECRET=${DB_SECRET}"
   # healthcheck:
   #    test: curl --fail --location http://localhost:5000/health || exit 1
   #    interval: 5s
