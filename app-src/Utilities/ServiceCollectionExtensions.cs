@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Amazon.CloudWatch.EMF.Config;
 using Amazon.CloudWatch.EMF.Logger;
 using Amazon.CloudWatch.EMF.Model;
 using Amazon.XRay.Recorder.Core;
@@ -68,6 +69,17 @@ namespace BAMCIS.MultiAZApp.Utilities
 
         private static void AddEmf(this IServiceCollection services)
         {
+            EnvironmentConfigurationProvider.Config = new Configuration
+            {
+                ServiceName = Constants.SERVICE_NAME,
+                LogGroupName = Constants.LOG_GROUP_NAME,
+                ServiceType =  "WebApi",
+                EnvironmentOverride = Amazon.CloudWatch.EMF.Environment.Environments.Agent,
+                //AgentEndPoint = "tcp://cwagent:25888"
+                //EnvironmentOverride = builder.Environment.IsDevelopment() ? 
+                //    Amazon.CloudWatch.EMF.Environment.Environments.Local :
+                //    Amazon.CloudWatch.EMF.Environment.Environments.Agent
+            };
             services.AddScoped<IMetricsLogger, MetricsLogger>();
             services.AddSingleton<Amazon.CloudWatch.EMF.Environment.IEnvironmentProvider, Amazon.CloudWatch.EMF.Environment.EnvironmentProvider>();
             services.AddSingleton<Amazon.CloudWatch.EMF.Environment.IResourceFetcher, Amazon.CloudWatch.EMF.Environment.ResourceFetcher>();

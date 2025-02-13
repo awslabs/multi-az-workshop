@@ -379,7 +379,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                 }
             );
 
-            userData.AddCommands(File.ReadAllLines("./NestedStacks/send_cfn_init_to_logs.sh"));
+            //userData.AddCommands(File.ReadAllLines("./NestedStacks/send_cfn_init_to_logs.sh"));
 
             asg.AttachToApplicationTargetGroup(atg);
 
