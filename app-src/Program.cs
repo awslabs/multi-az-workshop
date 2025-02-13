@@ -7,7 +7,10 @@ EnvironmentConfigurationProvider.Config = new Configuration
 {
     ServiceName = Constants.SERVICE_NAME,
     LogGroupName = Constants.LOG_GROUP_NAME,
-    ServiceType =  "WebApi"
+    ServiceType =  "WebApi",
+    EnvironmentOverride = builder.Environment.IsDevelopment() ? 
+        Amazon.CloudWatch.EMF.Environment.Environments.Local :
+        Amazon.CloudWatch.EMF.Environment.Environments.Agent
 };
 
 builder.WebHost.ConfigureKestrel((context, serverOptions) => {
