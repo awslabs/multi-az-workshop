@@ -8,7 +8,7 @@ services:
     ports:
       - 5000:5000
     environment:
-      - "AWS_EMF_AGENT_ENDPOINT=tcp://localhost:25888"
+      - "AWS_EMF_AGENT_ENDPOINT=tcp://cwagent:25888"
       - "DB_SECRET=${DB_SECRET}"
   # healthcheck:
   #    test: curl --fail --location http://localhost:5000/health || exit 1
@@ -23,8 +23,8 @@ services:
     cpus: 0.25
     restart: always
     ports: 
-      - 25889:25889/tcp
-      #- 25888:25888/tcp
+      #- 25889:25889/tcp
+      - 25888:25888/tcp
     environment:
-      - "CW_CONFIG_CONTENT={\"logs\": {\"metrics_collected\": {\"emf\": { \"service_address\": \"tcp://0.0.0.0:25889\" }}}}"
-      #- "CW_CONFIG_CONTENT={\"logs\": {\"metrics_collected\": {\"emf\": { } } } }"
+      #- "CW_CONFIG_CONTENT={\"logs\": {\"metrics_collected\": {\"emf\": { \"service_address\": \"tcp://0.0.0.0:25889\" }}}}"
+      - "CW_CONFIG_CONTENT={\"logs\": {\"metrics_collected\": {\"emf\": { } } } }"
