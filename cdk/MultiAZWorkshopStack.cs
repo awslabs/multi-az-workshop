@@ -105,10 +105,10 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 StringValue = Fn.Sub("s3://${AssetsBucketName}/${AssetsBucketPrefix}")
             });
 
-            //new StringParameter(this, "failing-deployment-asset", new StringParameterProps() {
-             //   ParameterName = "DeploymentAsset",
-             //   StringValue = Fn.Sub("s3://${AssetsBucketName}/${AssetsBucketPrefix}app_deploy_fail.zip")
-            //});
+            new StringParameter(this, "failing-deployment-asset", new StringParameterProps() {
+                ParameterName = "DeploymentAsset",
+                StringValue = Fn.Sub("s3://${AssetsBucketName}/${AssetsBucketPrefix}app_deploy_fail.zip")
+            });
 
             AvailabilityZoneMapper azMapper =new AvailabilityZoneMapper(this, "az-mapper", new AvailabilityZoneMapperProps() {
                 AvailabilityZoneNames = availabilityZoneNames
