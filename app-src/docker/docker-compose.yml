@@ -12,6 +12,7 @@ services:
       - "AWS_EMF_LOG_STREAM_NAME=${AWS_EMF_LOG_STREAM_NAME}"
       - "DB_SECRET=${DB_SECRET}"
       - "AWS_XRAY_DAEMON_ADDRESS=cwagent:2000"
+      - "OTEL_EXPORTER_OTLP_ENDPOINT=http://cwagent:4318"
   # healthcheck:
   #    test: curl --fail --location http://localhost:5000/health || exit 1
   #    interval: 5s
