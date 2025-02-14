@@ -25,10 +25,5 @@ services:
     mem_limit: 256M
     cpus: 0.25
     restart: always
-    ports: 
-      - 25889:25888/tcp # cw agent
-      - 2000:2000/tcp # xray
-      - 4317:4317/tcp # otlp grpc
-      - 4318:4318/tcp # otlp http
     environment:
       - "CW_CONFIG_CONTENT={\"logs\": {\"metrics_collected\": {\"emf\": { } } }, \"traces\": { \"traces_collected\": {\"xray\": {}, \"oltp\": {} }}}"
