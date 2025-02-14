@@ -160,7 +160,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 albSecurityGroup.AddIngressRule(Peer.Ipv6(Fn.Select(0, this.NetworkStack.Vpc.VpcIpv6CidrBlocks)), Port.Tcp(80));
             }
 
-            bool installEC2 = false;
+            bool installEC2 = true;
             if (installEC2)
             {
 
