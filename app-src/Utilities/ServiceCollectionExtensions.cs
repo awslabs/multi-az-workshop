@@ -2,7 +2,6 @@ using System.Diagnostics;
 using Amazon.CloudWatch.EMF.Config;
 using Amazon.CloudWatch.EMF.Logger;
 using Amazon.CloudWatch.EMF.Model;
-using Amazon.CloudWatch.EMF.Sink;
 using Amazon.XRay.Recorder.Core;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc.Controllers;
@@ -71,24 +70,21 @@ namespace BAMCIS.MultiAZApp.Utilities
         {
             Console.WriteLine("IS DEVELOPMENT: " + env.IsDevelopment());
             Console.WriteLine("ENV: " + env.EnvironmentName);
-            EnvironmentConfigurationProvider.Config = new Configuration
-            {
-                ServiceName = Constants.SERVICE_NAME,
-                LogGroupName = Constants.LOG_GROUP_NAME,
-                ServiceType =  "WebApi",
-                AgentEndPoint = String.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AWS_EMF_AGENT_ENDPOINT")) ?
+            EnvironmentConfigurationProvider.Config = new Configuration(
+                serviceName: Constants.SERVICE_NAME,
+                serviceType: "WebApi",
+                logGroupName: Constants.LOG_GROUP_NAME,
+                logStreamName: String.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AWS_EMF_LOG_STREAM_NAME")) ?
+                    String.Empty :
+                    System.Environment.GetEnvironmentVariable("AWS_EMF_LOG_STREAM_NAME"),
+                agentEndPoint: String.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AWS_EMF_AGENT_ENDPOINT")) ?
                     Amazon.CloudWatch.EMF.Sink.Endpoint.DEFAULT_TCP_ENDPOINT.ToString() :
                     System.Environment.GetEnvironmentVariable("AWS_EMF_AGENT_ENDPOINT"),
-                EnvironmentOverride = env != null && env.IsDevelopment() ? 
+                agentBufferSize: Configuration.DEFAULT_AGENT_BUFFER_SIZE,
+                environmentOverride: env != null && env.IsDevelopment() ? 
                     Amazon.CloudWatch.EMF.Environment.Environments.Local :
                     Amazon.CloudWatch.EMF.Environment.Environments.Agent
-            };
-
-            Console.WriteLine("AGENT ENDPOINT: " + EnvironmentConfigurationProvider.Config.AgentEndPoint);
-            Console.WriteLine("EMF ENV: " + EnvironmentConfigurationProvider.Config.EnvironmentOverride.ToString());
-            Console.WriteLine("EMF LOG STREAM NAME: " + EnvironmentConfigurationProvider.Config.LogStreamName);
-            Console.WriteLine("AWS_EMF_AGENT_ENDPOINT: " + System.Environment.GetEnvironmentVariable("AWS_EMF_AGENT_ENDPOINT"));
-            Console.WriteLine("AWS_EMF_ENVIRONMENT: " + System.Environment.GetEnvironmentVariable("AWS_EMF_ENVIRONMENT"));
+            );
 
             services.AddScoped<IMetricsLogger, MetricsLogger>();
             services.AddSingleton<Amazon.CloudWatch.EMF.Environment.IEnvironmentProvider, Amazon.CloudWatch.EMF.Environment.EnvironmentProvider>();
