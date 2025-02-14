@@ -72,7 +72,8 @@
     },
     "traces": {
         "traces_collected": {
-            "xray": {}
+            "xray": {},
+            "oltp": {}
         }
     }
 }
