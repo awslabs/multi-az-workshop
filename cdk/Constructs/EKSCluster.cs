@@ -14,6 +14,7 @@ using Amazon.CDK.AWS.SSM;
 using Amazon.CDK.LambdaLayer.KubectlV31;
 //using Amazon.CDK.LambdaLayer.KubectlV32;
 using Constructs;
+using static Amazon.CDK.AWS.EKS.CfnCluster;
 
 namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
 {
@@ -86,8 +87,12 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 SecurityGroup = controlPlaneSG,
                 MastersRole = props.AdminRole,
                 ClusterName = props.ClusterName,
-                ClusterLogging = new ClusterLoggingTypes[] { ClusterLoggingTypes.CONTROLLER_MANAGER, ClusterLoggingTypes.AUTHENTICATOR, ClusterLoggingTypes.API, ClusterLoggingTypes.AUDIT, ClusterLoggingTypes.SCHEDULER}
+                ClusterLogging = new ClusterLoggingTypes[] { ClusterLoggingTypes.CONTROLLER_MANAGER, ClusterLoggingTypes.AUTHENTICATOR, ClusterLoggingTypes.API, ClusterLoggingTypes.AUDIT, ClusterLoggingTypes.SCHEDULER} 
             });
+
+            (cluster.Node.DefaultChild as CfnCluster).ZonalShiftConfig = new ZonalShiftConfigProperty() {
+                Enabled = true
+            };
 
             cluster.Node.AddDependency(clusterLogGroup);
 
