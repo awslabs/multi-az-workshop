@@ -26,4 +26,4 @@ services:
     cpus: 0.25
     restart: always
     environment:
-      - "CW_CONFIG_CONTENT={\"logs\": {\"metrics_collected\": {\"emf\": { } } }, \"traces\": { \"traces_collected\": {\"xray\": {}, \"oltp\": {} }}}"
+      - "CW_CONFIG_CONTENT={\"logs\": {\"metrics_collected\": {\"emf\": { } } }, \"traces\": { \"traces_collected\": {\"xray\": {}, \"otlp\": {} }}}"

@@ -271,7 +271,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                         {"namespace", props.Namespace}
                     }},
                     {"data", new Dictionary<string, object>() {
-                        {"cwagentconfig.json", "{\"agent\":{\"omit_hostname\":true},\"logs\":{\"metrics_collected\":{\"emf\":{}}},\"traces\":{\"traces_collected\":{\"xray\":{},\"oltp\":{}}}}"}
+                        {"cwagentconfig.json", "{\"agent\":{\"omit_hostname\":true},\"logs\":{\"metrics_collected\":{\"emf\":{}}},\"traces\":{\"traces_collected\":{\"xray\":{},\"otlp\":{}}}}"}
                     }}
                 }
             });
