@@ -271,7 +271,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                         {"namespace", props.Namespace}
                     }},
                     {"data", new Dictionary<string, object>() {
-                        {"cwagentconfig.json", "{\"agent\":{\"omit_hostname\":true},\"logs\":{\"metrics_collected\":{\"emf\":{}}}}"}
+                        {"cwagentconfig.json", "{\"agent\":{\"omit_hostname\":true},\"logs\":{\"metrics_collected\":{\"emf\":{}}},\"traces\":{\"traces_collected\":{\"xray\":{},\"otlp\":{}}}}"}
                     }}
                 }
             });
@@ -363,7 +363,19 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                                             }},
                                             {"ports", new Dictionary<string, object>[] {
                                                 new Dictionary<string, object>() {
-                                                    {"containerPort", 25888},
+                                                    {"containerPort", 25888}, // cloudwatch agent
+                                                    {"protocol", "TCP"}
+                                                },
+                                                new Dictionary<string, object>() {
+                                                    {"containerPort", 2000}, // xray
+                                                    {"protocol", "TCP"}
+                                                },
+                                                new Dictionary<string, object>() {
+                                                    {"containerPort", 4317}, // otlp grpc
+                                                    {"protocol", "TCP"}
+                                                },
+                                                new Dictionary<string, object>() {
+                                                    {"containerPort", 4318}, // otlp http
                                                     {"protocol", "TCP"}
                                                 }
                                             }}

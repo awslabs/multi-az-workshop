@@ -8,8 +8,11 @@ services:
     ports:
       - 5000:5000
     environment:
-      - "AWS_EMF_AGENT_ENDPOINT=tcp://cwagent:25889"
+      - "AWS_EMF_AGENT_ENDPOINT=tcp://cwagent:25888"
+      - "AWS_EMF_LOG_STREAM_NAME=${AWS_EMF_LOG_STREAM_NAME}"
       - "DB_SECRET=${DB_SECRET}"
+      - "AWS_XRAY_DAEMON_ADDRESS=cwagent:2000"
+      - "OTEL_EXPORTER_OTLP_ENDPOINT=http://cwagent:4318"
   # healthcheck:
   #    test: curl --fail --location http://localhost:5000/health || exit 1
   #    interval: 5s
@@ -22,7 +25,5 @@ services:
     mem_limit: 256M
     cpus: 0.25
     restart: always
-    ports: 
-      - 25889:25889/tcp
     environment:
-      - "CW_CONFIG_CONTENT={\"logs\": {\"metrics_collected\": {\"emf\": { \"service_address\": \"tcp://0.0.0.0:25889\" }}}}"
+      - "CW_CONFIG_CONTENT={\"logs\": {\"metrics_collected\": {\"emf\": { } } }, \"traces\": { \"traces_collected\": {\"xray\": {}, \"otlp\": {} }}}"

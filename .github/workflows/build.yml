@@ -17,6 +17,7 @@ jobs:
       CDK_LOCATION: "cdk"
       PROJECT_NAME: ${{ github.event.repository.name }}
       DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 0
+      BUILD_APP: false
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -150,6 +151,7 @@ jobs:
         run: curl -SL https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-aarch64 -o ${{ github.workspace }}/assets/docker-compose
 
       - name: Build arm64 web app
+        if: env.BUILD_APP == true
         run: |
           rm -rf ${{ github.workspace }}/app-src/output
           mkdir -p ${{ github.workspace }}/app-src/output
@@ -164,6 +166,7 @@ jobs:
           rm -rf ${{ github.workspace }}/app-src/output
 
       - name: Build failing arm64 web app
+        if: env.BUILD_APP == true
         run: |
           rm -rf ${{ github.workspace }}/app-src/output
           mkdir -p ${{ github.workspace }}/app-src/output

@@ -21,6 +21,8 @@
     <PackageReference Include="AWSSDK.SecretsManager" Version="3.7.400.59" />
     <PackageReference Include="Npgsql" Version="9.0.2" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.0" />
+    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
   </ItemGroup>
 
 </Project>
