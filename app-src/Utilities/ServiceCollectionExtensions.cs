@@ -2,11 +2,11 @@ using System.Diagnostics;
 using Amazon.CloudWatch.EMF.Config;
 using Amazon.CloudWatch.EMF.Logger;
 using Amazon.CloudWatch.EMF.Model;
+using Amazon.CloudWatch.EMF.Sink;
 using Amazon.XRay.Recorder.Core;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Extensions.Primitives;
-using Serilog;
 
 namespace BAMCIS.MultiAZApp.Utilities
 {
@@ -76,7 +76,9 @@ namespace BAMCIS.MultiAZApp.Utilities
                 ServiceName = Constants.SERVICE_NAME,
                 LogGroupName = Constants.LOG_GROUP_NAME,
                 ServiceType =  "WebApi",
-                //AgentEndPoint = "tcp://cwagent:25888"
+                AgentEndPoint = String.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AWS_EMF_AGENT_ENDPOINT")) ?
+                    Amazon.CloudWatch.EMF.Sink.Endpoint.DEFAULT_TCP_ENDPOINT.ToString() :
+                    System.Environment.GetEnvironmentVariable("AWS_EMF_AGENT_ENDPOINT"),
                 EnvironmentOverride = env != null && env.IsDevelopment() ? 
                     Amazon.CloudWatch.EMF.Environment.Environments.Local :
                     Amazon.CloudWatch.EMF.Environment.Environments.Agent
@@ -84,6 +86,7 @@ namespace BAMCIS.MultiAZApp.Utilities
 
             Console.WriteLine("AGENT ENDPOINT: " + EnvironmentConfigurationProvider.Config.AgentEndPoint);
             Console.WriteLine("EMF ENV: " + EnvironmentConfigurationProvider.Config.EnvironmentOverride.ToString());
+            Console.WriteLine("EMF LOG STREAM NAME: " + EnvironmentConfigurationProvider.Config.LogStreamName);
             Console.WriteLine("AWS_EMF_AGENT_ENDPOINT: " + System.Environment.GetEnvironmentVariable("AWS_EMF_AGENT_ENDPOINT"));
             Console.WriteLine("AWS_EMF_ENVIRONMENT: " + System.Environment.GetEnvironmentVariable("AWS_EMF_ENVIRONMENT"));
 
