@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Amazon.CloudWatch.EMF.Config;
 using Amazon.CloudWatch.EMF.Logger;
 using Amazon.CloudWatch.EMF.Model;
 using Amazon.XRay.Recorder.Core;
@@ -57,14 +58,34 @@ namespace BAMCIS.MultiAZApp.Utilities
             // cache refresh worker
             builder.Services.AddHostedService<BackgroundWorker>();
             builder.Services.AddControllers();        
-            builder.Services.AddEmf();
+
+            //builder.Services.AddSerilog();
+            builder.Services.AddEmf(builder.Environment);
             builder.Services.AddOpenApi();
 
             return builder;
         }
 
-        private static void AddEmf(this IServiceCollection services)
+        private static void AddEmf(this IServiceCollection services, IWebHostEnvironment env)
         {
+            Console.WriteLine("IS DEVELOPMENT: " + env.IsDevelopment());
+            Console.WriteLine("ENV: " + env.EnvironmentName);
+            EnvironmentConfigurationProvider.Config = new Configuration(
+                serviceName: Constants.SERVICE_NAME,
+                serviceType: "WebApi",
+                logGroupName: Constants.LOG_GROUP_NAME,
+                logStreamName: String.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AWS_EMF_LOG_STREAM_NAME")) ?
+                    String.Empty :
+                    System.Environment.GetEnvironmentVariable("AWS_EMF_LOG_STREAM_NAME"),
+                agentEndPoint: String.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("AWS_EMF_AGENT_ENDPOINT")) ?
+                    Amazon.CloudWatch.EMF.Sink.Endpoint.DEFAULT_TCP_ENDPOINT.ToString() :
+                    System.Environment.GetEnvironmentVariable("AWS_EMF_AGENT_ENDPOINT"),
+                agentBufferSize: Configuration.DEFAULT_AGENT_BUFFER_SIZE,
+                environmentOverride: env != null && env.IsDevelopment() ? 
+                    Amazon.CloudWatch.EMF.Environment.Environments.Local :
+                    Amazon.CloudWatch.EMF.Environment.Environments.Agent
+            );
+
             services.AddScoped<IMetricsLogger, MetricsLogger>();
             services.AddSingleton<Amazon.CloudWatch.EMF.Environment.IEnvironmentProvider, Amazon.CloudWatch.EMF.Environment.EnvironmentProvider>();
             services.AddSingleton<Amazon.CloudWatch.EMF.Environment.IResourceFetcher, Amazon.CloudWatch.EMF.Environment.ResourceFetcher>();
