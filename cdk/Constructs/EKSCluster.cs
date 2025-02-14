@@ -90,10 +90,6 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 ClusterLogging = new ClusterLoggingTypes[] { ClusterLoggingTypes.CONTROLLER_MANAGER, ClusterLoggingTypes.AUTHENTICATOR, ClusterLoggingTypes.API, ClusterLoggingTypes.AUDIT, ClusterLoggingTypes.SCHEDULER} 
             });
 
-            (cluster.Node.DefaultChild as CfnCluster).ZonalShiftConfig = new ZonalShiftConfigProperty() {
-                Enabled = true
-            };
-
             cluster.Node.AddDependency(clusterLogGroup);
 
             cluster.ClusterSecurityGroup.AddIngressRule(Peer.SecurityGroupId(props.LoadBalancerSecurityGroup.SecurityGroupId), Port.Tcp(80));
