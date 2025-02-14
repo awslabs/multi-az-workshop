@@ -24,7 +24,6 @@ services:
     cpus: 0.25
     restart: always
     ports: 
-      #- 25889:25889/tcp
       - 25889:25888/tcp
     environment:
       - "CW_CONFIG_CONTENT={\"logs\": {\"metrics_collected\": {\"emf\": { } } } }"
