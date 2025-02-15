@@ -279,17 +279,19 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 OutlierDetectionAlgorithm = OutlierDetectionAlgorithm.STATIC
             });
           
-            /*BasicServiceMultiAZObservability multiAZObservability = new BasicServiceMultiAZObservability(this, "basic-service-", new BasicServiceMultiAZObservabilityProps() {
-                ApplicationLoadBalancers = new IApplicationLoadBalancer[] { this.LoadBalancer },
+            BasicServiceMultiAZObservability multiAZObservability = new BasicServiceMultiAZObservability(this, "basic-service-", new BasicServiceMultiAZObservabilityProps() {
+                ApplicationLoadBalancers = [ this.LoadBalancer ],
                 CreateDashboard = true,
                 FaultCountPercentageThreshold = 1.0,
                 PacketLossImpactPercentageThreshold = 0.01,
+                DatapointsToAlarm = 2,
+                EvaluationPeriods = 3, 
                 LatencyStatistic = "p99",
                 LatencyThreshold = 300,
                 ServiceName = "WildRydes",
                 Period = Duration.Seconds(60),
                 Interval = Duration.Minutes(60),          
-            });*/
+            });
 
             ApplicationListener listener = this.LoadBalancer.AddListener("http-listener", new BaseApplicationListenerProps() {
                 Port = 80,
