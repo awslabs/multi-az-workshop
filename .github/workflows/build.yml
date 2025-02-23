@@ -18,12 +18,45 @@ jobs:
       PROJECT_NAME: ${{ github.event.repository.name }}
       DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 0
       BUILD_APP: false
+      ALLOWED: false
+      ALLOWED_USER: hakenmt
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
+          fetch-depth: 0  # Get full commit history
+
+      - name: Get commit authors
+        id: check
+        run: |
+          COMMITTERS=$(git log origin/${{ github.base_ref }}..${{ github.head_ref }} --pretty=format:'%an' | sort | uniq)
+          
+          echo "Commit authors:"
+          echo "$COMMITTERS"
+
+          # Check if any committer is NOT the allowed user
+          ALL_ALLOWED=true
+          for AUTHOR in $COMMITTERS; do
+            if [ "$AUTHOR" != "$ALLOWED_USER" ]; then
+              ALL_ALLOWED=false
+              break
+            fi
+          done
+
+          echo "ALLOWED=$ALL_ALLOWED" >> $GITHUB_ENV
+
+      - name: Run Build
+        if: env.ALLOWED == 'true'
+        run: echo "✅ Running build since all commits are from the allowed user."
+  
+      - name: Require Admin Approval
+        if: env.ALLOWED == 'false'
+        run: |
+          echo "🚨 Workflow requires admin approval due to multiple committers."
+          exit 1  # Fail to force manual review
+  
 
       #- name: Install node.js
       #  uses: actions/setup-node@v4
