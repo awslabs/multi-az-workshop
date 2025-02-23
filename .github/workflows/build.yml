@@ -35,12 +35,23 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
-          # COMMITTERS=$(git log origin/${{ github.base_ref }}..${{ github.head_ref }} --pretty=format:'%an' | sort | uniq)  
-          COMMITTERS=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            "https://api.github.com/repos/$REPO/pulls/$PR_NUMBER/commits" | jq -r '.[].author.login' | sort -u)
-          
-          echo "Commit authors:"
-          echo "$COMMITTERS"
+          # Fetch commit details from GitHub API
+          RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/$REPO/pulls/$PR_NUMBER/commits")
+
+          # Output the raw response for debugging
+          echo "Response from API: $RESPONSE"
+
+          # Check if the response is valid
+          if [ -z "$RESPONSE" ]; then
+            echo "No response received from GitHub API."
+            exit 1
+          fi
+
+          # Parse commit authors from the response
+          COMMITTERS=$(echo "$RESPONSE" | jq -r '.[].commit.author.name' | sort -u)
+
+          echo "Commit authors: $COMMITTERS"
 
           # Check if any committer is NOT the allowed user
           ALL_ALLOWED=true
