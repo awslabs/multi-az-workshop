@@ -15,6 +15,9 @@ on:
           type: string
           description: If you want to make this a pre-release specify the value like 'alpha' or 'beta'
 
+permissions:
+  contents: write
+
 env:
   AWS_DEFAULT_REGION: us-east-1
   AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
@@ -102,12 +105,17 @@ jobs:
   bump_version_and_release:
     runs-on: ubuntu-latest
     needs: [ latest_workflow, assets, workshop ]
+    env:
+      bumped_version: ""
+      commits: ""
+      prerelease: ""
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           branch: main
+          fetch-depth: 0  # Ensure full history is available
 
       - name: get_content_artifact
         uses: actions/download-artifact@v4

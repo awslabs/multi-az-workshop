@@ -1,0 +1,180 @@
+name: test
+on:
+  workflow_run:
+    workflows: ["review"]
+    types:
+      - completed
+
+permissions: {}
+
+jobs:
+  test:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
+    environment: AWS
+    env:
+      BUCKET: ${{ secrets.BUCKET }}
+      PROJECT_NAME: ${{ github.event.repository.name }}
+    steps:
+      - name: Get workshop content
+        uses: actions/download-artifact@v4
+        with:
+          name: ContentArtifact
+
+      - name: Upload to S3
+        id: s3
+        run: |
+          date=$(date --utc +"%Y-%m-%dT%H-%M-%SZ")
+          echo "DATE=$date" >> $GITHUB_OUTPUT
+          mkdir -p ${{ github.workspace }}/content
+          unzip content.zip -d ${{ github.workspace }}/content
+          aws s3 cp ${{ github.workspace }}/content s3://$BUCKET/$date/ --recursive
+
+      - name: Deploy change set
+        id: changeset
+        run: |
+          date=${{ steps.s3.outputs.DATE }}
+          set +e
+          aws cloudformation describe-stacks --stack-name $PROJECT_NAME --region $AWS_REGION >/dev/null 2>&1; EXITCODE=$?
+          set -e
+          if [[ $EXITCODE -eq 0 ]]; then
+            echo STACK EXISTS
+            aws cloudformation create-change-set --change-set-type UPDATE --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --template-url https://$BUCKET.s3.amazonaws.com/$date/$PROJECT_NAME.template --parameters ParameterKey=AssetsBucketName,ParameterValue=$BUCKET ParameterKey=AssetsBucketPrefix,ParameterValue="${date}/" ParameterKey=ParticipantRoleName,ParameterValue=Admin --capabilities CAPABILITY_IAM --region $AWS_REGION
+          else
+            echo STACK DOESNT EXIST
+            aws cloudformation create-change-set --change-set-type CREATE --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --template-url https://$BUCKET.s3.amazonaws.com/$date/$PROJECT_NAME.template --parameters ParameterKey=AssetsBucketName,ParameterValue=$BUCKET ParameterKey=AssetsBucketPrefix,ParameterValue="${date}/" ParameterKey=ParticipantRoleName,ParameterValue=Admin --capabilities CAPABILITY_IAM --region $AWS_REGION
+          fi
+          echo WAITING FOR CHANGE SET
+          aws cloudformation wait change-set-create-complete --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --region $AWS_REGION
+          aws cloudformation execute-change-set --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --region $AWS_REGION
+          echo "CHANGE_SET=$PROJECT_NAME-$date" >> "$GITHUB_OUTPUT"
+          echo "STACK_NAME=$PROJECT_NAME" >> "$GITHUB_OUTPUT"
+    outputs:
+      CHANGE_SET: ${{ steps.changeset.outputs.CHANGE_SET }}
+      STACK_NAME: ${{ steps.changeset.outputs.STACK_NAME }}
+      DATE: ${{ steps.s3.outputs.DATE }}
+      S3_STATUS: ${{ steps.s3.outcome }}
+    
+  wait_for_stack:
+      runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
+      needs: [ test ]
+      env:
+        CHANGE_SET: ${{ needs.test.outputs.CHANGE_SET }}
+        STACK_NAME: ${{ needs.test.outputs.STACK_NAME }}
+      steps:
+        - name: Wait for CloudFormation Stack to complete
+          run: |
+            echo "Waiting for CloudFormation stack to complete..."
+            get_change_set_status() {
+              aws cloudformation describe-stacks \
+              --stack-name "$STACK_NAME" \
+              --query "Stacks[0].StackStatus" \
+              --region $AWS_REGION \
+              --output text
+            }
+
+            # Initial status check
+            STATUS=$(get_change_set_status)
+            
+            # Loop to monitor the status of the change set
+            while true; do
+                case "$STATUS" in
+                    "CREATE_COMPLETE")
+                      echo "Creation is complete"
+                      exit 0
+                      ;;
+                    "CREATE_IN_PROGRESS")
+                      echo "Change set is being created, waiting..."
+                      ;;
+                    "CREATE_FAILED")
+                      echo "Change set creation failed!"
+                      exit 1
+                      ;;
+
+                    "DELETE_COMPLETE")
+                      echo "Delete complete"
+                      exit 1
+                      ;;
+                    "DELETE_FAILED")
+                      echo "Delete failed"
+                      exit 1
+                      ;;
+                    "DELETE_IN_PROGRESS")
+                      echo "Delete in progress, waiting..."
+                      ;;
+
+                    "REVIEW_IN_PROGRESS")
+                      echo "Review in progress, waiting"
+                      ;;
+
+                    "ROLLBACK_COMPLETE")
+                      echo "Create failed and rolled back"
+                      exit 1
+                      ;;
+                    "ROLLBACK_FAILED")
+                      echo "Create failed and rollback failed"
+                      exit 1
+                      ;;
+                    "ROLLBACK_IN_PROGRESS")
+                      echo "Rollback in progress, waiting"
+                      exit 1
+                      ;;
+
+                    "UPDATE_COMPLETE")
+                      echo "Update complete"
+                      exit 0
+                      ;;
+                    "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS")
+                      echo "Update finishing, waiting..."
+                      ;;
+                    "UPDATE_IN_PROGRESS")
+                      echo "Update in progress, waiting"
+                      ;;
+
+                    "UPDATE_ROLLBACK_COMPLETE")
+                      echo "Update failed"
+                      exit 1
+                      ;;
+                    "UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRES")
+                      echo "Update rollback cleanup, waiting..."
+                      ;;
+                    "UPDATE_ROLLBACK_FAILED")
+                      echo "Update failed, rollback failed"
+                      exit 1
+                      ;;
+                    "UPDATE_ROLLBACK_IN_PROGRESS")
+                      echo "Update rollback in progress, waiting"
+                      ;;
+                   
+                    *)
+                      echo "Unknown status: $STATUS"
+                      exit 1
+                      ;;
+                esac
+
+                # Wait for 30 seconds before checking the status again
+                sleep 30
+
+                # Get the current status again
+                STATUS=$(get_change_set_status)
+            done
+          
+  cleanup:
+    runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
+    needs: [ wait_for_stack, test ]
+    if: ${{ always() && needs.test.outputs.S3_STATUS == 'success' }}
+    env:
+      DATE: ${{ needs.test.outputs.DATE }}
+      BUCKET: ${{ secrets.BUCKET }}
+      PROJECT_NAME: ${{ github.event.repository.name }}
+    steps: 
+      - name: Cleanup Old S3 Content
+        if: ${{ needs.wait_for_stack.result == 'success' }}
+        run: |
+          echo Deleting old S3 content due to deployment success
+          aws s3 rm s3://$BUCKET/ --recursive --exclude "$DATE/*"
+      - name: Cleanup New S3 Content
+        if: ${{ needs.wait_for_stack.result != 'success' }}
+        run: |
+          echo Deleting new S3 content because deployment did not succeed
+          aws s3 rm s3://$BUCKET/ --recursive --exclude "*" --include "$DATE/*"
