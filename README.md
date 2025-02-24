@@ -1,3 +1,5 @@
+[Build Workflow](https://github.com/awslabs/multi-az-workshop/actions/workflows/build.yml/badge.svg) [Test Workflow](https://github.com/awslabs/multi-az-workshop/actions/workflows/test.yml/badge.svg) [Publish Workflow](https://github.com/awslabs/multi-az-workshop/actions/workflows/publish.yml/badge.svg)
+
 ## Advanced Multi-AZ Resilience Patterns
 ### Building, operating, and testing resilient multi-AZ applications
 In this workshop you will build, operate, and test a resilient multi-AZ application. You will use Amazon CloudWatch to observe the health of your application. You'll inject faults using the AWS Fault Injection Service (FIS) to simulate a variety of single AZ impairments. You'll also learn how to leverage AWS CodeDeploy to perform zonal deployments and experience deployment failures. Finally, you'll leverage Amazon Application Recovery Controller (ARC) zonal shift to recover from these failures.

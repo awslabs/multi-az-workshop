@@ -1,89 +1,34 @@
 name: build
 on:
   pull_request: 
+    types: [opened, synchronize]
     branches:
       - main
     paths:
       - app-src/**
       - cdk/**
-      - build/**
-      - content/**
-      - static/**
       
+permissions: {}
+
 jobs:
+  
   build:
-    runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
+    permissions:
+      contents: read
+    #runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04-arm
     env:
       CDK_LOCATION: "cdk"
       PROJECT_NAME: ${{ github.event.repository.name }}
       DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 0
       BUILD_APP: false
-      ALLOWED: false
-      ALLOWED_USER: hakenmt
+      PULL_ISTIO_FROM_PUBLIC: true
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
-          fetch-depth: 0  # Get full commit history
-
-      - name: Get commit authors
-        id: check
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPO: ${{ github.repository }}
-        run: |
-          # Fetch commit details from GitHub API
-          RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            "https://api.github.com/repos/$REPO/pulls/$PR_NUMBER/commits")
-
-          # Output the raw response for debugging
-          echo "Response from API: $RESPONSE"
-
-          # Check if the response is valid
-          if [ -z "$RESPONSE" ]; then
-            echo "No response received from GitHub API."
-            exit 1
-          fi
-
-          # Parse commit authors from the response
-          COMMITTERS=$(echo "$RESPONSE" | jq -r '.[].commit.author.name' | sort -u)
-
-          echo "Commit authors: $COMMITTERS"
-
-          # Check if any committer is NOT the allowed user
-          ALL_ALLOWED=true
-          for AUTHOR in $COMMITTERS; do
-            if [ "$AUTHOR" != "$ALLOWED_USER" ]; then
-              ALL_ALLOWED=false
-              break
-            fi
-          done
-
-          echo "ALLOWED=$ALL_ALLOWED" >> $GITHUB_ENV
-
-      - name: Run Build
-        if: env.ALLOWED == 'true'
-        run: echo "✅ Running build since all commits are from the allowed user."
-  
-      - name: Require Admin Approval
-        if: env.ALLOWED == 'false'
-        run: |
-          echo "🚨 Workflow requires admin approval due to multiple committers."
-          exit 1  # Fail to force manual review
-  
-
-      #- name: Install node.js
-      #  uses: actions/setup-node@v4
-      #  with:
-      #    node-version: 20
-
-      #- name: Install python
-      #  uses: actions/setup-python@v4
-      #  with:
-      #    python-version: '3.13'
 
       - name: Install dotnet
         uses: actions/setup-dotnet@v4
@@ -156,10 +101,15 @@ jobs:
         run: |
             MAX_RETRIES=10
             SLEEP_INTERVAL=2
-            ACCOUNT_ID=$(echo "$CODEBUILD_BUILD_ARN" | cut -d':' -f5)
-            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
             IMAGES=(install-cni proxyv2 pilot)
-            BASE=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/docker-hub
+            if [[ "$PULL_ISTIO_FROM_PUBLIC" == "true" ]]; then
+              BASE=docker.io
+            else
+              ACCOUNT_ID=$(echo "$CODEBUILD_BUILD_ARN" | cut -d':' -f5)
+              BASE=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/docker-hub
+              aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+            fi
+    
             for image in "${IMAGES[@]}"; do
               SOURCE=$BASE/istio/$image:$ISTIO
               docker pull $SOURCE
@@ -170,12 +120,12 @@ jobs:
                   echo "Image $SOURCE did not appear in 'docker images' after $((MAX_RETRIES * SLEEP_INTERVAL)) seconds. Exiting."
                   exit 1
                 fi
-
+    
                 echo "Retry $((retries+1))/$MAX_RETRIES - Image not found yet. Retrying in $SLEEP_INTERVAL seconds..."
                 sleep "$SLEEP_INTERVAL"
                 retries=$((retries+1))
               done
-
+    
               docker tag $SOURCE istio/$image:$ISTIO
               docker save istio/$image:$ISTIO | gzip > ${{ github.workspace }}/assets/$image.tar.gz
             done
@@ -303,186 +253,11 @@ jobs:
           name: ContentArtifact
           path: ${{ github.workspace }}/content.zip
 
-  test:
-    needs: [ build ]
-    runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
-    env:
-      BUCKET: ${{ secrets.BUCKET }}
-      PROJECT_NAME: ${{ github.event.repository.name }}
-    steps:
-      - name: Get workshop content
-        uses: actions/download-artifact@v4
-        with:
-          name: ContentArtifact
-
-      - name: Upload to S3
-        id: s3
-        run: |
-          date=$(date --utc +"%Y-%m-%dT%H-%M-%SZ")
-          echo "DATE=$date" >> $GITHUB_OUTPUT
-          mkdir -p ${{ github.workspace }}/content
-          unzip content.zip -d ${{ github.workspace }}/content
-          aws s3 cp ${{ github.workspace }}/content s3://$BUCKET/$date/ --recursive
-
-      - name: Deploy change set
-        id: changeset
-        run: |
-          date=${{ steps.s3.outputs.DATE }}
-          set +e
-          aws cloudformation describe-stacks --stack-name $PROJECT_NAME --region $AWS_REGION >/dev/null 2>&1; EXITCODE=$?
-          set -e
-          if [[ $EXITCODE -eq 0 ]]; then
-            echo STACK EXISTS
-            aws cloudformation create-change-set --change-set-type UPDATE --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --template-url https://$BUCKET.s3.amazonaws.com/$date/$PROJECT_NAME.template --parameters ParameterKey=AssetsBucketName,ParameterValue=$BUCKET ParameterKey=AssetsBucketPrefix,ParameterValue="${date}/" ParameterKey=ParticipantRoleName,ParameterValue=Admin --capabilities CAPABILITY_IAM --region $AWS_REGION
-          else
-            echo STACK DOESNT EXIST
-            aws cloudformation create-change-set --change-set-type CREATE --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --template-url https://$BUCKET.s3.amazonaws.com/$date/$PROJECT_NAME.template --parameters ParameterKey=AssetsBucketName,ParameterValue=$BUCKET ParameterKey=AssetsBucketPrefix,ParameterValue="${date}/" ParameterKey=ParticipantRoleName,ParameterValue=Admin --capabilities CAPABILITY_IAM --region $AWS_REGION
-          fi
-          echo WAITING FOR CHANGE SET
-          aws cloudformation wait change-set-create-complete --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --region $AWS_REGION
-          aws cloudformation execute-change-set --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --region $AWS_REGION
-          echo "CHANGE_SET=$PROJECT_NAME-$date" >> "$GITHUB_OUTPUT"
-          echo "STACK_NAME=$PROJECT_NAME" >> "$GITHUB_OUTPUT"
-    outputs:
-      CHANGE_SET: ${{ steps.changeset.outputs.CHANGE_SET }}
-      STACK_NAME: ${{ steps.changeset.outputs.STACK_NAME }}
-      DATE: ${{ steps.s3.outputs.DATE }}
-      S3_STATUS: ${{ steps.s3.outcome }}
-    
-  wait_for_stack:
-      runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
-      needs: [ test ]
-      env:
-        CHANGE_SET: ${{ needs.test.outputs.CHANGE_SET }}
-        STACK_NAME: ${{ needs.test.outputs.STACK_NAME }}
-      steps:
-        - name: Wait for CloudFormation Stack to complete
-          run: |
-            echo "Waiting for CloudFormation stack to complete..."
-            get_change_set_status() {
-              aws cloudformation describe-stacks \
-              --stack-name "$STACK_NAME" \
-              --query "Stacks[0].StackStatus" \
-              --region $AWS_REGION \
-              --output text
-            }
-
-            # Initial status check
-            STATUS=$(get_change_set_status)
-            
-            # Loop to monitor the status of the change set
-            while true; do
-                case "$STATUS" in
-                    "CREATE_COMPLETE")
-                      echo "Creation is complete"
-                      exit 0
-                      ;;
-                    "CREATE_IN_PROGRESS")
-                      echo "Change set is being created, waiting..."
-                      ;;
-                    "CREATE_FAILED")
-                      echo "Change set creation failed!"
-                      exit 1
-                      ;;
-
-                    "DELETE_COMPLETE")
-                      echo "Delete complete"
-                      exit 1
-                      ;;
-                    "DELETE_FAILED")
-                      echo "Delete failed"
-                      exit 1
-                      ;;
-                    "DELETE_IN_PROGRESS")
-                      echo "Delete in progress, waiting..."
-                      ;;
-
-                    "REVIEW_IN_PROGRESS")
-                      echo "Review in progress, waiting"
-                      ;;
-
-                    "ROLLBACK_COMPLETE")
-                      echo "Create failed and rolled back"
-                      exit 1
-                      ;;
-                    "ROLLBACK_FAILED")
-                      echo "Create failed and rollback failed"
-                      exit 1
-                      ;;
-                    "ROLLBACK_IN_PROGRESS")
-                      echo "Rollback in progress, waiting"
-                      exit 1
-                      ;;
-
-                    "UPDATE_COMPLETE")
-                      echo "Update complete"
-                      exit 0
-                      ;;
-                    "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS")
-                      echo "Update finishing, waiting..."
-                      ;;
-                    "UPDATE_IN_PROGRESS")
-                      echo "Update in progress, waiting"
-                      ;;
-
-                    "UPDATE_ROLLBACK_COMPLETE")
-                      echo "Update failed"
-                      exit 1
-                      ;;
-                    "UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRES")
-                      echo "Update rollback cleanup, waiting..."
-                      ;;
-                    "UPDATE_ROLLBACK_FAILED")
-                      echo "Update failed, rollback failed"
-                      exit 1
-                      ;;
-                    "UPDATE_ROLLBACK_IN_PROGRESS")
-                      echo "Update rollback in progress, waiting"
-                      ;;
-                   
-                    *)
-                      echo "Unknown status: $STATUS"
-                      exit 1
-                      ;;
-                esac
-
-                # Wait for 30 seconds before checking the status again
-                sleep 30
-
-                # Get the current status again
-                STATUS=$(get_change_set_status)
-            done
-          
-  cleanup:
-    runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
-    needs: [ wait_for_stack, test ]
-    if: ${{ always() && needs.test.outputs.S3_STATUS == 'success' }}
-    env:
-      DATE: ${{ needs.test.outputs.DATE }}
-      BUCKET: ${{ secrets.BUCKET }}
-      PROJECT_NAME: ${{ github.event.repository.name }}
-    steps: 
-      - name: Cleanup Old S3 Content
-        if: ${{ needs.wait_for_stack.result == 'success' }}
-        run: |
-          echo Deleting old S3 content due to deployment success
-          aws s3 rm s3://$BUCKET/ --recursive --exclude "$DATE/*"
-      - name: Cleanup New S3 Content
-        if: ${{ needs.wait_for_stack.result != 'success' }}
-        run: |
-          echo Deleting new S3 content because deployment did not succeed
-          aws s3 rm s3://$BUCKET/ --recursive --exclude "*" --include "$DATE/*"
-
-  record_pr:
-    runs-on: ubuntu-latest
-    needs: [cleanup, wait_for_stack]
-    if: needs.wait_for_stack.result == 'success' && github.event_name == 'pull_request'
-    steps:
       - name: Save PR Number
         run: echo "${{ github.event.pull_request.number }}" > pr_number.txt
       
       - name: Upload PR Number Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pr-number
+          name: PullRequestNumber
           path: pr_number.txt
