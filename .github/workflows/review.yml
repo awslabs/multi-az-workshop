@@ -10,7 +10,7 @@ jobs:
     steps:
       - name: Check if review was approved by specific user
         run: |
-            if [[ github.event.review.state == 'approved' && github.event.review.user.login == 'hakenmt' ]]; then
+            if [[ ${{ github.event.review.state }} == 'approved' && ( ${{ github.event.review.user.login }} == 'hakenmt' || ${{ github.event.review.user.login }} == 'github-actions[bot]') ]]; then
                 echo "✅ Test a since review was performed by an allowed user."
             else
                 "🚨 Workflow requires admin review approval."
