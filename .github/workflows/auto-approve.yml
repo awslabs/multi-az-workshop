@@ -17,6 +17,16 @@ jobs:
       pull-requests: write
     if: contains(github.event.pull_request.labels.*.name, 'auto-approve') && (github.event.pull_request.user.login == 'hakenmt' || github.event.pull_request.user.login == 'github-bot')
     steps:
-      - uses: hmarr/auto-approve-action@v2.2.1
+      - name: Wait for build to succeed
+        uses: fountainhead/action-wait-for-check@v1.2.0
+        id: wait-for-build
         with:
-          github-token: ${{ github.token }}
+          token: ${{ github.token }}
+          checkName: build
+          ref: ${{ github.event.pull_request.head.sha || github.sha }},
+          timeoutSeconds: 900
+
+      - uses: hmarr/auto-approve-action@v2.2.1
+        if: steps.wait-for-build.outputs.conclusion == 'success' || steps.wait-for-build.outputs.conclusion == 'neutral'
+        with:
+          github-token: ${{ secrets.PAT_TOKEN }}
