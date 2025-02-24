@@ -121,7 +121,7 @@ jobs:
               retries=0
               while ! docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^$SEARCH$"; do
                 if [ "$retries" -ge "$MAX_RETRIES" ]; then
-                  echo "Image $SOURCE did not appear in 'docker images' after $((MAX_RETRIES * SLEEP_INTERVAL)) seconds. Exiting."
+                  echo "Image $SEARCH did not appear in 'docker images' after $((MAX_RETRIES * SLEEP_INTERVAL)) seconds. Exiting."
                   exit 1
                 fi
     
