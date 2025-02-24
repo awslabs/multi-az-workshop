@@ -115,7 +115,7 @@ jobs:
     
             for image in "${IMAGES[@]}"; do
               SOURCE=$BASE/istio/$image:$ISTIO
-              SEARCH=${BASE}istio/$image:$ISTIO
+              SEARCH=${SEARCH_BASE}istio/$image:$ISTIO
               docker pull $SOURCE
               
               retries=0
