@@ -105,6 +105,10 @@ jobs:
   bump_version_and_release:
     runs-on: ubuntu-latest
     needs: [ latest_workflow, assets, workshop ]
+    env:
+      bumped_version: ""
+      commits: ""
+      prerelease: ""
 
     steps:
       - name: Checkout repository
