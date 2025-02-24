@@ -23,10 +23,12 @@ jobs:
         with:
           token: ${{ github.token }}
           checkName: build
-          ref: ${{ github.event.pull_request.head.sha || github.sha }},
+          ref: ${{ github.event.pull_request.head.sha }},
           timeoutSeconds: 900
 
-      - uses: hmarr/auto-approve-action@v2.2.1
+      - name: auto-approve
+        id: auto-approve
+        uses: hmarr/auto-approve-action@v2.2.1
         if: steps.wait-for-build.outputs.conclusion == 'success' || steps.wait-for-build.outputs.conclusion == 'neutral'
         with:
           github-token: ${{ secrets.PAT_TOKEN }}
