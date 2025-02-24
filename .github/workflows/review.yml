@@ -4,15 +4,22 @@ on:
   pull_request_review:
     types: [submitted]
 
+permissions: {}
+
 jobs:
   review:
     runs-on: ubuntu-latest
     steps:
-      - name: Check if review was approved by specific user
+      - name: Set approval status
+        id: check_approval
         run: |
-            if [[ ${{ github.event.review.state }} == 'approved' && ( ${{ github.event.review.user.login }} == 'hakenmt' || ${{ github.event.review.user.login }} == 'github-actions[bot]') ]]; then
-                echo "✅ Test a since review was performed by an allowed user."
-            else
-                "🚨 Workflow requires admin review approval."
-                exit 1
-            fi
+          if [[ "${GITHUB_EVENT_REVIEW_STATE}" == "approved" && ("${GITHUB_EVENT_REVIEW_USER_LOGIN}" == "hakenmt" || "${GITHUB_EVENT_REVIEW_USER_LOGIN}" == "github-actions[bot]") ]]; then
+              echo "✅ Test a since review was performed by an allowed user."
+              echo "approved=true" >> $GITHUB_ENV
+          else
+              echo "🚨 Workflow requires admin review approval."
+              exit 1
+          fi
+        env:
+          GITHUB_EVENT_REVIEW_STATE: ${{ github.event.review.state }}
+          GITHUB_EVENT_REVIEW_USER_LOGIN: ${{ github.event.review.user.login }}
