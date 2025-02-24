@@ -22,7 +22,7 @@ jobs:
       PROJECT_NAME: ${{ github.event.repository.name }}
       DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 0
       BUILD_APP: false
-      PULL_ISTIO_FROM_PUBLIC: true
+      USE_CODEBUILD: false
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -36,6 +36,7 @@ jobs:
           dotnet-version: '9.0'
        
       - name: Dotnet version update
+        if: env.USE_CODEBUILD == true
         run: |
           cat /codebuild/global.json
           dotnet --info
@@ -102,12 +103,12 @@ jobs:
             MAX_RETRIES=10
             SLEEP_INTERVAL=2
             IMAGES=(install-cni proxyv2 pilot)
-            if [[ "$PULL_ISTIO_FROM_PUBLIC" == "true" ]]; then
-              BASE=docker.io
-            else
+            if [[ "$USE_CODEBUILD" == "true" ]]; then
               ACCOUNT_ID=$(echo "$CODEBUILD_BUILD_ARN" | cut -d':' -f5)
               BASE=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/docker-hub
               aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+            else
+              BASE=docker.io
             fi
     
             for image in "${IMAGES[@]}"; do
