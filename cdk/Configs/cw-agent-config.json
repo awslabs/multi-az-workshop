@@ -1,6 +1,6 @@
 {
     "metrics": {
-        "namespace": "multi-az/frontend",
+        "namespace": "multi-az-workshop/frontend",
         "append_dimensions": {
             "AutoScalingGroupName": "${aws:AutoScalingGroupName}",
             "InstanceId": "${aws:InstanceId}"

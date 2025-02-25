@@ -18,12 +18,14 @@ jobs:
       contents: read
     #runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
     runs-on: ubuntu-24.04-arm
+
     env:
       CDK_LOCATION: "cdk"
       PROJECT_NAME: ${{ github.event.repository.name }}
       DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 0
       BUILD_APP: false
       USE_CODEBUILD: false
+      
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
