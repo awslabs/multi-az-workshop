@@ -28,7 +28,6 @@ jobs:
       - name: Get run data
         run: |
           BUILD_RUN_ID=$(gh run view $RUN_ID --json jobs --jq '.jobs[].outputs.RUN_ID')
-          echo "Got build run from initiating workflow"
           echo "$BUILD_RUN_ID"
           echo "BUILD_RUN_ID=$BUILD_RUN_ID" >> $GITHUB_ENV
           
