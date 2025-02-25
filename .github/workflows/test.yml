@@ -27,7 +27,8 @@ jobs:
     steps:
       - name: Get run data
         run: |
-          BUILD_RUN_ID=$(gh run view $RUN_ID --repo ${{ github.repository }} --json jobs --jq '.jobs[].outputs.RUN_ID')
+          gh run view $RUN_ID --repo ${{ github.repository }} --json
+          BUILD_RUN_ID=$(gh run view $RUN_ID --repo ${{ github.repository }} --json jobs --jq '.jobs[0].outputs.RUN_ID')
           echo "$BUILD_RUN_ID"
           echo "BUILD_RUN_ID=$BUILD_RUN_ID" >> $GITHUB_ENV
           
