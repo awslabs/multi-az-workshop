@@ -52,6 +52,8 @@ jobs:
               RUN_ID=$(echo "$WORKFLOW_RUN" | jq -r '.id')
               WORKFLOW_ID=$(echo "$WORKFLOW_RUN" | jq -r '.workflow_id')
 
+              echo "Build SHA: $SHA"
+              echo "Build workflow run: $RUN_ID"
               echo "Build workflow status: $STATUS"
 
               if [[ ",$TERMINATING_STATUS," == *",$STATUS,"* ]]; then
