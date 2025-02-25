@@ -15,6 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
+      actions: read
+      checks: read
     if: contains(github.event.pull_request.labels.*.name, 'auto-approve') && (github.event.pull_request.user.login == 'hakenmt' || github.event.pull_request.user.login == 'github-bot')
     steps:
       #- name: Wait for build to succeed
@@ -30,6 +32,7 @@ jobs:
         id: wait-for-build
         env:
           SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ github.token }}
         run: | 
           # Set timeout and interval
           TIMEOUT=600
