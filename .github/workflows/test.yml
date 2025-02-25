@@ -12,14 +12,30 @@ jobs:
     if: github.event.workflow_run.conclusion == 'success'
     runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
     environment: AWS
+
+    permissions:
+      actions: read
+      checks: read
+
     env:
       BUCKET: ${{ secrets.BUCKET }}
       PROJECT_NAME: ${{ github.event.repository.name }}
+      RUN_ID: ${{ github.event.workflow_run.id }}
+      RUN_NUMBER: ${{ github.event.workflow_run.run_number }}
+
     steps:
+      - name: Get run data
+        run: |
+          BUILD_RUN_ID=$(gh run view $RUN_ID --json jobs --jq '.jobs[].outputs.RUN_ID')
+          echo $BUILD_RUN_ID
+          echo "BUILD_RUN_ID=$BUILD_RUN_ID" >> $GITHUB_ENV
+          
       - name: Get workshop content
         uses: actions/download-artifact@v4
         with:
           name: ContentArtifact
+          github-token: ${{ github.token }}
+          run-id: ${{ github.env.BUILD_RUN_ID }}
 
       - name: Upload to S3
         id: s3
