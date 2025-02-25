@@ -12,6 +12,11 @@ jobs:
     if: github.event.workflow_run.conclusion == 'success'
     runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
     environment: AWS
+
+    permissions:
+      actions: read
+      checks: read
+
     env:
       BUCKET: ${{ secrets.BUCKET }}
       PROJECT_NAME: ${{ github.event.repository.name }}
