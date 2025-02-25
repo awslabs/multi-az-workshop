@@ -22,12 +22,14 @@ jobs:
       PROJECT_NAME: ${{ github.event.repository.name }}
       RUN_ID: ${{ github.event.workflow_run.id }}
       RUN_NUMBER: ${{ github.event.workflow_run.run_number }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Get run data
         run: |
           BUILD_RUN_ID=$(gh run view $RUN_ID --json jobs --jq '.jobs[].outputs.RUN_ID')
-          echo $BUILD_RUN_ID
+          echo "Got build run from initiating workflow"
+          echo "$BUILD_RUN_ID"
           echo "BUILD_RUN_ID=$BUILD_RUN_ID" >> $GITHUB_ENV
           
       - name: Get workshop content
