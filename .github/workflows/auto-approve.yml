@@ -42,8 +42,7 @@ jobs:
           while true; do
             # Fetch latest workflow run matching SHA and workflow name
             WORKFLOW_RUN=$(gh api /repos/${{ github.repository }}/actions/runs \
-              --jq --arg sha "$SHA" --arg workflow_name "$WORKFLOW_NAME" \
-              '.workflow_runs | map(select(.head_sha == $sha and .name == $workflow_name)) | first')
+            --jq ".workflow_runs | map(select(.head_sha == \"$SHA\" and .name == \"$WORKFLOW_NAME\")) | first")
 
             if [ -z "$WORKFLOW_RUN" ]; then
               echo "No build workflow run found for commit $SHA."
