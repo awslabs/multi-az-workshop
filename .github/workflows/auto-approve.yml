@@ -15,8 +15,63 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
-    if: contains(github.event.pull_request.labels.*.name, 'auto-approve') && (github.event.pull_request.user.login == 'hakenmt' || github.event.pull_request.user.login == 'github-bot')
+      actions: read
+      checks: read
+    if: contains(github.event.pull_request.labels.*.name, 'auto-approve') && contains('hakenmt,github-bot', github.event.pull_request.user.login)
     steps:
-      - uses: hmarr/auto-approve-action@v2.2.1
+      - name: wait-for-build
+        id: wait-for-build
+        env:
+          SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ github.token }}
+          TIMEOUT: 600
+          INTERVAL: 10
+        run: | 
+          START_TIME=$(date +%s)
+          TERMINATING_STATUS=("completed" "action_required" "cancelled" "failure" "neutral" "skipped" "stale" "success" "timed_out" )
+
+          while true; do
+            # Get the latest build workflow run for this PR
+            WORKFLOW_RUN=$(gh api /repos/${{ github.repository }}/actions/runs?head_sha=$SHA \
+              --jq '.workflow_runs | map(select(.head_sha == "${{ github.event.pull_request.head.sha }}" and .name == "build"))[0]')
+
+            if [ -z "$WORKFLOW_RUN" ]; then
+              echo "No build workflow run found for the latest commit."
+            else
+              STATUS=$(echo "$WORKFLOW_RUN" | jq -r '.conclusion')
+
+              if [[ ${TERMINATING_STATUS[@]} =~ "$STATUS" ]]; then
+                echo "Build workflow finished."
+                echo "conclusion=$STATUS" >> $GITHUB_OUTPUT
+                break
+              else
+                echo "Build workflow status: $STATUS. Waiting for success..."
+              fi
+            fi
+
+            # Check if timeout has been reached
+            CURRENT_TIME=$(date +%s)
+            ELAPSED_TIME=$((CURRENT_TIME - START_TIME))
+            if [ $ELAPSED_TIME -ge $TIMEOUT ]; then
+              echo "Timeout reached. Build workflow did not succeed within $TIMEOUT seconds."
+              echo "conclusion=timed_out" >> $GITHUB_OUTPUT
+              break
+            fi
+
+            # Wait for the specified interval before checking again
+            sleep $INTERVAL
+          done
+
+      - name: fail
+        id: fail
+        if: ${{ !contains('success,neutral,skipped', steps.wait-for-build.outputs.conclusion) }}
+        run: |
+          echo "Did not reach successful build workflow state. Conclusion: ${{ steps.wait-for-build.outputs.conclusion }}"
+          exit 1
+          
+      - name: auto-approve
+        id: auto-approve
+        uses: hmarr/auto-approve-action@v2.2.1
+        if: contains('success,neutral,skipped', steps.wait-for-build.outputs.conclusion)
         with:
           github-token: ${{ github.token }}
