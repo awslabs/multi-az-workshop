@@ -26,11 +26,16 @@ jobs:
 
     steps:
       - name: Get run data
+        uses: actions/download-artifact@v4
+        with:
+          name: BuildDataArtifact
+          github-token: ${{ github.token }}
+          run-id: ${{ github.env.RUN_ID }}
+     
+      - name: Set build run id
         run: |
-          gh run view $RUN_ID --repo ${{ github.repository }} --json
-          BUILD_RUN_ID=$(gh run view $RUN_ID --repo ${{ github.repository }} --json jobs --jq '.jobs[0].outputs.RUN_ID')
-          echo "$BUILD_RUN_ID"
-          echo "BUILD_RUN_ID=$BUILD_RUN_ID" >> $GITHUB_ENV
+          BUILD_RUN_ID=$(grep '^run_id=' builddata.txt | cut -d'=' -f2)
+          echo "build_run_id=$BUILD_RUN_ID" >> $GITHUB_ENV
           
       - name: Get workshop content
         uses: actions/download-artifact@v4
