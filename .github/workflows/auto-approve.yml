@@ -27,13 +27,6 @@ jobs:
       WORKFLOW_NAME: build
       TERMINATING_STATUS: "completed,action_required,cancelled,failure,neutral,skipped,stale,success,timed_out"
 
-    outputs:
-      RUN_ID: ${{ steps.wait-for-build.outputs.run_id }}
-      RUN_NUMBER: ${{ steps.wait-for-build.outputs.run_number }}
-      WORKFLOW_ID: ${{ steps.wait-for-build.outputs.workflow_id }}
-      CONCLUSION: ${{ steps.wait-for-build.outputs.conclusion }}
-      RUN_ATTEMPT: ${{ steps.wait-for-build.outputs.run_attempt }}
-
     steps:
       - name: Wait for Build to Complete
         id: wait-for-build

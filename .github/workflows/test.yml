@@ -20,6 +20,8 @@ jobs:
     permissions:
       actions: read
       checks: read
+      contents: read
+      deployments: write
 
     steps:
       - name: Get run data
