@@ -221,3 +221,4 @@ jobs:
           echo DEPLOYMENT ID from GITHUB SHA: $DEPLOYMENT_ID2
 
           gh api repos/${{ github.repository }}/deployments/$DEPLOYMENT_ID/statuses -f "state=$STATUS" -f "environment=AWS"
+          gh api repos/${{ github.repository }}/deployments/$DEPLOYMENT_ID2/statuses -f "state=$STATUS" -f "environment=AWS"
