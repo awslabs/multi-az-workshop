@@ -32,6 +32,7 @@ jobs:
       RUN_NUMBER: ${{ steps.wait-for-build.outputs.run_number }}
       WORKFLOW_ID: ${{ steps.wait-for-build.outputs.workflow_id }}
       CONCLUSION: ${{ steps.wait-for-build.outputs.conclusion }}
+      RUN_ATTEMPT: ${{ steps.wait-for-build.outputs.run_attempt }}
 
     steps:
       - name: Wait for Build to Complete
@@ -50,6 +51,7 @@ jobs:
               STATUS=$(echo "$WORKFLOW_RUN" | jq -r '.conclusion')
               RUN_NUMBER=$(echo "$WORKFLOW_RUN" | jq -r '.run_number')
               RUN_ID=$(echo "$WORKFLOW_RUN" | jq -r '.id')
+              RUN_ATTEMPT=$(echo "$WORKFLOW_RUN" | jq -r '.run_attempt')
               WORKFLOW_ID=$(echo "$WORKFLOW_RUN" | jq -r '.workflow_id')
 
               echo "Build SHA: $SHA"
@@ -58,12 +60,16 @@ jobs:
 
               if [[ ",$TERMINATING_STATUS," == *",$STATUS,"* ]]; then
                 echo "Build workflow finished with conclusion: $STATUS"
+                echo "conclusion=$STATUS" >> "$GITHUB_OUTPUT"
+                
                 {
                   echo "conclusion=$STATUS"
                   echo "run_id=$RUN_ID"
                   echo "run_number=$RUN_NUMBER"
                   echo "workflow_id=$WORKFLOW_ID"
-                } >> "$GITHUB_OUTPUT"
+                  echo "run_attempt=$RUN_ATTEMPT"
+                  echo "sha=$SHA"
+                } >> builddata.txt
                 break
               fi
             fi
@@ -92,3 +98,10 @@ jobs:
         if: contains('success,neutral,skipped', steps.wait-for-build.outputs.conclusion)
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload data artifact
+        id: create-artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BuildDataArtifact
+          path: ${{ github.workspace }}/builddata.txt

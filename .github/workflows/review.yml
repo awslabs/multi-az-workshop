@@ -8,7 +8,7 @@ permissions: {}
 
 jobs:
   review:
-    
+
     env:
       SHA: ${{ github.event.pull_request.head.sha }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -18,6 +18,7 @@ jobs:
       RUN_NUMBER: ${{ steps.wait-for-build.outputs.run_number }}
       WORKFLOW_ID: ${{ steps.wait-for-build.outputs.workflow_id }}
       CONCLUSION: ${{ steps.wait-for-build.outputs.conclusion }}
+      RUN_ATTEMPT: ${{ steps.wait-for-build.outputs.run_attempt }}
 
     runs-on: ubuntu-latest
     steps:
@@ -38,6 +39,7 @@ jobs:
               STATUS=$(echo "$WORKFLOW_RUN" | jq -r '.conclusion')
               RUN_NUMBER=$(echo "$WORKFLOW_RUN" | jq -r '.run_number')
               RUN_ID=$(echo "$WORKFLOW_RUN" | jq -r '.id')
+              RUN_ATTEMPT=$(echo "$WORKFLOW_RUN" | jq -r '.run_attempt')
               WORKFLOW_ID=$(echo "$WORKFLOW_RUN" | jq -r '.workflow_id')
   
               echo "Build workflow status: $STATUS"
