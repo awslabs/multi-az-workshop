@@ -46,12 +46,16 @@ jobs:
   
               if [[ ",$TERMINATING_STATUS," == *",$STATUS,"* ]]; then
                 echo "Build workflow finished with conclusion: $STATUS"
+                echo "conclusion=$STATUS" >> "$GITHUB_OUTPUT"
+                
                 {
                   echo "conclusion=$STATUS"
                   echo "run_id=$RUN_ID"
                   echo "run_number=$RUN_NUMBER"
                   echo "workflow_id=$WORKFLOW_ID"
-                } >> "$GITHUB_OUTPUT"
+                  echo "run_attempt=$RUN_ATTEMPT"
+                  echo "sha=$SHA"
+                } >> builddata.txt
                 break
               fi
             fi
@@ -80,3 +84,10 @@ jobs:
         env:
           GITHUB_EVENT_REVIEW_STATE: ${{ github.event.review.state }}
           GITHUB_EVENT_REVIEW_USER_LOGIN: ${{ github.event.review.user.login }}
+
+      - name: Upload data artifact
+        id: create-artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BuildDataArtifact
+          path: ${{ github.workspace }}/builddata.txt
