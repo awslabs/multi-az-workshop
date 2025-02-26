@@ -7,6 +7,10 @@ on:
 
 permissions: {}
 
+env: 
+  BUCKET: ${{ secrets.BUCKET }}
+  PROJECT_NAME: ${{ github.event.repository.name }}
+
 jobs:
   test:
     if: github.event.workflow_run.conclusion == 'success'
@@ -16,11 +20,8 @@ jobs:
     permissions:
       actions: read
       checks: read
-
-    env:
-      BUCKET: ${{ secrets.BUCKET }}
-      PROJECT_NAME: ${{ github.event.repository.name }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      contents: read
+      deployments: write
 
     steps:
       - name: Get run data
@@ -33,9 +34,10 @@ jobs:
       - name: Set build run id
         id: set-build-run-id
         run: |
-          cat builddata.txt
           BUILD_RUN_ID=$(grep '^run_id=' builddata.txt | cut -d'=' -f2)
           echo "build_run_id=$BUILD_RUN_ID" >> $GITHUB_OUTPUT
+          PR_SHA=$(grep '^sha=' builddata.txt | cut -d'=' -f2)
+          echo "pr_sha=$PR_SHA" >> $GITHUB_OUTPUT
           
       - name: Get workshop content
         uses: actions/download-artifact@v4
@@ -77,6 +79,7 @@ jobs:
       STACK_NAME: ${{ steps.changeset.outputs.STACK_NAME }}
       DATE: ${{ steps.s3.outputs.DATE }}
       S3_STATUS: ${{ steps.s3.outcome }}
+      PR_SHA: ${{ steps.set-build-run-id.outputs.pr_sha }}
     
   wait_for_stack:
       runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
@@ -188,16 +191,33 @@ jobs:
     if: ${{ always() && needs.test.outputs.S3_STATUS == 'success' }}
     env:
       DATE: ${{ needs.test.outputs.DATE }}
-      BUCKET: ${{ secrets.BUCKET }}
-      PROJECT_NAME: ${{ github.event.repository.name }}
     steps: 
+      
       - name: Cleanup Old S3 Content
         if: ${{ needs.wait_for_stack.result == 'success' }}
         run: |
           echo Deleting old S3 content due to deployment success
           aws s3 rm s3://$BUCKET/ --recursive --exclude "$DATE/*"
+      
       - name: Cleanup New S3 Content
         if: ${{ needs.wait_for_stack.result != 'success' }}
         run: |
           echo Deleting new S3 content because deployment did not succeed
           aws s3 rm s3://$BUCKET/ --recursive --exclude "*" --include "$DATE/*"
+
+      - name: Report deployment success
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STATUS: ${{ needs.wait_for_stack.result == 'success' && 'success' || 'failure' }}
+        run: |
+          DEPLOYMENT_ID=$(gh api repos/${{ github.repository }}/deployments \
+            --jq '.[] | select(.sha=="${{ needs.test.outputs.PR_SHA }}") | .id' | tail -n1)
+
+          echo DEPLOYMENT ID from PR SHA: $DEPLOYMENT_ID
+
+          DEPLOYMENT_ID2=$(gh api repos/${{ github.repository }}/deployments \
+            --jq '.[] | select(.sha=="${{ github.sha }}") | .id' | tail -n1)
+
+          echo DEPLOYMENT ID from GITHUB SHA: $DEPLOYMENT_ID2
+
+          gh api repos/${{ github.repository }}/deployments/$DEPLOYMENT_ID/statuses -f "state=$STATUS" -f "environment=AWS"
