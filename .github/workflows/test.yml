@@ -20,8 +20,6 @@ jobs:
     env:
       BUCKET: ${{ secrets.BUCKET }}
       PROJECT_NAME: ${{ github.event.repository.name }}
-      RUN_ID: ${{ github.event.workflow_run.id }}
-      RUN_NUMBER: ${{ github.event.workflow_run.run_number }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
@@ -29,20 +27,22 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: BuildDataArtifact
-          github-token: ${{ github.token }}
-          run-id: ${{ github.env.RUN_ID }}
-     
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+
       - name: Set build run id
+        id: set-build-run-id
         run: |
+          cat builddata.txt
           BUILD_RUN_ID=$(grep '^run_id=' builddata.txt | cut -d'=' -f2)
-          echo "build_run_id=$BUILD_RUN_ID" >> $GITHUB_ENV
+          echo "build_run_id=$BUILD_RUN_ID" >> $GITHUB_OUTPUT
           
       - name: Get workshop content
         uses: actions/download-artifact@v4
         with:
           name: ContentArtifact
           github-token: ${{ github.token }}
-          run-id: ${{ github.env.BUILD_RUN_ID }}
+          run-id: ${{ steps.set-build-run-id.outputs.build_run_id }}
 
       - name: Upload to S3
         id: s3
