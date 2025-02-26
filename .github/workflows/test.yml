@@ -51,6 +51,7 @@ jobs:
           DEPLOYMENT_ID=$(gh api repos/${{ github.repository }}/deployments \
             -f ref=${{ steps.set-build-data.outputs.pr_sha }} \
             -f environment=$ENVIRONMENT \
+            -F auto_merge=false \
             --jq '.id')
 
           echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
