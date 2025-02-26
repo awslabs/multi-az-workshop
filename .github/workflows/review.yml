@@ -13,13 +13,6 @@ jobs:
       SHA: ${{ github.event.pull_request.head.sha }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    outputs:
-      RUN_ID: ${{ steps.wait-for-build.outputs.run_id }}
-      RUN_NUMBER: ${{ steps.wait-for-build.outputs.run_number }}
-      WORKFLOW_ID: ${{ steps.wait-for-build.outputs.workflow_id }}
-      CONCLUSION: ${{ steps.wait-for-build.outputs.conclusion }}
-      RUN_ATTEMPT: ${{ steps.wait-for-build.outputs.run_attempt }}
-
     runs-on: ubuntu-latest
     steps:
       - name: Wait for Build to Complete
@@ -70,6 +63,13 @@ jobs:
   
             sleep $INTERVAL
           done
+
+      - name: Fail If Build Did Not Succeed
+        id: fail
+        if: ${{ !contains('success,neutral,skipped', steps.wait-for-build.outputs.conclusion) }}
+        run: |
+          echo "❌ Build workflow failed. Conclusion: ${{ steps.wait-for-build.outputs.conclusion }}"
+          exit 1
 
       - name: Set approval status
         id: check_approval
