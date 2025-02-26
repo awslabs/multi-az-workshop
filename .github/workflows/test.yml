@@ -215,12 +215,18 @@ jobs:
           
   cleanup:
     runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
+    
     needs: [ wait_for_stack, test, deployment ]
+    
     if: ${{ always() && needs.test.outputs.S3_STATUS == 'success' }}
+    
     env:
       DATE: ${{ needs.test.outputs.DATE }}
-    steps: 
-      
+
+    permissions:
+      deployments: write
+    
+    steps:   
       - name: Cleanup Old S3 Content
         if: ${{ needs.wait_for_stack.result == 'success' }}
         run: |
