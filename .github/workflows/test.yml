@@ -24,7 +24,7 @@ jobs:
     outputs:
       PR_SHA: ${{ steps.set-build-data.outputs.pr_sha }}
       BUILD_RUN_ID: ${{ steps.set-build-data.outputs.build_run_id }}
-      DEPLOYMENT_ID: ${{ steps.set-build-data.outputs.deployment_id }}
+      DEPLOYMENT_ID: ${{ steps.create-deployment.outputs.deployment_id }}
 
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -49,16 +49,13 @@ jobs:
           echo $PR_SHA
 
       - name: Create Deployment
+        id: create-deployment
         run: |
-          RESPONSE=$(gh api repos/${{ github.repository }}/deployments \
+          DEPLOYMENT_ID=$(gh api repos/${{ github.repository }}/deployments \
             -f ref=${{ steps.set-build-data.outputs.pr_sha }} \
             -f environment=$ENVIRONMENT \
-            -F auto_merge=false)
-
-          echo DEBUGGING
-          echo $RESPONSE
-
-          DEPLOYMENT_ID=$(echo $RESPONSE | jq -r '.id')
+            -F auto_merge=false
+            --jq '.id')
 
           echo DEPLOYMENT_ID: $DEPLOYMENT_ID
 
