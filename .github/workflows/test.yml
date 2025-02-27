@@ -43,18 +43,23 @@ jobs:
         run: |
           BUILD_RUN_ID=$(grep '^run_id=' builddata.txt | cut -d'=' -f2)
           echo "build_run_id=$BUILD_RUN_ID" >> $GITHUB_OUTPUT
+          echo $BUILD_RUN_ID
           PR_SHA=$(grep '^sha=' builddata.txt | cut -d'=' -f2)
           echo "pr_sha=$PR_SHA" >> $GITHUB_OUTPUT
+          echo $PR_SHA
 
       - name: Create Deployment
         run: |
-          DEPLOYMENT_ID=$(gh api repos/${{ github.repository }}/deployments \
+          RESPONSE=$(gh api repos/${{ github.repository }}/deployments \
             -f ref=${{ steps.set-build-data.outputs.pr_sha }} \
             -f environment=$ENVIRONMENT \
-            -F auto_merge=false \
-            --jq '.id')
+            -F auto_merge=false)
 
-          echo DEBUG
+          echo $RESPONSE
+
+          DEPLOYMENT_ID=$(echo $RESPONSE | jq -r '.id')
+
+          echo DEPLOYMENT_ID: $DEPLOYMENT_ID
 
           echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
   
