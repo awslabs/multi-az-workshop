@@ -58,6 +58,7 @@ jobs:
             --jq '.id')
 
           echo DEPLOYMENT_ID: $DEPLOYMENT_ID
+          echo DEBUG
 
           echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
   
@@ -255,6 +256,7 @@ jobs:
       - name: Report deployment status
         env:
           STATUS: ${{ needs.wait_for_stack.result == 'success' && 'success' || 'failure' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo DEPLOYMENT ID: ${{ needs.deployment.outputs.DEPLOYMENT_ID }}
           echo DEBUGGING
