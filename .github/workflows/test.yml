@@ -55,6 +55,7 @@ jobs:
             -f environment=$ENVIRONMENT \
             -F auto_merge=false)
 
+          echo DEBUGGING
           echo $RESPONSE
 
           DEPLOYMENT_ID=$(echo $RESPONSE | jq -r '.id')
