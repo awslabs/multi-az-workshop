@@ -58,8 +58,6 @@ jobs:
             --jq '.id')
 
           echo DEPLOYMENT_ID: $DEPLOYMENT_ID
-          echo DEBUG
-
           echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
   
   test:
@@ -259,5 +257,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo DEPLOYMENT ID: ${{ needs.deployment.outputs.DEPLOYMENT_ID }}
-          echo DEBUGGING2
           gh api repos/${{ github.repository }}/deployments/${{ needs.deployment.outputs.DEPLOYMENT_ID }}/statuses -f "state=$STATUS"
