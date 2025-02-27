@@ -58,6 +58,7 @@ jobs:
             --jq '.id')
 
           echo DEPLOYMENT_ID: $DEPLOYMENT_ID
+          echo DEBUG
 
           echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
   
