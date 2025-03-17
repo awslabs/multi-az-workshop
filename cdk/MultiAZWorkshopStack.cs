@@ -283,8 +283,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 
                 ApplicationLoadBalancerProps = new ApplicationLoadBalancerDetectionProps() {
                     ApplicationLoadBalancers = [ this.LoadBalancer ],
-                    LatencyStatistic = "p99",
-                    FaultCountPercentThreshold = 0.01,
+                    LatencyStatistic = Stats.Percentile(99),
+                    FaultCountPercentThreshold = 1,
                     LatencyThreshold = 500
                 },
                 CreateDashboard = true,
