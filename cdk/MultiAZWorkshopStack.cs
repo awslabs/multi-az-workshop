@@ -280,14 +280,16 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             });
           
             BasicServiceMultiAZObservability multiAZObservability = new BasicServiceMultiAZObservability(this, "basic-service-", new BasicServiceMultiAZObservabilityProps() {
-                ApplicationLoadBalancers = [ this.LoadBalancer ],
+                
+                ApplicationLoadBalancerProps = new ApplicationLoadBalancerDetectionProps() {
+                    ApplicationLoadBalancers = [ this.LoadBalancer ],
+                    LatencyStatistic = "p99",
+                    FaultCountPercentThreshold = 0.01,
+                    LatencyThreshold = 500
+                },
                 CreateDashboard = true,
-                FaultCountPercentageThreshold = 1.0,
-                PacketLossImpactPercentageThreshold = 0.01,
                 DatapointsToAlarm = 2,
-                EvaluationPeriods = 3, 
-                LatencyStatistic = "p99",
-                LatencyThreshold = 300,
+                EvaluationPeriods = 3,
                 ServiceName = "WildRydes",
                 Period = Duration.Seconds(60),
                 Interval = Duration.Minutes(60),          
