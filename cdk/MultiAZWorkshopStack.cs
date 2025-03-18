@@ -279,8 +279,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 OutlierDetectionAlgorithm = OutlierDetectionAlgorithm.STATIC
             });
           
-            BasicServiceMultiAZObservability multiAZObservability = new BasicServiceMultiAZObservability(this, "basic-service-", new BasicServiceMultiAZObservabilityProps() {
-                
+            BasicServiceMultiAZObservability multiAZObservability = new BasicServiceMultiAZObservability(this, "basic-service-", new BasicServiceMultiAZObservabilityProps() {             
                 ApplicationLoadBalancerProps = new ApplicationLoadBalancerDetectionProps() {
                     ApplicationLoadBalancers = [ this.LoadBalancer ],
                     LatencyStatistic = Stats.Percentile(99),
