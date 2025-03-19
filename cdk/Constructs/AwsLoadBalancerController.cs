@@ -56,7 +56,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 }
             }); 
 
-            (loadBalancerServiceAccount.Node.DefaultChild as CfnCustomResource).AddPropertyOverride("ServiceTimeout", 300);
+            ((loadBalancerServiceAccount.Node.FindChild("Resource") as CustomResource).Node.DefaultChild as CfnResource).AddPropertyOverride("ServiceTimeout", "300");
 
             CfnPodIdentityAssociation loadBalancerContollerPodIdentityAssociation = new CfnPodIdentityAssociation(this, "AwsLoadBalancerControllerPodIdentityAssociation", new CfnPodIdentityAssociationProps() {
                 ClusterName = props.Cluster.ClusterName,
@@ -107,7 +107,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             loadBalancerController.Node.AddDependency(awsLB.Dependable);
             loadBalancerController.Node.AddDependency(loadBalancerControllerManagedPolicy);
             loadBalancerController.Node.AddDependency(loadBalancerControllerHelmChartRepo.Dependable);
-            (loadBalancerController.Node.DefaultChild as CfnCustomResource).AddPropertyOverride("ServiceTimeout", 300);
+            ((loadBalancerController.Node.FindChild("Resource") as CustomResource).Node.DefaultChild as CfnResource).AddPropertyOverride("ServiceTimeout", "300");
 
             this.WaitableNode = loadBalancerController;
         }

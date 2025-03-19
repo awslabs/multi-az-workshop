@@ -125,12 +125,6 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                     }}
                 }
             });
-            Console.WriteLine(String.Join("\n", logRoleManifest.Node.Children.Select(x => x.Node.Id + " : " + ((x is CustomResource) ? "CustomResource" : "")).ToArray()));
-
-            CustomResource temp = logRoleManifest.Node.FindChild("Resource") as CustomResource;
-            Console.WriteLine(temp);
-            Console.WriteLine(temp is Resource);
-            Console.WriteLine(temp.Node.DefaultChild is CfnResource);
 
             ((logRoleManifest.Node.FindChild("Resource") as CustomResource).Node.DefaultChild as CfnResource).AddPropertyOverride("ServiceTimeout", "300");
 
@@ -151,7 +145,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 }
             });
 
-            ((networkingRoleManifest.Node.DefaultChild as CustomResource).Node.DefaultChild as CfnCustomResource).AddPropertyOverride("ServiceTimeout", 300);
+            ((networkingRoleManifest.Node.FindChild("Resource") as CustomResource).Node.DefaultChild as CfnResource).AddPropertyOverride("ServiceTimeout", "300");
 
             KubernetesManifest logRoleBindingManifest = cluster.AddManifest("LogsRoleBinding", new Dictionary<string, object>[] {
                 new Dictionary<string, object>() {
@@ -177,7 +171,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             });
 
             logRoleBindingManifest.Node.AddDependency(logRoleManifest);
-            (logRoleBindingManifest.Node.DefaultChild as CfnCustomResource).AddPropertyOverride("ServiceTimeout", 300);
+            ((logRoleBindingManifest.Node.FindChild("Resource") as CustomResource).Node.DefaultChild as CfnResource).AddPropertyOverride("ServiceTimeout", "300");
 
             KubernetesManifest networkingRoleBindingManifest = cluster.AddManifest("NetworkingRoleBinding", new Dictionary<string, object>[] {
                 new Dictionary<string, object>() {
@@ -203,7 +197,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             });
 
             networkingRoleBindingManifest.Node.AddDependency(networkingRoleManifest);
-            (networkingRoleBindingManifest.Node.DefaultChild as CfnCustomResource).AddPropertyOverride("ServiceTimeout", 300);
+            ((networkingRoleBindingManifest.Node.FindChild("Resource") as CustomResource).Node.DefaultChild as CfnResource).AddPropertyOverride("ServiceTimeout", "300");
 
             //cluster.AwsAuth.Node.AddDependency(logRoleBindingManifest);
             //cluster.AwsAuth.Node.AddDependency(networkingRoleBindingManifest);
