@@ -128,11 +128,13 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             Console.WriteLine(String.Join("\n", logRoleManifest.Node.Children.Select(x => x.Node.Id + " : " + ((x is CustomResource) ? "CustomResource" : "")).ToArray()));
             Console.WriteLine(String.Join("\n", logRoleManifest.Node.Children.Select(x => x.Node.Id + " : " + ((x is CfnCustomResource) ? "CfnCustomResource" : "")).ToArray()));
             IConstruct temp = logRoleManifest.Node.FindChild("Resource");
+            temp.Node.Children.Select(x => x.Node.Id + " : " + ((x is Resource) ? "Resource" : ""));
+            temp.Node.Children.Select(x => x.Node.Id + " : " + ((x is CfnResource) ? "CfnResource" : ""));
 
 
 
             CustomResource tmp = (logRoleManifest.Node.FindChild("Resource") as CustomResource);
-            CfnCustomResource tmp2 = tmp.Node.DefaultChild as CfnCustomResource;
+            CfnResource tmp2 = (tmp.Node.DefaultChild as Resource).Node.DefaultChild as CfnResource;
 
             Console.WriteLine(tmp2);
 
