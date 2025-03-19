@@ -130,16 +130,9 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             CustomResource temp = logRoleManifest.Node.FindChild("Resource") as CustomResource;
             Console.WriteLine(temp);
             Console.WriteLine(temp is Resource);
-            Resource temp2 = temp as Resource;
-            Console.WriteLine(temp2);
-            Console.WriteLine(temp2.Node.DefaultChild is CfnResource);
+            Console.WriteLine(temp.Node.DefaultChild is CfnResource);
 
-            Resource temp3 = temp.Node.DefaultChild as Resource;
-            Console.WriteLine(temp3);
-            Console.WriteLine(temp3.Node.DefaultChild is CfnResource);
-            
-
-   
+            ((logRoleManifest.Node.FindChild("Resource") as CustomResource).Node.DefaultChild as CfnResource).AddPropertyOverride("ServiceTimeout", "300");
 
             KubernetesManifest networkingRoleManifest = cluster.AddManifest("NetworkingRole", new Dictionary<string, object>[] {
                 new Dictionary<string, object>() {
