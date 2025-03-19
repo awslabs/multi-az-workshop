@@ -125,7 +125,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                     }}
                 }
             });
-            Console.WriteLine(String.Join("\n", logRoleManifest.Node.Children.Select(x => x.Node.Id + " : " + ((x is CfnResource) ? (x as CfnResource).CfnResourceType : "")).ToArray()));
+            Console.WriteLine(String.Join("\n", logRoleManifest.Node.Children.Select(x => x.Node.Id + " : " + ((x is CustomResource) ? "CustomResource" : "")).ToArray()));
+            Console.WriteLine(String.Join("\n", logRoleManifest.Node.Children.Select(x => x.Node.Id + " : " + ((x is CfnCustomResource) ? "CfnCustomResource" : "")).ToArray()));
 
 
             (logRoleManifest.Node.FindChild("Resource") as CfnCustomResource).AddPropertyOverride("ServiceTimeout", 300);
