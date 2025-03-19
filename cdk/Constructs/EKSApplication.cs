@@ -129,6 +129,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 }
             }); 
 
+            (appNamespace.Node.DefaultChild as CfnCustomResource).AddPropertyOverride("ServiceTimeout", 300);
+
             KubernetesManifest appServiceAccount = new KubernetesManifest(this, "AppServiceAccount", new KubernetesManifestProps() {
                 Cluster = props.Cluster,
                 Manifest = new Dictionary<string, object>[] {
@@ -142,6 +144,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                     }
                 }
             });      
+
+            (appServiceAccount.Node.DefaultChild as CfnCustomResource).AddPropertyOverride("ServiceTimeout", 300);
 
             appServiceAccount.Node.AddDependency(appNamespace);
 
@@ -221,6 +225,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             });
 
             appService.Node.AddDependency(appNamespace);
+            (appService.Node.DefaultChild as CfnCustomResource).AddPropertyOverride("ServiceTimeout", 300);
 
             KubernetesManifest istioVirtualService = new KubernetesManifest(this, "IstioVirtualService", new KubernetesManifestProps() {
                 Cluster = props.Cluster,
@@ -261,6 +266,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             });
 
             istioVirtualService.Node.AddDependency(appService);
+            (istioVirtualService.Node.DefaultChild as CfnCustomResource).AddPropertyOverride("ServiceTimeout", 300);
 
             KubernetesManifest agentConfigMap = props.Cluster.AddManifest("CloudWatchAgentConfigMap", new Dictionary<string, object>[] {
                 new Dictionary<string, object>() {
@@ -276,6 +282,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 }
             });
             agentConfigMap.Node.AddDependency(appNamespace);
+            (agentConfigMap.Node.DefaultChild as CfnCustomResource).AddPropertyOverride("ServiceTimeout", 300);
 
             KubernetesManifest appDeployment = new KubernetesManifest(this, "AppDeployment", new KubernetesManifestProps() {
                 Cluster = props.Cluster,
@@ -394,6 +401,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             appDeployment.Node.AddDependency(agentConfigMap);
             appDeployment.Node.AddDependency(appContainer.Dependable);
             appDeployment.Node.AddDependency(cwAgentContainer.Dependable);
+            (appDeployment.Node.DefaultChild as CfnCustomResource).AddPropertyOverride("ServiceTimeout", 300);
 
             ApplicationTargetGroup tgp = new ApplicationTargetGroup(this, "AppTargetGroup", new ApplicationTargetGroupProps() {
                 HealthCheck = new HealthCheck() { 
@@ -441,6 +449,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             });
 
             targetGroupBinding.Node.AddDependency(appService);
+            (targetGroupBinding.Node.DefaultChild as CfnCustomResource).AddPropertyOverride("ServiceTimeout", 300);
         }
     }
 }

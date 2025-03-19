@@ -124,6 +124,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 }
             });
 
+            (logRoleManifest.Node.DefaultChild as CfnCustomResource).AddPropertyOverride("ServiceTimeout", 300);
+
             KubernetesManifest networkingRoleManifest = cluster.AddManifest("NetworkingRole", new Dictionary<string, object>[] {
                 new Dictionary<string, object>() {
                     {"apiVersion", "rbac.authorization.k8s.io/v1" },
@@ -140,6 +142,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                     }}
                 }
             });
+
+            (networkingRoleManifest.Node.DefaultChild as CfnCustomResource).AddPropertyOverride("ServiceTimeout", 300);
 
             KubernetesManifest logRoleBindingManifest = cluster.AddManifest("LogsRoleBinding", new Dictionary<string, object>[] {
                 new Dictionary<string, object>() {
@@ -165,6 +169,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             });
 
             logRoleBindingManifest.Node.AddDependency(logRoleManifest);
+            (logRoleBindingManifest.Node.DefaultChild as CfnCustomResource).AddPropertyOverride("ServiceTimeout", 300);
 
             KubernetesManifest networkingRoleBindingManifest = cluster.AddManifest("NetworkingRoleBinding", new Dictionary<string, object>[] {
                 new Dictionary<string, object>() {
@@ -190,6 +195,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             });
 
             networkingRoleBindingManifest.Node.AddDependency(networkingRoleManifest);
+            (networkingRoleBindingManifest.Node.DefaultChild as CfnCustomResource).AddPropertyOverride("ServiceTimeout", 300);
 
             //cluster.AwsAuth.Node.AddDependency(logRoleBindingManifest);
             //cluster.AwsAuth.Node.AddDependency(networkingRoleBindingManifest);

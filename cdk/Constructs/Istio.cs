@@ -82,6 +82,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 Wait = true
             });
             baseChart.Node.AddDependency(istioBaseHelmChartRepo.Dependable);
+            (baseChart.Node.DefaultChild as CfnCustomResource).AddPropertyOverride("ServiceTimeout", 300);
 
             // Starting with istio version 1.24.0, the helm chart is configured to fail
             // if "defaults" is set
@@ -105,6 +106,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             istiod.Node.AddDependency(baseChart);
             istiod.Node.AddDependency(cniContainer.Dependable);
             istiod.Node.AddDependency(istiodHelmChartRepo.Dependable);
+            (istiod.Node.DefaultChild as CfnCustomResource).AddPropertyOverride("ServiceTimeout", 300);
 
             /*
             HelmChart gateway = eksCluster.AddHelmChart("IstioGateway", new HelmChartOptions() {
@@ -144,6 +146,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             cni.Node.AddDependency(istiod);   
             cni.Node.AddDependency(installCniContainer.Dependable);
             cni.Node.AddDependency(istioCniHelmChartRepo.Dependable);
+            (cni.Node.DefaultChild as CfnCustomResource).AddPropertyOverride("ServiceTimeout", 300);
 
             this.WaitableNode = cni;
         }
