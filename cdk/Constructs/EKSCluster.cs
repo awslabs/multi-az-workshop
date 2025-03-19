@@ -1,7 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Amazon.CDK;
 using Amazon.CDK.AWS.EC2;
 using Amazon.CDK.AWS.EKS;
@@ -123,6 +125,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                     }}
                 }
             });
+            Console.WriteLine(logRoleManifest.Node.Children.Select(x => x.ToString()));
+
 
             (logRoleManifest.Node.FindChild("Resource") as CfnCustomResource).AddPropertyOverride("ServiceTimeout", 300);
 
