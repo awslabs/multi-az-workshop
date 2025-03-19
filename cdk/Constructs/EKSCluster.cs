@@ -124,7 +124,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 }
             });
 
-            ((logRoleManifest.Node.DefaultChild as CustomResource).Node.DefaultChild as CfnCustomResource).AddPropertyOverride("ServiceTimeout", 300);
+            (logRoleManifest.Node.FindChild("Resource") as CfnCustomResource).AddPropertyOverride("ServiceTimeout", 300);
 
             KubernetesManifest networkingRoleManifest = cluster.AddManifest("NetworkingRole", new Dictionary<string, object>[] {
                 new Dictionary<string, object>() {
