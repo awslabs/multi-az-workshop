@@ -59,6 +59,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
 
             CustomResource appContainerImage = new CustomResource(this, props.RepositoryName.Replace("/", "-") + "-container", new CustomResourceProps() {
                 ServiceToken = this.UploaderFunction.FunctionArn,
+                ServiceTimeout = Duration.Seconds(300),
                 Properties = new Dictionary<string, object> {
                     { "Type", "Docker" },
                     { "Bucket", Fn.Ref("AssetsBucketName") },
@@ -85,6 +86,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
 
             CustomResource chart = new CustomResource(this, props.HelmChartName + "-helm-chart", new CustomResourceProps() {
                 ServiceToken = this.UploaderFunction.FunctionArn,
+                ServiceTimeout = Duration.Seconds(300),
                 Properties = new Dictionary<string, object> {
                     { "Type", "Helm" },
                     { "Bucket", Fn.Ref("AssetsBucketName") },

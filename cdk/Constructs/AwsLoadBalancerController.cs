@@ -56,6 +56,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 }
             }); 
 
+            ((loadBalancerServiceAccount.Node.FindChild("Resource") as CustomResource).Node.DefaultChild as CfnResource).AddPropertyOverride("ServiceTimeout", "300");
+
             CfnPodIdentityAssociation loadBalancerContollerPodIdentityAssociation = new CfnPodIdentityAssociation(this, "AwsLoadBalancerControllerPodIdentityAssociation", new CfnPodIdentityAssociationProps() {
                 ClusterName = props.Cluster.ClusterName,
                 Namespace = "kube-system",
@@ -105,6 +107,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             loadBalancerController.Node.AddDependency(awsLB.Dependable);
             loadBalancerController.Node.AddDependency(loadBalancerControllerManagedPolicy);
             loadBalancerController.Node.AddDependency(loadBalancerControllerHelmChartRepo.Dependable);
+            ((loadBalancerController.Node.FindChild("Resource") as CustomResource).Node.DefaultChild as CfnResource).AddPropertyOverride("ServiceTimeout", "300");
 
             this.WaitableNode = loadBalancerController;
         }

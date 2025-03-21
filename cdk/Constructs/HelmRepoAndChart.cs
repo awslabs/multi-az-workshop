@@ -23,6 +23,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
 
             CustomResource chart = new CustomResource(this, name + "HelmChart", new CustomResourceProps() {
                 ServiceToken = function.FunctionArn,
+                ServiceTimeout = Duration.Seconds(300),
                 Properties = new Dictionary<string, object> {
                     { "Type", "Helm" },
                     { "Bucket", Fn.Ref("AssetsBucketName") },
