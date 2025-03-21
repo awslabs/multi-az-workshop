@@ -268,7 +268,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
 
             IService wildRydesService = CreateService(this.LoadBalancer, this.NetworkStack.Vpc, new ILogGroup[] {frontEndLogGroup});
 
-            var mazNestedStack = new NestedStackWithSource(this, "multi-az-observability-");
+            /*var mazNestedStack = new NestedStackWithSource(this, "multi-az-observability-");
             InstrumentedServiceMultiAZObservability multiAvailabilityZoneObservability = new InstrumentedServiceMultiAZObservability(mazNestedStack, "instrumented-service-", new InstrumentedServiceMultiAZObservabilityProps() {
                 Service = wildRydesService,
                 OutlierThreshold = .70,
@@ -292,7 +292,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 ServiceName = "WildRydes",
                 Period = Duration.Seconds(60),
                 Interval = Duration.Minutes(60),          
-            });
+            });*/
 
             ApplicationListener listener = this.LoadBalancer.AddListener("http-listener", new BaseApplicationListenerProps() {
                 Port = 80,
@@ -307,7 +307,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             // Make sure the alarms used for CodeDeploy are created before creating the listener,
             // otherwise the listener gets created and the CodeDeploy stack is still waiting for the
             // the alarms to finish and nodes start to fail their health checks while it waits
-            listener.Node.AddDependency(mazNestedStack);
+            //listener.Node.AddDependency(mazNestedStack);
 
             ApplicationListenerRule eksRoutes = new ApplicationListenerRule(this, "eks-alb-routes", new ApplicationListenerRuleProps() {
                 Action = ListenerAction.Forward(new IApplicationTargetGroup[] { this.EKSStack.EKSAppTargetGroup }),
@@ -334,12 +334,12 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 PacketLossExperiments = this.FaultInjectionStack.PacketLossExperiments
             });
         
-            this.LogQueryStack = new LogQueryStack(this, "log-query-", new LogQueryStackProps() {
-                CanaryLogGroup = multiAvailabilityZoneObservability.CanaryLogGroup,
-                ServerSideLogGroup = frontEndLogGroup,
-                Service = wildRydesService,
-                AvailabilityZoneIds = availabilityZoneIds
-            });
+            // this.LogQueryStack = new LogQueryStack(this, "log-query-", new LogQueryStackProps() {
+            //     CanaryLogGroup = multiAvailabilityZoneObservability.CanaryLogGroup,
+            //     ServerSideLogGroup = frontEndLogGroup,
+            //     Service = wildRydesService,
+            //     AvailabilityZoneIds = availabilityZoneIds
+            // });
             
             //Creates the CodeDeploy application that is deployed
             //to the servers
@@ -350,7 +350,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 TotalEC2InstancesInFleet = fleetSize,
                 ApplicationName = "multi-az-workshop",
                 MinimumHealthyHostsPerZone = 1,     
-                Alarms = new IAlarm[] { multiAvailabilityZoneObservability.ServiceAlarms.RegionalAvailabilityCanaryAlarm}
+                //Alarms = new IAlarm[] { multiAvailabilityZoneObservability.ServiceAlarms.RegionalAvailabilityCanaryAlarm}
             });  
 
             CodeDeployStack.Node.AddDependency(listener);       
