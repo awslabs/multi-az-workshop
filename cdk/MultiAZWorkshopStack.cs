@@ -36,6 +36,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
         const string operationNameJsonPath = "$.Operation";
         const string instanceIdJsonPath = "$.InstanceId";
         const InstanceArchitecture arch = InstanceArchitecture.ARM_64;
+        
         public static readonly Runtime pythonRuntime = Runtime.PYTHON_3_13;
 
         private IpV6NetworkStack NetworkStack {get;}
@@ -307,7 +308,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             // Make sure the alarms used for CodeDeploy are created before creating the listener,
             // otherwise the listener gets created and the CodeDeploy stack is still waiting for the
             // the alarms to finish and nodes start to fail their health checks while it waits
-            listener.Node.AddDependency(mazNestedStack);
+            //listener.Node.AddDependency(mazNestedStack);
 
             ApplicationListenerRule eksRoutes = new ApplicationListenerRule(this, "eks-alb-routes", new ApplicationListenerRuleProps() {
                 Action = ListenerAction.Forward(new IApplicationTargetGroup[] { this.EKSStack.EKSAppTargetGroup }),
@@ -334,12 +335,12 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 PacketLossExperiments = this.FaultInjectionStack.PacketLossExperiments
             });
         
-            this.LogQueryStack = new LogQueryStack(this, "log-query-", new LogQueryStackProps() {
-                CanaryLogGroup = multiAvailabilityZoneObservability.CanaryLogGroup,
-                ServerSideLogGroup = frontEndLogGroup,
-                Service = wildRydesService,
-                AvailabilityZoneIds = availabilityZoneIds
-            });
+             this.LogQueryStack = new LogQueryStack(this, "log-query-", new LogQueryStackProps() {
+                 CanaryLogGroup = multiAvailabilityZoneObservability.CanaryLogGroup,
+                 ServerSideLogGroup = frontEndLogGroup,
+                 Service = wildRydesService,
+                 AvailabilityZoneIds = availabilityZoneIds
+             });
             
             //Creates the CodeDeploy application that is deployed
             //to the servers

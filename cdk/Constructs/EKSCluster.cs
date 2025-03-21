@@ -1,7 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Amazon.CDK;
 using Amazon.CDK.AWS.EC2;
 using Amazon.CDK.AWS.EKS;
@@ -124,6 +126,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 }
             });
 
+            ((logRoleManifest.Node.FindChild("Resource") as CustomResource).Node.DefaultChild as CfnResource).AddPropertyOverride("ServiceTimeout", "300");
+
             KubernetesManifest networkingRoleManifest = cluster.AddManifest("NetworkingRole", new Dictionary<string, object>[] {
                 new Dictionary<string, object>() {
                     {"apiVersion", "rbac.authorization.k8s.io/v1" },
@@ -140,6 +144,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                     }}
                 }
             });
+
+            ((networkingRoleManifest.Node.FindChild("Resource") as CustomResource).Node.DefaultChild as CfnResource).AddPropertyOverride("ServiceTimeout", "300");
 
             KubernetesManifest logRoleBindingManifest = cluster.AddManifest("LogsRoleBinding", new Dictionary<string, object>[] {
                 new Dictionary<string, object>() {
@@ -165,6 +171,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             });
 
             logRoleBindingManifest.Node.AddDependency(logRoleManifest);
+            ((logRoleBindingManifest.Node.FindChild("Resource") as CustomResource).Node.DefaultChild as CfnResource).AddPropertyOverride("ServiceTimeout", "300");
 
             KubernetesManifest networkingRoleBindingManifest = cluster.AddManifest("NetworkingRoleBinding", new Dictionary<string, object>[] {
                 new Dictionary<string, object>() {
@@ -190,6 +197,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             });
 
             networkingRoleBindingManifest.Node.AddDependency(networkingRoleManifest);
+            ((networkingRoleBindingManifest.Node.FindChild("Resource") as CustomResource).Node.DefaultChild as CfnResource).AddPropertyOverride("ServiceTimeout", "300");
 
             //cluster.AwsAuth.Node.AddDependency(logRoleBindingManifest);
             //cluster.AwsAuth.Node.AddDependency(networkingRoleBindingManifest);
