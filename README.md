@@ -1,4 +1,5 @@
-![Build Workflow](https://github.com/awslabs/multi-az-workshop/actions/workflows/build.yml/badge.svg) ![Test Workflow](https://github.com/awslabs/multi-az-workshop/actions/workflows/test.yml/badge.svg) ![Publish Workflow](https://github.com/awslabs/multi-az-workshop/actions/workflows/publish.yml/badge.svg)
+![Build Workflow](https://github.com/awslabs/multi-az-workshop/actions/workflows/build.yml/badge.svg) ![Test Workflow](https://github.com/awslabs/multi-az-workshop/actions/workflows/test.yml/badge.svg) ![Publish Workflow](https://github.com/awslabs/multi-az-workshop/actions/workflows/publish.yml/badge.svg) ![GitHub Release](https://img.shields.io/github/v/release/awslabs/multi-az-workshop?include_prereleases&sort=semver&logo=github&label=version)
+
 
 ## Advanced Multi-AZ Resilience Patterns
 ### Building, operating, and testing resilient multi-AZ applications
