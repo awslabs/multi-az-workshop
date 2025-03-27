@@ -272,12 +272,10 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             var mazNestedStack = new NestedStackWithSource(this, "multi-az-observability-");
             InstrumentedServiceMultiAZObservability multiAvailabilityZoneObservability = new InstrumentedServiceMultiAZObservability(mazNestedStack, "instrumented-service-", new InstrumentedServiceMultiAZObservabilityProps() {
                 Service = wildRydesService,
-                OutlierThreshold = .70,
                 CreateDashboards = true,
                 Interval = Duration.Minutes(60),
                 AssetsBucketParameterName = "AssetsBucketName",
                 AssetsBucketPrefixParameterName = "AssetsBucketPrefix",
-                OutlierDetectionAlgorithm = OutlierDetectionAlgorithm.STATIC
             });
           
             BasicServiceMultiAZObservability multiAZObservability = new BasicServiceMultiAZObservability(this, "basic-service-", new BasicServiceMultiAZObservabilityProps() {             
