@@ -285,7 +285,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                     ApplicationLoadBalancers = [ this.LoadBalancer ],
                     LatencyStatistic = Stats.Percentile(99),
                     FaultCountPercentThreshold = 1,
-                    LatencyThreshold = 500
+                    LatencyThreshold = Duration.Millis(500)
                 },
                 CreateDashboard = true,
                 DatapointsToAlarm = 2,
@@ -350,7 +350,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 AvailabilityZoneCount = availabilityZoneIds.Length,
                 TotalEC2InstancesInFleet = fleetSize,
                 ApplicationName = "multi-az-workshop",
-                MinimumHealthyHostsPerZone = 1,     
+                MinimumHealthyHostsPerZone = 1,
                 Alarms = new IAlarm[] { multiAvailabilityZoneObservability.ServiceAlarms.RegionalServerSideImpactAlarm }
             });  
 
@@ -368,7 +368,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 AvailabilityZoneNames = vpc.AvailabilityZones,
                 Period = Duration.Seconds(60),
                 LoadBalancer = loadBalancer,
-                DefaultAvailabilityMetricDetails = new ServiceMetricDetails(new ServiceMetricDetailsProps() {
+                DefaultAvailabilityMetricDetails = new ServiceAvailabilityMetricDetails(new ServiceAvailabilityMetricDetailsProps() {
                     AlarmStatistic = "Sum",
                     DatapointsToAlarm = 2,
                     EvaluationPeriods = 3,
@@ -382,17 +382,16 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                     SuccessMetricNames = new string[] {"Success"},
                     Unit = Unit.COUNT,
                 }),
-                DefaultLatencyMetricDetails = new ServiceMetricDetails(new ServiceMetricDetailsProps(){
+                DefaultLatencyMetricDetails = new ServiceLatencyMetricDetails(new ServiceLatencyMetricDetailsProps(){
                     AlarmStatistic = "p99",
                     DatapointsToAlarm = 2,
                     EvaluationPeriods = 3,
-                    FaultAlarmThreshold = 1,
                     FaultMetricNames = new string[] { "FaultLatency" },
                     GraphedFaultStatistics = new string[] { "p50" },
                     GraphedSuccessStatistics = new string[] { "p50", "p99", "tm50", "tm99" },
                     MetricNamespace = metricsNamespace,
                     Period = Duration.Seconds(60),
-                    SuccessAlarmThreshold = 100,
+                    SuccessAlarmThreshold = Duration.Millis(100),
                     SuccessMetricNames = new string[] {"SuccessLatency"},
                     Unit = Unit.MILLISECONDS,
                 }),
@@ -423,17 +422,17 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 Service = newService,
                 Critical = true,
                 HttpMethods = new string[] { "GET" },
-                ServerSideAvailabilityMetricDetails = new OperationMetricDetails(new OperationMetricDetailsProps() {
+                ServerSideAvailabilityMetricDetails = new OperationAvailabilityMetricDetails(new OperationAvailabilityMetricDetailsProps() {
                     OperationName = "Signin",
                     MetricDimensions = new MetricDimensions(new Dictionary<string, string> {{ "Operation", "Signin"}}, "AZ-ID", "Region")
                 }, newService.DefaultAvailabilityMetricDetails),
-                ServerSideLatencyMetricDetails = new OperationMetricDetails(new OperationMetricDetailsProps() {
+                ServerSideLatencyMetricDetails = new OperationLatencyMetricDetails(new OperationLatencyMetricDetailsProps() {
                     OperationName = "Signin",
-                    SuccessAlarmThreshold = 150,
+                    SuccessAlarmThreshold = Duration.Millis(150),
                     MetricDimensions = new MetricDimensions(new Dictionary<string, string> {{ "Operation", "Signin"}}, "AZ-ID", "Region")
                 }, newService.DefaultLatencyMetricDetails),
-                CanaryTestLatencyMetricsOverride = new CanaryTestMetricsOverride(new CanaryTestMetricsOverrideProps() {
-                    SuccessAlarmThreshold = 500
+                CanaryTestLatencyMetricsOverride = new CanaryTestLatencyMetricsOverride(new CanaryTestLatencyMetricsOverrideProps() {
+                    SuccessAlarmThreshold = Duration.Millis(500)
                 })
             }));
 
@@ -443,17 +442,17 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 Service = newService,
                 HttpMethods = new string[] { "GET" },
                 Critical = true,
-                ServerSideAvailabilityMetricDetails = new OperationMetricDetails(new OperationMetricDetailsProps() {
+                ServerSideAvailabilityMetricDetails = new OperationAvailabilityMetricDetails(new OperationAvailabilityMetricDetailsProps() {
                     OperationName = "Pay",
                     MetricDimensions = new MetricDimensions(new Dictionary<string, string> {{ "Operation", "Pay"}}, "AZ-ID", "Region")
                 }, newService.DefaultAvailabilityMetricDetails),
-                ServerSideLatencyMetricDetails = new OperationMetricDetails(new OperationMetricDetailsProps() {
+                ServerSideLatencyMetricDetails = new OperationLatencyMetricDetails(new OperationLatencyMetricDetailsProps() {
                     OperationName = "Pay",
-                    SuccessAlarmThreshold = 200,
+                    SuccessAlarmThreshold = Duration.Millis(200),
                     MetricDimensions = new MetricDimensions(new Dictionary<string, string> {{ "Operation", "Pay"}}, "AZ-ID", "Region")
                 }, newService.DefaultLatencyMetricDetails),
-                CanaryTestLatencyMetricsOverride = new CanaryTestMetricsOverride(new CanaryTestMetricsOverrideProps() {
-                    SuccessAlarmThreshold = 500
+                CanaryTestLatencyMetricsOverride = new CanaryTestLatencyMetricsOverride(new CanaryTestLatencyMetricsOverrideProps() {
+                    SuccessAlarmThreshold = Duration.Millis(500)
                 })
             }));
 
@@ -463,17 +462,17 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 Service = newService,
                 HttpMethods = new string[] { "GET" },
                 Critical = true,
-                ServerSideAvailabilityMetricDetails = new OperationMetricDetails(new OperationMetricDetailsProps() {
+                ServerSideAvailabilityMetricDetails = new OperationAvailabilityMetricDetails(new OperationAvailabilityMetricDetailsProps() {
                     OperationName = "Ride",
                     MetricDimensions = new MetricDimensions(new Dictionary<string, string> {{ "Operation", "Ride"}}, "AZ-ID", "Region")
                 }, newService.DefaultAvailabilityMetricDetails),
-                ServerSideLatencyMetricDetails = new OperationMetricDetails(new OperationMetricDetailsProps() {
+                ServerSideLatencyMetricDetails = new OperationLatencyMetricDetails(new OperationLatencyMetricDetailsProps() {
                     OperationName = "Ride",
-                    SuccessAlarmThreshold = 350,
+                    SuccessAlarmThreshold = Duration.Millis(350),
                     MetricDimensions = new MetricDimensions(new Dictionary<string, string> {{ "Operation", "Ride"}}, "AZ-ID", "Region")
                 }, newService.DefaultLatencyMetricDetails),
-                CanaryTestLatencyMetricsOverride = new CanaryTestMetricsOverride(new CanaryTestMetricsOverrideProps() {
-                    SuccessAlarmThreshold = 650
+                CanaryTestLatencyMetricsOverride = new CanaryTestLatencyMetricsOverride(new CanaryTestLatencyMetricsOverrideProps() {
+                    SuccessAlarmThreshold = Duration.Millis(650)
                 })
             }));
 
@@ -483,17 +482,17 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 Service = newService,
                 HttpMethods = new string[] { "GET" },
                 Critical = true,
-                ServerSideAvailabilityMetricDetails = new OperationMetricDetails(new OperationMetricDetailsProps() {
+                ServerSideAvailabilityMetricDetails = new OperationAvailabilityMetricDetails(new OperationAvailabilityMetricDetailsProps() {
                     OperationName = "Home",
                     MetricDimensions = new MetricDimensions(new Dictionary<string, string> {{ "Operation", "Home"}}, "AZ-ID", "Region")
                 }, newService.DefaultAvailabilityMetricDetails),
-                ServerSideLatencyMetricDetails = new OperationMetricDetails(new OperationMetricDetailsProps() {
+                ServerSideLatencyMetricDetails = new OperationLatencyMetricDetails(new OperationLatencyMetricDetailsProps() {
                     OperationName = "Home",
-                    SuccessAlarmThreshold = 100,
+                    SuccessAlarmThreshold = Duration.Millis(100),
                     MetricDimensions = new MetricDimensions(new Dictionary<string, string> {{ "Operation", "Home"}}, "AZ-ID", "Region")
                 }, newService.DefaultLatencyMetricDetails),
-                CanaryTestLatencyMetricsOverride = new CanaryTestMetricsOverride(new CanaryTestMetricsOverrideProps() {
-                    SuccessAlarmThreshold = 500
+                CanaryTestLatencyMetricsOverride = new CanaryTestLatencyMetricsOverride(new CanaryTestLatencyMetricsOverrideProps() {
+                    SuccessAlarmThreshold = Duration.Millis(500)
                 })
             }));
 
