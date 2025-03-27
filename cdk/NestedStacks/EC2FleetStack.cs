@@ -344,7 +344,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                 Vpc = props.Vpc,
                 VpcSubnets = props.Subnets,
                 // Typically takes 3.5 - 4 minutes to deploy the application to a new instance
-                HealthCheck = Amazon.CDK.AWS.AutoScaling.HealthCheck.Elb(new ElbHealthCheckOptions() { Grace = Duration.Seconds(240) }),
+                HealthChecks = HealthChecks.WithAdditionalChecks(new AdditionalHealthChecksOptions() { AdditionalTypes = [ AdditionalHealthCheckType.ELB, AdditionalHealthCheckType.EBS ], GracePeriod = Duration.Seconds(240)}),
                 GroupMetrics = new GroupMetrics[] { asgMetrics },
                 Signals = Signals.WaitForCount(Math.Ceiling((double)(props.FleetSize / 2)), new SignalsOptions(){ Timeout = Duration.Minutes(10)}),
                 DefaultInstanceWarmup = Duration.Seconds(120),
