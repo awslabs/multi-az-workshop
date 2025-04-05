@@ -306,7 +306,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             // Make sure the alarms used for CodeDeploy are created before creating the listener,
             // otherwise the listener gets created and the CodeDeploy stack is still waiting for the
             // the alarms to finish and nodes start to fail their health checks while it waits
-            //listener.Node.AddDependency(mazNestedStack);
+            listener.Node.AddDependency(mazNestedStack);
 
             ApplicationListenerRule eksRoutes = new ApplicationListenerRule(this, "eks-alb-routes", new ApplicationListenerRuleProps() {
                 Action = ListenerAction.Forward(new IApplicationTargetGroup[] { this.EKSStack.EKSAppTargetGroup }),
@@ -386,7 +386,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                     EvaluationPeriods = 3,
                     FaultMetricNames = new string[] { "FaultLatency" },
                     GraphedFaultStatistics = new string[] { "p50" },
-                    GraphedSuccessStatistics = new string[] { "p50", "p99", "tm50", "tm99" },
+                    GraphedSuccessStatistics = new string[] { "p50", "p99", "tm99" },
                     MetricNamespace = metricsNamespace,
                     Period = Duration.Seconds(60),
                     SuccessAlarmThreshold = Duration.Millis(100),
