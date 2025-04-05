@@ -386,7 +386,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                     EvaluationPeriods = 3,
                     FaultMetricNames = new string[] { "FaultLatency" },
                     GraphedFaultStatistics = new string[] { "p50" },
-                    GraphedSuccessStatistics = new string[] { "p50", "p99", "tm50", "tm99" },
+                    GraphedSuccessStatistics = new string[] { "p50", "p99", "tm99" },
                     MetricNamespace = metricsNamespace,
                     Period = Duration.Seconds(60),
                     SuccessAlarmThreshold = Duration.Millis(100),
