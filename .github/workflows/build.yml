@@ -206,6 +206,7 @@ jobs:
           cd ${{ github.workspace }}/app-src
           zip -r ${{ github.workspace }}/assets/app_deploy.zip docker/
           cd ${{ github.workspace }}/app-src/docker
+          # Put the appspec.yml file at the root dir so it can be found, but is duplicated in the folder
           zip ${{ github.workspace }}/assets/app_deploy.zip appspec.yml
           rm -rf ${{ github.workspace }}/app-src/output
 
@@ -224,6 +225,7 @@ jobs:
           cd ${{ github.workspace }}/app-src
           zip -r ${{ github.workspace }}/assets/app_deploy_fail.zip docker/
           cd ${{ github.workspace }}/app-src/docker
+          # Put the appspec.yml file at the root dir so it can be found, but is duplicated in the folder
           zip ${{ github.workspace }}/assets/app_deploy_fail.zip appspec.yml
           rm -f /tmp/container.tar.gz
           rm -rf ${{ github.workspace }}/app-src/output
