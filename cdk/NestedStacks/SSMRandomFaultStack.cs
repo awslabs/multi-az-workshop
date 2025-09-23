@@ -97,7 +97,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                             {"name", "StartExperiment"},
                             {"action", "aws:executeScript"},
                             {"inputs", new Dictionary<string, object>() {
-                                {"Runtime", "python3.8"},
+                                {"Runtime", "python3.11"},
                                 {"Handler", "handler"},
                                 {"InputPayload", new Dictionary<string, object>() {
                                     {"LatencyExperiments", "{{LatencyExperiments}}"},
@@ -139,7 +139,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                             {"name", "StartExperiment"},
                             {"action", "aws:executeScript"},
                             {"inputs", new Dictionary<string, object>() {
-                                {"Runtime", "python3.8"},
+                                {"Runtime", "python3.11"},
                                 {"Handler", "handler"},
                                 {"InputPayload", new Dictionary<string, object>() {
                                     {"LatencyExperiments", "{{LatencyExperiments}}"}
@@ -179,7 +179,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                             {"name", "StartExperiment"},
                             {"action", "aws:executeScript"},
                             {"inputs", new Dictionary<string, object>() {
-                                {"Runtime", "python3.8"},
+                                {"Runtime", "python3.11"},
                                 {"Handler", "handler"},
                                 {"InputPayload", new Dictionary<string, object>() {
                                     {"PacketLossExperiments", "{{PacketLossExperiments}}"}
@@ -224,7 +224,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                             {"name", "StartExperiment"},
                             {"action", "aws:executeScript"},
                             {"inputs", new Dictionary<string, object>() {
-                                {"Runtime", "python3.8"},
+                                {"Runtime", "python3.11"},
                                 {"Handler", "handler"},
                                 {"InputPayload", new Dictionary<string, object>() {
                                     {"Deployment", "{{ApplicationDeployment}}"}
