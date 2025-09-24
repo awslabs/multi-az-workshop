@@ -88,7 +88,7 @@ jobs:
 
       - name: push workshop
         run: |
-          git clone workshopstudio://ws-content-$WORKSHOP_ID/$REMOTE_REPO ${{ github.workspace }}/$REMOTE_REPO
+          git clone --branch mainline workshopstudio://ws-content-$WORKSHOP_ID/$REMOTE_REPO ${{ github.workspace }}/$REMOTE_REPO
           cd ${{ github.workspace }}/$REMOTE_REPO
           find . -path ./.git -prune -o ! -name . ! -name .. -exec rm -rf {} + 2> /dev/null
           cp -r ${{ github.workspace }}/workshop/. ${{ github.workspace }}/$REMOTE_REPO
