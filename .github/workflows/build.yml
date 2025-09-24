@@ -7,8 +7,9 @@ on:
     paths:
       - app-src/**
       - cdk/**
+      - '!.github/workflows/publish.yml'
       - .github/workflows/**
-      
+        
 permissions: {}
 
 jobs:
