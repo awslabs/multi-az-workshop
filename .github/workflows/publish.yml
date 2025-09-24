@@ -116,7 +116,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          branch: main
+          ref: main
           fetch-depth: 0  # Ensure full history is available
 
       - name: get_content_artifact
