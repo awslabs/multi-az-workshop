@@ -80,13 +80,15 @@ jobs:
 
       - name: install remote codecommit
         run: |
-          pip install git-remote-codecommit
+          pip config set global.trusted-host plugin.us-east-1.prod.workshops.aws
+          pip config set global.extra-index-url https://plugin.us-east-1.prod.workshops.aws
+          pipx install git-remote-workshopstudio
           git config --global user.email $EMAIL
           git config --global user.name "$USER_NAME"
 
       - name: push workshop
         run: |
-          git clone codecommit://$REMOTE_REPO ${{ github.workspace }}/$REMOTE_REPO
+          git clone workshopstudio://ws-content-$WORKSHOP_ID/$REMOTE_REPO ${{ github.workspace }}/$REMOTE_REPO
           cd ${{ github.workspace }}/$REMOTE_REPO
           find . -path ./.git -prune -o ! -name . ! -name .. -exec rm -rf {} + 2> /dev/null
           cp -r ${{ github.workspace }}/workshop/. ${{ github.workspace }}/$REMOTE_REPO
