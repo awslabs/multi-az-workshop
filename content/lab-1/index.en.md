@@ -15,9 +15,13 @@ In this lab we'll review the operational metrics being produced by the Wild Ryde
 
 From here, select the [Dashboards](https://console.aws.amazon.com/cloudwatch/home?#dashboards:) navigation option on the left side of the console. You should see five dashboards, one for each operation in the Wild Rydes service (`Home`, `Signin`, `Pay`, `Ride`) and then a roll-up dashboard for the whole service. 
 
+::::alert{type="info" header="Region"}
+When you open the AWS console for the workshop and any new tabs, make sure you are in the correct Region if a resource appears to be missing or you receive a permissions error.
+::::
+
 ![dashboards](/static/dashboards.png)
 
-Let's explore the service level dashboard first, click the dashboard for *`wildrydes-service-availability-and-latency-<region>`*. 
+Let's explore the service level dashboard first, click the dashboard for *`wildrydes-availability-and-latency-<region>`*. 
 
 ::::alert{type="info" header="Region selection"}
 In this workshop, `<region>` is used as a placeholder for the actual AWS Region where the workshop is running. The same is done for `<az>` when used to indicate the Availability Zone (AZ) where impact is occuring. Please look for the appropriate resource names based on that Region or AZ.
@@ -28,43 +32,37 @@ You may need to wait for 10 to 15 minutes for metric data to populate in the das
 ::::
 
 ## Service availability and latency dashboard
-This dashboard provides an aggregate view of all of the critical operations that make up the service. At the top there is the service's regional alarm. This is configured to count the total number of faults on the server-side across all Availability Zones. If the total number of faults exceeds a threshold that alarm is triggered. The alarm just tells us there's a problem somewhere in the Region, it doesn't indicate whether it's confined to a single AZ or not. Below that are the composite alarms for isolated AZ impact across all critical operations. These alarms fire if one or more critical operations sees isolated impact in a single AZ. It's possible one operation, say `Signin`, sees impact in `us-east-1a` while another operation, say `Ride`, sees impact in `us-east-1b`. So it's possible for two or more of these to be in alarm; if they are, it is indicative that the impact is regional, not zonal.
-
-::::alert{type="info" header="Region"}
-When you open the AWS console for the workshop and any new tabs, make sure you are in the correct Region if a resource appears to be missing or you receive a permissions error.
-::::
+This dashboard provides an aggregate view of all of the critical operations that make up the Wild Rydes service. The top of the dashboard contains a number of alarms. The top left is an aggregate alarm for any zonal or regional impact in the service's critical operations. The next is an alarm indicating if there is regional impact, and then alarms to indicate whether this impact is being seen by the synthetic canaries, the server-side, or both. Below those alarms are alarms per AZ. The top row of zonal alarms are triggered by input from either the canaries or the server-side. The row below contains alarms that are only triggered by the server side. Later in this workshop, we'll deploy changes to a single AZ and see how these alarms can be useful for identifying when impact may be caused by something like a deployment where capacity in an AZ is intentionally taken out of services. Finally, there are links to dashboards for each of the critical operations in the Wild Rydes service.
 
 ![service-top-level-alarms](/static/service-top-level-alarms.png)
 
-Following the alarms you'll see different graphs to a number of metrics. The next graph shows AZ contributors to fault count. It helps us understand the total number of faults across all critical operations each AZ is producing.
+Following the alarms you'll see different graphs to a number of metrics. The first section is server-side availability, latency, and request count metrics. The top row contains availability metrics for each critical API in each AZ and then a request count per AZ. Below that, graphs measure the overall fault count in each AZ and then fault count per operation in each AZ.
 
-![service-az-fault-contributors](/static/service-az-fault-contributors.png)
+![service-server-availability-graphs](/static/service-server-availability-graphs.png)
+
+Next, there are similar graphs for latency in each AZ. The top row measures `p99` latency for each operation in each AZ as well as annotations for the average and max for each. The second row measures the number of requests for each operation that exceeded their threshold for latency.
+
+![service-server-latency-graphs](/static/service-server-latency-graphs.png)
 
 ::::alert{type="info" header="Dashboards"}
 Your dashboards may not look exactly like the dashboards shown here, that's ok. Some are shown with faults or latency present to be representative of the information provided by the dashboard. You may also see transient "blips" on your dashboards where an error or high latency response occured.
 ::::
 
-Next, you'll see graphs for availability as measured on both the server-side and by [synthetic canaries](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Synthetics_Canaries.html). Synthetic canaries perform the same actions as a customer, which makes it possible to continuously verify your customer experience and discover issues before your customers do.
+Next you'll see the same availability and latency graphs, but as measure by [synthetic canaries](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Synthetics_Canaries.html). Synthetic canaries perform the same actions as a customer, which makes it possible to continuously verify your customer experience and discover issues before your customers do. Finally, you'll see a section for load balancer metrics. These graphs display native [Application Load Balancer metrics](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-cloudwatch-metrics.html). We'll see later how we can use both metrics generated from custom instrumentation as well as native ELB metrics to detect single AZ impairments.
 
-![service-server-availability-graphs](/static/service-server-availability-graphs.png)
+![service-load-balancer-graphs](/static/service-load-balancer-graphs.png)
 
-![service-canary-availability-graphs](/static/service-canary-availability-graphs.png)
-
-Finally, you'll see graphs for latency, again as measured by the server-side and by synthetic canaries. Because each operation has a different latency threshold, these graphs are measuring the count of successful, but high latency responses to requests.
-
-![service-latency-graphs](/static/service-latency-graphs.png)
-
-These alarms and widgets help simplify the triage and troubleshooting process when something goes wrong. They can help you identify which operation is seeing impact and potentially where. That may lead you to look at one of the operation specific dashboards to get more details about what's happening. Let's go back to the Dashboards home page and look at an operation dashboard for the `Ride` operation, *`wildrydes-ride-operation-availability-and-latency-<region>`*.
+These alarms and widgets help simplify the triage and troubleshooting process when something goes wrong. They can help you identify which operation is seeing impact and potentially where. That may lead you to look at one of the operation specific dashboards to get more details about what's happening. Go back to the top of the service dashboard and click the link for the `Ride` operation, *`wildrydes-ride-availability-and-latency-<region>`*.
 
 ## Per operation dashboards
-Each operation in the service has its own dashboard. They provide operation-specific details about its availability and latency as measured from both the server-side and with synthetic canaries. It has a similar layout to the service-level dashboard. At the top are the regional and zonal alarms, followed by graphs showing contributors to faults and latency, availability and latency metrics measured from the server-side and canary-side, as well as operational metrics for the ALB being used in the service.
+Each operation in the service has its own dashboard. They provide operation-specific details about its availability and latency as measured from both the server-side and with synthetic canaries. 
 
 ### Operation alarms
-The regional alarm indicates that there is a problem happening in that Region, but not necessarily across multiple AZs. Below it are the zonal isolated impact alarms that do indicate when an Availability Zone shows isolated impact. 
+At the top are the regional and zonal alarms. These will indicate the scope of impact for this particular operation, whether impact is zonal or regional.
 
 ![ride-dashboard-agg-alarms](/static/ride-dashboard-agg-alarms.png)
 
-Let's look at one of the zonal isolated impact alarms by clicking on the widget and then selecting *View details page* (you may want to open it in a new tab).
+Let's look at one of the zonal isolated impact alarms by clicking on the widget and then selecting *View details page* (you may want to right-click and open it in a new tab).
 
 You'll see that this isolated impact alarm is a CloudWatch composite alarm with 2 child alarms, one for the server-side and one for the canary-side. This means that if we see isolated impact from either perspective, this alarm will trigger.
 
@@ -79,11 +77,15 @@ You can view the *Alarm rule* to see how this alarm is put together.
 ```
 (
     (
-        ALARM("arn:aws:cloudwatch:us-east-1:123456789012:alarm:use1-az2-ride-chi-squared-majority-errors-impact-server") AND ALARM("arn:aws:cloudwatch:us-east-1:123456789012:alarm:use1-az2-ride-success-rate-server") AND ALARM("arn:aws:cloudwatch:us-east-1:123456789012:alarm:use1-az2-ride-multiple-instances-faults-server")
+        ALARM("arn:aws:cloudwatch:us-east-2:123456789012:alarm:use2-az2-ride-static-majority-errors-impact-server") AND
+        ALARM("arn:aws:cloudwatch:us-east-2:123456789012:alarm:use2-az2-ride-success-rate-server") AND 
+        ALARM("arn:aws:cloudwatch:us-east-2:123456789012:alarm:use2-az2-ride-multiple-instances-faults-server")
     ) 
 OR 
     (
-        ALARM("arn:aws:cloudwatch:us-east-1:123456789012:alarm:use1-az2-ride-chi-squared-majority-high-latency-impact-server") AND ALARM("arn:aws:cloudwatch:us-east-1:123456789012:alarm:use1-az2-ride-success-latency-server") AND ALARM("arn:aws:cloudwatch:us-east-1:123456789012:alarm:use1-az2-ride-multiple-instances-high-latency-server")
+        ALARM("arn:aws:cloudwatch:us-east-2:123456789012:alarm:use2-az2-ride-static-high-latency-impact-server") AND 
+        ALARM("arn:aws:cloudwatch:us-east-2:123456789012:alarm:use2-az2-ride-success-latency-server") AND 
+        ALARM("arn:aws:cloudwatch:us-east-2:123456789012:alarm:use2-az2-ride-multiple-instances-high-latency-server")
     )
 )
 ```
@@ -91,8 +93,8 @@ OR
 To consider the AZ to have isolated impact (meaning no other AZ that the operation is using is seeing impact this badly), three things must be true for either availability or latency impact:
 
 1. The impact must cross a threshold, like availability drops below 99.9% or latency rises above 200ms.
-2. There is more than one instance causing the impact so that we know one bad instance doesn't make the whole AZ to appear impaired.
-3. The quantity of errors or high latency responses make this AZ an outlier as compared to the other AZs. There are several different statistics tests that can be used to determine this (for example chi-squared and z-score), but for the workshop, we're using a static metric of 70%, meaning an AZ must account for 70% of the errors to be considered an outlier, which also works very reliably.
+2. There is more than one instance causing the impact so that we know one bad instance doesn't make the whole AZ appear impaired.
+3. The quantity of errors or high latency responses make this AZ an outlier as compared to the other AZs. There are several different statistics tests that can be used to determine this (for example chi-squared and z-score), but for the workshop, we're using a static value of 70%, meaning an AZ must account for 70% of the errors to be considered an outlier, which also works very reliably.
 
 ### Operation metrics
 The rest of the dashboard contains graph widgets and associated alarms for availability and latency metrics. We will use these to determine if there is zonally isolated impact that we can mitigate using multi-AZ resilience patterns. Feel free to explore the dashboard and the alarms to see how these metrics are generated.
