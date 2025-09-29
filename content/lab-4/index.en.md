@@ -53,7 +53,7 @@ us-east-1b.my-example-nlb-4e2d1f8bb2751e6a.elb.us-east-1.amazonaws.com
 us-east-1c.my-example-nlb-4e2d1f8bb2751e6a.elb.us-east-1.amazonaws.com
 ```
 
- When you start a zonal shift for a load balancer resource, Amazon Application Recovery Controlle (ARC) requests that the resource move traffic away from the Availability Zone that you've specified. This request causes the load balancer health check for the Availability Zone to be set to unhealthy so that it fails its health check. An unhealthy health check, in turn, results in Amazon Route 53 withdrawing the corresponding IP addresses for the resource from DNS, so traffic is redirected from the Availability Zone. New connections are now routed to other Availability Zones in the AWS Region instead. This action utilizes the data plane of Route 53 to shift traffic away from the impaired AZ.
+ When you start a zonal shift for a load balancer resource, Amazon Application Recovery Controller (ARC) requests that the resource move traffic away from the Availability Zone that you've specified. This request causes the load balancer health check for the Availability Zone to be set to unhealthy so that it fails its health check. An unhealthy health check, in turn, results in Amazon Route 53 withdrawing the corresponding IP addresses for the resource from DNS, so traffic is redirected from the Availability Zone. New connections are now routed to other Availability Zones in the AWS Region instead. This action utilizes the data plane of Route 53 to shift traffic away from the impaired AZ.
 
 When you start a zonal shift, the zonal shift is created in Amazon ARC, but because of the steps in the process, you might not see traffic move out of the Availability Zone immediately. It also can take a short time for existing, in-progress connections in the Availability Zone to complete, depending on client behavior and connection reuse. Typically, however, this takes just a few minutes.
 
@@ -71,11 +71,15 @@ The first thing you'll notice is that the zonal *Isolated Impact* alarm is still
 
 ![ride-operation-alarms](/static/ride-operation-alarms.png)
 
-This is ok and expected because the alarm is triggered by both the server-side metrics *as well as* the canary metrics. In this case, the canary that is testing the AZ-specific endpoint like `us-east-1c.my-example-alb-4e2d1f8bb2751e6a.elb.us-east-1.amazonaws.com`, is still seeing the impact. But if we look at the canary testing the regional endpoint, we can see that there's no longer impact to the customer experience and the alarm is in the `OK` state.
+This is ok and expected because the alarm is triggered by both the server-side metrics *as well as* the canary metrics. In this case, the canary that is testing the AZ-specific endpoint like `us-east-2a.my-example-alb-4e2d1f8bb2751e6a.elb.us-east-2.amazonaws.com`, is still seeing the impact. But if we look at the canary testing the regional endpoint, we can see that there's no longer impact to the customer experience and the alarm is in the `OK` state. This means customers are no longer experiencing errors when accessing the Wild Rydes service!
 
 ![post-zonal-shift-canary-latency](/static/post-zonal-shift-canary-latency.png)
 
-After we initiated the zonal shift that the latency of the regional endpoint returned to pre-impact levels. This means that the zonal shift has successfully mitigated the impact to the customer experience when accessing the web service through its regional DNS record.
+After we initiated the zonal shift, the latency of the regional endpoint returned to pre-impact levels for customers. This means that the zonal shift has successfully mitigated the impact to the customer experience when accessing the web service through its regional DNS record. That's exactly what we wanted, to quickly mitigate the customer impact with a simple recovery mechanism. We can see this happening with our ALB metrics. Go back to the service level dashboard and scroll down to the load balancer metrics.
+
+![alb-during-zonal-shift](/static/alb-during-zonal-shift.png)
+
+We can see that `use2-az1` has lower request count and lower processed bytes metrics than the other AZs. This is because it's no longer processing the regional requests from the synthetic canary, which is what's also causing the higher request rate and increased processed bytes in the other AZs. There is still some traffic being sent to the AZ all the time from the synthetic canary that's targeting the AZ specific endpoint. Zonal shift doesn't impact this access, just the routing to the impacted AZ through the regional ALB DNS record.
 
 ## Recover the environment
 Navigate back to the FIS console and find the experiment you started. Click *`Stop experiment`* to end the experiment.
@@ -90,9 +94,9 @@ This is how we know when it's safe to end the zonal shift and return to normal o
 
 ![cancel-zonal-shift](/static/cancel-zonal-shift.png)
 
-And we can see through our ALB metrics that more traffic is now being processed by `use1-az6`, meaning that it's now getting both the zonal and the regional canary test traffic.
+And we can see through our ALB metrics that `use2-az1` is once again processing an equal number of requests, meaning that it's now getting both the zonal and the regional canary test traffic.
 
-![alb-processed-bytes-after-shift-ended](/static/alb-processed-bytes-after-shift-ended.png)
+![alb-after-shift-ended](/static/alb-after-shift-ended.png)
 
 ## Conclusion
 

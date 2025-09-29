@@ -34,7 +34,7 @@ In the *`Additional deployment behavior settings`* select the *`Overwrite the co
 
 Then finally click *`Create deployment`* at the bottom of the screen.
 
-The application will begin deploying to one server in the first AZ. This deployment is using a feature of AWS CodeDeploy called zonal deployments. It allows you to deploy your applications one AZ at a time. This allows you to respond to failed deployments in the same way you respond to single-AZ infrastructure events. While rollbacks are an essential part of a CI/CD system, they can take awhile to finish, and not every change can be rolled back. Shifting away from an AZ can be a simpler and faster solution. It also means you don't have to spend precious time during an event trying to figure out if a failure is deployment-related or due to an infrastructure event. For more details see [Fault-isolated, zonal deployments with AWS CodeDeploy](https://aws.amazon.com/blogs/devops/fault-isolated-zonal-deployments-with-aws-codedeploy/).
+The application will begin deploying to one server in the first AZ. This deployment is using a feature of AWS CodeDeploy called zonal deployments. It allows you to deploy your applications one AZ at a time. This enables you to respond to failed deployments in the same way you respond to single-AZ infrastructure events. While rollbacks are an essential part of a CI/CD system, they can take awhile to finish, and not every change can be rolled back. Shifting away from an AZ can be a simpler and faster solution. It also means you don't have to spend precious time during an event trying to figure out if a failure is deployment-related or due to an infrastructure event. For more details see [Fault-isolated, zonal deployments with AWS CodeDeploy](https://aws.amazon.com/blogs/devops/fault-isolated-zonal-deployments-with-aws-codedeploy/).
 
 The deployment will take a few minutes (typically about 3.5 to 4 minutes) and you can see the progress on the bottom of the page.
 
@@ -51,17 +51,12 @@ If it has been more than 5 minutes and you haven't seen an error, there's a poss
 It looks like our deployment failed because it triggered an alarm and stopped before moving on to the next AZ. The deployment is not configured to automatically rollback in order to you give you time to observe what's happening as well as perform a zonal shift.
 
 ## Observe the failure
-Navigate back to the Wild Rydes service level dashboard, *`wildrydes-service-availability-and-latency-<region>`*. Can you determine which operation has been impacted by the deployment?
+Navigate back to the Wild Rydes service level dashboard, *`wildrydes-availability-and-latency-<region>`*. Can you determine which operation has been impacted by the deployment?
 
 ::::expand{header="Based on the dashboard, can you tell which operation has been impacted and in which AZ?"}
-It looks like the *`Pay`* operation has been impacted. 
+It looks like the *`Pay`* operation has been impacted in `use2-az1`.
 
 ![pay-zonal-impact](/static/pay-zonal-impact.png)
-
-In this example, the impact is happening in `use1-az2`. 
-
-![service-zonal-impact](/static/service-zonal-impact.png)
-![single-az-fault-count](/static/single-az-fault-count.png)
 ::::
 
 Go to the impacted operation's dashboard and confirm the impact there.
