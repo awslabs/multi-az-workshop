@@ -51,7 +51,7 @@ If it has been more than 5 minutes and you haven't seen an error, there's a poss
 It looks like our deployment failed because it triggered an alarm and stopped before moving on to the next AZ. The deployment is not configured to automatically rollback in order to you give you time to observe what's happening as well as perform a zonal shift.
 
 ## Observe the failure
-Navigate back to the Wild Rydes service level dashboard, *`wildrydes-service-availability-and-latency-<region>`*. Can you determine which operation has been impacted by the deployment?
+Navigate back to the Wild Rydes service level dashboard, *`wildrydes-availability-and-latency-<region>`*. Can you determine which operation has been impacted by the deployment?
 
 ::::expand{header="Based on the dashboard, can you tell which operation has been impacted and in which AZ?"}
 It looks like the *`Pay`* operation has been impacted. 
