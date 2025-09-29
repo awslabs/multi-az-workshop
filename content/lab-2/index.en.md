@@ -27,15 +27,15 @@ Then, navigate to the [AWS FIS experiments console](https://console.aws.amazon.c
 
 ![fis-az-target](/static/fis-az-target.png)
 
-In this experiment, you can see it's only targeting instances in `us-east-1a` using the *`Placement.AvailabilityZone`* filter (your random AZ may be different). Now let's go to our dashboards and see what is being impacted, [CloudWatch Dasboards console](https://console.aws.amazon.com/cloudwatch/home#dashboards/). Select the *`wildrydes-ride-operation-availability-and-latency-<region>`* dashboard. We're picking this one in particular because we know this operation interacts with the Aurora database. Scroll down to the *Server-side Latency* section. You can see here that there is latency impact in a single AZ, but it's also raising the overall p99 latency for the region.
+In this experiment, you can see it's only targeting instances in `us-east-2a` using the *`Placement.AvailabilityZone`* filter (your random AZ may be different). Now let's go to our dashboards and see what is being impacted, [CloudWatch Dasboards console](https://console.aws.amazon.com/cloudwatch/home#dashboards/). Select the *`wildrydes-ride-availability-and-latency-<region>`* dashboard. We're picking this one in particular because we know this operation interacts with the Aurora database. Scroll down to the *Server-side Metrics* section. You can see here that there is latency impact in a single AZ, but it's also raising the overall p99 latency for the region.
 
 ![server-side-single-az-high-latency](/static/server-side-single-az-high-latency.png)
 
-Let's validate what customers of Wild Rydes are experiencing by scrolling down to the *Canary Measured Latency* section. 
+Let's validate what customers of Wild Rydes are experiencing by scrolling down to the *Canary Metrics* section. 
 
 ![canary-single-az-high-latency](/static/canary-single-az-high-latency.png)
 
-This graph is showing the measured latency from our synthetic canaries. The regional latency measurement targets the ALB's regional endpoint, while each of the zonal latency charts are derived from requests using the ALB's [zonal DNS names](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html#dns-name) (although the link is for NLB documentation, the same DNS names exist for ALBs as well) like `us-east-1a.myalb.elb.amazonaws.com`. In both cases, we can see that from a customer-perspective the impact is regional. No matter which AZ a customer interacts with, they see impact even though the fault is only being applied to instances in a single AZ. When their request gets sent to an ALB node in `us-east-1b`, the request can still be routed to an EC2 instance in `us-east-1c` where the impact is originating. 
+This graph is showing the measured latency from our synthetic canaries. The regional latency measurement targets the ALB's regional endpoint, while each of the zonal latency charts are derived from requests using the ALB's [zonal DNS names](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html#dns-name) (although the link is for NLB documentation, the same DNS names exist for ALBs as well) like `us-east-2a.myalb.elb.amazonaws.com`. In both cases, we can see that from a customer-perspective the impact is regional. No matter which AZ a customer interacts with, they see impact even though the fault is only being applied to instances in a single AZ. When their request gets sent to an ALB node in `us-east-2b`, the request can still be routed to an EC2 instance in `us-east-2a` where the impact is originating. 
 
 The other thing to note is that from the ALB's perspective, all of its targets in the target groups are healthy. You can see this on the [EC2 Target Group console](https://console.aws.amazon.com/ec2/home#TargetGroups). Select the target group configured for port 80. The ALB is configured to target the `/health` route of the service for its health check. This API doesn't trigger communication with the database, it is a shallow health check. This is the concept of *differential observability* in practice. From the ALB's perspective, the service is healthy, but from the customer's perspective, there's broad impact to the *`Ride`* operation.
 
@@ -58,7 +58,7 @@ Click the *Edit* button, turn cross-zone load balancing off, and then click *Sav
 
 ![cross-zone-off](/static/cross-zone-off.png)
 
-Do the same thing for the other target group. Once that is complete, you've disabled cross-zone load balancing for all of the target groups behind your ALB. This means requests received by an ALB node in one AZ will only send traffic to EC2 and EKS nodes in the same AZ. That's our first step in implementing AZI. If we were using VPC endpoints or other zonal services in our service, we'd want to be sure our compute resources and the code they are running were configured to use the resource in the same AZ that they are located in.
+Do the same thing for the other target group whose name starts with "*`multi-EKSAp-`*". Once that is complete, you've disabled cross-zone load balancing for all of the target groups behind your ALB. This means requests received by an ALB node in one AZ will only send traffic to EC2 and EKS nodes in the same AZ. That's our first step in implementing AZI. If we were using VPC endpoints or other zonal services in our service, we'd want to be sure our compute resources and the code they are running were configured to use the resource in the same AZ that they are located in.
 
 ## Implementing AZI for Istio on EKS
 

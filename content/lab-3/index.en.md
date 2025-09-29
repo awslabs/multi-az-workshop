@@ -33,7 +33,7 @@ Navigate back to the Wild Rydes service level dashboard we reviewed during lab 1
 The alarm may take up to 3 minutes to change state to `ALARM`. It is using an [M of N](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/AlarmThatSendsEmail.html#alarm-evaluation) configuration, requiring 2 datapoints in 3 minutes. Making alarms that react quickly while not being overly sensitive to transient issues is a careful balance. Using a "2 of 3" or "3 of 5" configuration is common.
 ::::
 
-While you wait, feel free to explore the operational metrics dashboards. After a few minutes, you should see one of the "Zonal Isolated Impact Alarm" alarms transition to the `ALARM` state. You may need to press the Refresh button on the dashboard
+While you wait, feel free to explore the operational metrics dashboards. After a few minutes, you should see one of the zonal alarms transition to the `ALARM` state. You may need to press the refresh button on the dashboard
 
 ![dashboard-refresh](/static/dashboard-refresh.png)
 ![service-az-isolated-impact-alarm](/static/service-az-isolated-impact-alarm.png)
