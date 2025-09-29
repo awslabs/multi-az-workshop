@@ -359,14 +359,16 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
 
         internal static IService CreateService(ILoadBalancerV2 loadBalancer, IVpc vpc, ILogGroup[] serverLogGroups)
         {
-            var newService = new Service(new ServiceProps(){
+            var newService = new Service(new ServiceProps()
+            {
                 ServiceName = "WildRydes",
                 BaseUrl = "http://www.example.com",
                 FaultCountThreshold = 25,
                 AvailabilityZoneNames = vpc.AvailabilityZones,
                 Period = Duration.Seconds(60),
                 LoadBalancer = loadBalancer,
-                DefaultAvailabilityMetricDetails = new ServiceAvailabilityMetricDetails(new ServiceAvailabilityMetricDetailsProps() {
+                DefaultAvailabilityMetricDetails = new ServiceAvailabilityMetricDetails(new ServiceAvailabilityMetricDetailsProps()
+                {
                     AlarmStatistic = "Sum",
                     DatapointsToAlarm = 2,
                     EvaluationPeriods = 3,
@@ -377,10 +379,11 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                     MetricNamespace = metricsNamespace,
                     Period = Duration.Seconds(60),
                     SuccessAlarmThreshold = 99,
-                    SuccessMetricNames = new string[] {"Success"},
+                    SuccessMetricNames = new string[] { "Success" },
                     Unit = Unit.COUNT,
                 }),
-                DefaultLatencyMetricDetails = new ServiceLatencyMetricDetails(new ServiceLatencyMetricDetailsProps(){
+                DefaultLatencyMetricDetails = new ServiceLatencyMetricDetails(new ServiceLatencyMetricDetailsProps()
+                {
                     AlarmStatistic = "p99",
                     DatapointsToAlarm = 2,
                     EvaluationPeriods = 3,
@@ -390,10 +393,11 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                     MetricNamespace = metricsNamespace,
                     Period = Duration.Seconds(60),
                     SuccessAlarmThreshold = Duration.Millis(100),
-                    SuccessMetricNames = new string[] {"SuccessLatency"},
+                    SuccessMetricNames = new string[] { "SuccessLatency" },
                     Unit = Unit.MILLISECONDS,
                 }),
-                DefaultContributorInsightRuleDetails =  new ContributorInsightRuleDetails(new ContributorInsightRuleDetailsProps() {
+                DefaultContributorInsightRuleDetails = new ContributorInsightRuleDetails(new ContributorInsightRuleDetailsProps()
+                {
                     AvailabilityZoneIdJsonPath = azIdJsonPath,
                     FaultMetricJsonPath = faultMetricJsonPath,
                     InstanceIdJsonPath = instanceIdJsonPath,
@@ -401,16 +405,22 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                     OperationNameJsonPath = operationNameJsonPath,
                     SuccessLatencyMetricJsonPath = successLatencyMetricJsonPath
                 }),
-                CanaryTestProps = new AddCanaryTestProps() {
+                CanaryTestProps = new AddCanaryTestProps()
+                {
                     RequestCount = 60,
                     RegionalRequestCount = 60,
                     LoadBalancer = loadBalancer,
                     Schedule = "rate(1 minute)",
                     Timeout = Duration.Seconds(3),
-                    NetworkConfiguration = new NetworkConfigurationProps() {
+                    NetworkConfiguration = new NetworkConfigurationProps()
+                    {
                         Vpc = vpc,
                         SubnetSelection = new SubnetSelection() { SubnetType = SubnetType.PRIVATE_ISOLATED }
-                    }            
+                    }
+                },
+                MinimumUnhealthyTargets = new MinimumUnhealthyTargets()
+                {
+                    Percentage = 0.1
                 }
             });
 
