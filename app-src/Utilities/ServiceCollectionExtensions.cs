@@ -267,6 +267,12 @@ namespace BAMCIS.MultiAZApp.Utilities
                         logger.PutProperty("InvocationId", context.Request.Headers["X-Invocation-Id"][0]);
                     }
 
+                    if (context.Request.Headers.ContainsKey("X-Lambda-RequestId"))
+                    {
+                        context.Response.Headers.Append("X-Lambda-RequestId", context.Request.Headers["X-Lambda-RequestId"]);
+                        logger.PutProperty("LambdaRequestId", context.Request.Headers["X-Lambda-RequestId"][0]);
+                    }
+
                     int status = context.Response.StatusCode;
 
                     logger.PutProperty("HttpStatusCode", status);
