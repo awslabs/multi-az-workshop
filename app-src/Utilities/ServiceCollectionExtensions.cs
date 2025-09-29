@@ -222,7 +222,7 @@ namespace BAMCIS.MultiAZApp.Utilities
             // https://docs.aws.amazon.com/xray/latest/devguide/xray-concepts.html#xray-concepts-tracingheader
             if (context.Request.Headers.TryGetValue("X-Amzn-Trace-Id", out StringValues xRayTraceId) && !String.IsNullOrEmpty(xRayTraceId) && xRayTraceId.Count > 0)
             {
-                logger.PutProperty("XRayTraceId", xRayTraceId[0]);
+                logger.PutProperty("X-Amzn-Trace-Id", xRayTraceId[0]);
             }
             // If the request contains a w3c trace id, let's embed it in the logs
             // Otherwise we'll include the TraceIdentifier which is the connectionId:requestCount
@@ -259,6 +259,12 @@ namespace BAMCIS.MultiAZApp.Utilities
                     if (context.Request.Headers.ContainsKey("X-Amzn-Trace-Id"))
                     {
                         context.Response.Headers.Append("X-Amzn-Trace-Id", context.Request.Headers["X-Amzn-Trace-Id"]);
+                    }
+
+                    if (context.Request.Headers.ContainsKey("X-Invocation-Id"))
+                    {
+                        context.Response.Headers.Append("X-Invocation-Id", context.Request.Headers["X-Invocation-Id"]);
+                        logger.PutProperty("InvocationId", context.Request.Headers["X-Invocation-Id"]);
                     }
 
                     int status = context.Response.StatusCode;
