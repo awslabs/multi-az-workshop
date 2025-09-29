@@ -264,7 +264,7 @@ namespace BAMCIS.MultiAZApp.Utilities
                     if (context.Request.Headers.ContainsKey("X-Invocation-Id"))
                     {
                         context.Response.Headers.Append("X-Invocation-Id", context.Request.Headers["X-Invocation-Id"]);
-                        logger.PutProperty("InvocationId", context.Request.Headers["X-Invocation-Id"]);
+                        logger.PutProperty("InvocationId", context.Request.Headers["X-Invocation-Id"][0]);
                     }
 
                     int status = context.Response.StatusCode;
