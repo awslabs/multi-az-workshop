@@ -37,6 +37,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             string app = props.Namespace + "-app";
             string svc = props.Namespace + "-service";
             string sa = props.Namespace + "-sa";
+            Duration shutdownDelay = Duration.Seconds(30);
 
             var appContainer = props.ContainerAndRepoBuilder.AddContainerAndRepo(new RepoAndContainerProps() {
                 ContainerImageS3ObjectKey = "container.tar.gz",
@@ -350,6 +351,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                                             }
                                         }
                                     },
+                                    { "terminationGracePeriodSeconds", (int)shutdownDelay.ToSeconds() },
                                     { "serviceAccountName", sa },
                                     {"volumes", new Dictionary<string, object>[] {
                                         new Dictionary<string, object>() {
@@ -446,7 +448,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 Protocol = ApplicationProtocol.HTTP,
                 TargetType = TargetType.IP,
                 LoadBalancingAlgorithmType = TargetGroupLoadBalancingAlgorithmType.ROUND_ROBIN,
-                DeregistrationDelay = Duration.Seconds(90),
+                DeregistrationDelay = shutdownDelay,
                 Vpc = props.Cluster.Vpc,
                 ProtocolVersion = ApplicationProtocolVersion.HTTP1              
             });
@@ -456,7 +458,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
 
             KubernetesManifest targetGroupBinding = new KubernetesManifest(this, "TargetGroupBinding", new KubernetesManifestProps() {
                 Cluster = props.Cluster,
-                Manifest = new Dictionary<string, object>[] {
+                Manifest = [
                     new Dictionary<string, object>() {
                         {"apiVersion", "elbv2.k8s.aws/v1beta1"},
                         {"kind", "TargetGroupBinding"},
@@ -473,7 +475,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                             {"targetType", "ip"}
                         }}
                     }
-                }
+                ]
             });
 
             targetGroupBinding.Node.AddDependency(appService);
