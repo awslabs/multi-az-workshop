@@ -13,7 +13,7 @@ You may have worked with the service before in our [serverless API workshop](htt
 
 In this lab we'll review the operational metrics being produced by the Wild Rydes service. First, navigate to the [Amazon CloudWatch console](https://console.aws.amazon.com/cloudwatch/home).
 
-From here, select the [Dashboards](https://console.aws.amazon.com/cloudwatch/home?#dashboards:) navigation option on the left side of the console. You should see five dashboards, one for each operation in the Wild Rydes service (`Home`, `Signin`, `Pay`, `Ride`) and then a roll-up dashboard for the whole service. 
+From here, select the [Dashboards](https://console.aws.amazon.com/cloudwatch/home?#dashboards:) navigation option on the left side of the console. You should see six dashboards, one for each operation in the Wild Rydes service (`Home`, `Signin`, `Pay`, `Ride`), a roll-up dashboard for the whole service, and a dashboard specific to AZ health. 
 
 ::::alert{type="info" header="Region"}
 When you open the AWS console for the workshop and any new tabs, make sure you are in the correct Region if a resource appears to be missing or you receive a permissions error.
@@ -77,15 +77,15 @@ You can view the *Alarm rule* to see how this alarm is put together.
 ```
 (
     (
-        ALARM("arn:aws:cloudwatch:us-east-2:123456789012:alarm:use2-az2-ride-static-majority-errors-impact-server") AND
-        ALARM("arn:aws:cloudwatch:us-east-2:123456789012:alarm:use2-az2-ride-success-rate-server") AND 
-        ALARM("arn:aws:cloudwatch:us-east-2:123456789012:alarm:use2-az2-ride-multiple-instances-faults-server")
+        ALARM("arn:aws:cloudwatch:us-east-2:123456789012:alarm:use2-az1-ride-static-majority-errors-impact-server") AND
+        ALARM("arn:aws:cloudwatch:us-east-2:123456789012:alarm:use2-az1-ride-success-rate-server") AND 
+        ALARM("arn:aws:cloudwatch:us-east-2:123456789012:alarm:use2-az1-ride-multiple-instances-faults-server")
     ) 
 OR 
     (
-        ALARM("arn:aws:cloudwatch:us-east-2:123456789012:alarm:use2-az2-ride-static-high-latency-impact-server") AND 
-        ALARM("arn:aws:cloudwatch:us-east-2:123456789012:alarm:use2-az2-ride-success-latency-server") AND 
-        ALARM("arn:aws:cloudwatch:us-east-2:123456789012:alarm:use2-az2-ride-multiple-instances-high-latency-server")
+        ALARM("arn:aws:cloudwatch:us-east-2:123456789012:alarm:use2-az1-ride-static-high-latency-impact-server") AND 
+        ALARM("arn:aws:cloudwatch:us-east-2:123456789012:alarm:use2-az1-ride-success-latency-server") AND 
+        ALARM("arn:aws:cloudwatch:us-east-2:123456789012:alarm:use2-az1-ride-multiple-instances-high-latency-server")
     )
 )
 ```
@@ -95,6 +95,10 @@ To consider the AZ to have isolated impact (meaning no other AZ that the operati
 1. The impact must cross a threshold, like availability drops below 99.9% or latency rises above 200ms.
 2. There is more than one instance causing the impact so that we know one bad instance doesn't make the whole AZ appear impaired.
 3. The quantity of errors or high latency responses make this AZ an outlier as compared to the other AZs. There are several different statistics tests that can be used to determine this (for example chi-squared and z-score), but for the workshop, we're using a static value of 70%, meaning an AZ must account for 70% of the errors to be considered an outlier, which also works very reliably.
+
+::::alert{type="warning" header="Ensuring even distribution"}
+This approach makes one major assumption, that each AZ is processing similar amounts of load. The workshop is designed with 2 EC2 instances and 2 EKS pods in each AZ with cross-zone load balancing disabled. This ensures that each AZ receives 33% of the traffic. With cross-zone load balancing enabled, each target, regardless of its AZ, receives the same amount of traffic. In this configuration, you could have an imbalance like 4 EC2 instances in one zone, and 1 in each of the other zones. If the AZ impairment affects the zone with just 1 instance in it, it may not handle enough load to make the AZ appear to be an outlier. 
+::::
 
 ### Operation metrics
 The rest of the dashboard contains graph widgets and associated alarms for availability and latency metrics. We will use these to determine if there is zonally isolated impact that we can mitigate using multi-AZ resilience patterns. Feel free to explore the dashboard and the alarms to see how these metrics are generated.

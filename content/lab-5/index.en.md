@@ -1,102 +1,55 @@
 ---
-title : "Lab 5: Simulate a deployment failure"
+title : "Lab 5: Use automatic target weights"
 weight : 60
 ---
 
-Up to now we've been injecting failures by adding latency. However, building AZI architectures and using zonal shift can be beneficial for other types of failures as well. In this lab, we'll create a new deployment of the application that gets deployed one AZ at a time. The deployment will fail and we can leverage zonal shift to recover the same way we did in the previous lab.
+AWS Application Load Balancers (ALB) offer several routing algorithms. The default is `Round robin`, which distributes traffic evenly to targets. Another option is `Least outstanding requests`, which routes requests to the target with the lowest number of in progress tasks. ALB also offers a routing algorithm that can help automatically detect and mitigate gray failures, called [`Automatic target weights` (ATW)](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-target-group-attributes.html#modify-routing-algorithm). 
 
-::::alert{type="warning" header="End the zonal shift"} 
-If you did not end the zonal shift in the previous lab, please do so now.
-::::
+A gray failure occurs when an ALB target passes active load balancer health checks, making it look healthy, but still returns errors. This scenario could be caused by many things, including application bugs, a dependency failure, intermittent network packet loss, a cold cache on a newly launched target, CPU overload, and more. ATW’s anomaly detection analyzes the HTTP return status codes and TCP/TLS errors to identify targets with a disproportionate ratio of errors compared to other targets in the same target group. 
 
-## Start the deployment
-First, we need to register a new deployment artifact in CodeDeploy. First, get the bucket path that contains the assets for the workshop, it's stored in an SSM Parameter. Go to the [SSM Parameter Store console for the `DeploymentAsset` parameter](https://console.aws.amazon.com/systems-manager/parameters/DeploymentAsset/). Copy the string from the *`Value`* property, it should be something like:
+When ATW identifies anomalous targets, it reduces traffic to the under-performing targets and gives a larger portion of the traffic to targets that are not exhibiting these errors. When the gray failures decrease or stop, ALB will slowly increase traffic back onto these targets. In this lab, we'll introduce failures that are mitigated by ATW.
 
-```
-s3://ws-assets-us-east-1/e9383b42-6c6f-416b-b50a-9313e476e372/assets/app_arm64_fail.zip
-```
+## Enable Automatic Target Weights
+First, navigate to the [Target groups console page](https://console.aws.amazon.com/ec2/home#TargetGroups:). Select the first target group in the list. On the bottom half of the page, click the *Attributes* tab and then *Edit*.
 
-Next, go to the [CodeDeploy application console](https://console.aws.amazon.com/codesuite/codedeploy/applications/multi-az-workshop).
+!["edit-target-group-attributes"](/static/edit-target-group-attributes.png)
 
-![codedeploy-application](/static/codedeploy-application.png)
+On the *Edit target group attributes* page, select the **Weighted random** traffic configuration and ensure the checkbox for **Turn on anomaly mitigation - *recommended*** is checked. Next, enable cross-zone load balancing. When cross-zone is enabled, ATW detects and mitigates failures on up to 50% of all targets in a target group. When cross-zone is disabled, ATW detects and mitigates failures on up to 50% of targets per AZ. Given that we only have 2 nodes in each AZ, mitigating just one node will help, but allowing ATW to mitigate all of the nodes in a single AZ will have a larger impact, so we need cross-zone enabled to do that.
 
-Click on the deployment group named *`ZonalDeploymentGroup`*. Then click on *`Create Deployment`*.
+Then click *Save changes* on the bottom of the screen. **Do the same thing for the second target group.**
 
-![create-deployment](/static/create-deployment.png)
+!["traffic-configuration"](/static/traffic-configuration.png)
 
-Enter the S3 path from the parameter you retrieved earlier in the revision location field.
+Now that we've enabled ATW and cross-zone load balancing for our two target groups, let's see how it responds when we introduce failures to a single AZ.
 
-![app-revision](/static/app-revision.png)
+## Simulate single-AZ impairment
+Because ATW operates on anomaly detection of HTTP status codes, we need to introduce a failure scenario that causes `5xx` response codes, not just high latency. To do this, we're going to use packet loss that causes requests to the database to timeout which are surfaced by the application as a 500 response. The application's database client is set with a timeout of 2 seconds. The canary's http client timeout is set to 3 seconds, so we should see 500 status codes being returned back to the canary. The Lambda running the canary tests has a timeout of 240 seconds. For 60 requests, each with a timeout of 3 seconds, the Lamnbda function will have time to finish all requests (180 seconds), but this will cause the requests to this specific operation to be reduced each minute. In order to ensure we see an anomalous volume of failed requests, we're going to update one of the packet loss experiments to drop 100% of the traffic to the database.  
 
-In the *`Additional deployment behavior settings`* select the *`Overwrite the content`* radio button.
+Go to the [AWS FIS Experiment Templates console page](https://console.aws.amazon.com/fis/home#ExperimentTemplates). Choose one of the *Add Packet Loss* experiments. In my case, I've chosen packet loss for us-east-2c.
 
-![app-overwrite](/static/app-overwrite.png)
+!["packet-loss"](/static/packet-loss.png)
 
-Then finally click *`Create deployment`* at the bottom of the screen.
+Click *Actions* and choose *Update experiment template*. From here, click *Edit* on *Step 2: Specify actions and targets*.
 
-The application will begin deploying to one server in the first AZ. This deployment is using a feature of AWS CodeDeploy called zonal deployments. It allows you to deploy your applications one AZ at a time. This enables you to respond to failed deployments in the same way you respond to single-AZ infrastructure events. While rollbacks are an essential part of a CI/CD system, they can take awhile to finish, and not every change can be rolled back. Shifting away from an AZ can be a simpler and faster solution. It also means you don't have to spend precious time during an event trying to figure out if a failure is deployment-related or due to an infrastructure event. For more details see [Fault-isolated, zonal deployments with AWS CodeDeploy](https://aws.amazon.com/blogs/devops/fault-isolated-zonal-deployments-with-aws-codedeploy/).
+!["edit-fis-template"](/static/edit-fis-template.png)
 
-The deployment will take a few minutes (typically about 3.5 to 4 minutes) and you can see the progress on the bottom of the page.
+Then, click the "..." button on the **packetLoss** action and select *Edit*.
 
-![deployment-progress](/static/deployment-progress.png)
+!["edit-fis-action"](/static/edit-fis-action.png)
 
-A few minutes after the first instance completes, the deployment will stop with an error displayed at the top of the page.
+In this screen, find the *Document parameters* field. 
 
-![deployment-error](/static/deployment-error.png)
+!["fis-doc-parameters"](/static/fis-doc-parameters.png)
 
-::::alert{type="info" header="Deployment doesn't fail"} 
-If it has been more than 5 minutes and you haven't seen an error, there's a possibility the deployment has stalled. Stop the current deployment and retry it. 
-::::
+This contains JSON configuration data used by the experiment run on the hosts. We want to change the *LossPercent* parameter from 30 to 100 to ensure every request from the instances to the database fails. Make this update and click *Save*. Click *Next*, *Next*, *Next*, and then *Update experiment template*. Confirm the update.
 
-It looks like our deployment failed because it triggered an alarm and stopped before moving on to the next AZ. The deployment is not configured to automatically rollback in order to you give you time to observe what's happening as well as perform a zonal shift.
+Now, click *Start Experiment* on the top right.
 
-## Observe the failure
-Navigate back to the Wild Rydes service level dashboard, *`wildrydes-availability-and-latency-<region>`*. Can you determine which operation has been impacted by the deployment?
+## Observe the impact and recovery
+Now, go back to your operational metrics dashboard for the *Ride* operation. We should see error rates increase, originating from a single AZ. Then, the ATW anomaly mitigation will start sending less traffic to the impacted targets, reducing the error rate. 
 
-::::expand{header="Based on the dashboard, can you tell which operation has been impacted and in which AZ?"}
-It looks like the *`Pay`* operation has been impacted in `use2-az1`.
+Navigate to the *`wild-rydes-per-az-health-<region>`* dashboard. Scroll down to the bottom and look for the *Anomalous Hosts* and *Mitigated Hosts* graphs. This shows you the result of the ATW algorithm.
 
-![pay-zonal-impact](/static/pay-zonal-impact.png)
-::::
 
-Go to the impacted operation's dashboard and confirm the impact there.
-
-::::expand{header="See the dashboard"}
-![pay-dashboard](/static/pay-dashboard.png)
-::::
-
-## Perform a zonal shift
-
-Following the same steps you followed in the last lab, perform a zonal shift to mitigate the impact. Confirm that the impact has been mitigated by specifically looking at the canary availability metrics for the regional endpoint.
-
-::::expand{header="See the dashboard"}
-![deployment-recovery-after-shift](/static/deployment-recovery-after-shift.png)
-::::
-
-After the zonal shift, you should see the alarm that stopped the unsuccessful deployment transition back to the `OK` state. [Navigate to the CloudWatch alarms console](https://console.aws.amazon.com/cloudwatch/home?#alarmsV2:) and search for the alarm name, *`<region>-wildrydes-canary-availability-aggregate-alarm`*.
-
-![after-redeployment](/static/after-redeployment.png)
-
-This indicates that we're able to start a rollback to the previous version.
-
-## Rollback the deployment
-
-Now that we've mitigated the customer impact, we can rollback the deployment to recover the environment. Go to your [CodeDeploy application revisions](https://console.aws.amazon.com/codesuite/codedeploy/applications/multi-az-workshop/revisions).
-
-Select the revision named like *`app_arm64.zip`* and click *`Deploy application`*
-
-![app-revisions](/static/app-revisions.png)
-
-Select the deployment group *`ZonalDeploymentGroup`* and select *`Overwrite the content`*.
-
-![deployment-group](/static/deployment-group.png)
-
-Finally, click *`Create deployment`*. This will rollout the previous version of the application to all of the instances in the Auto Scaling group. After the deployment is complete in the first AZ, you should see availability return to 100%. This is the indication once again that you can end the zonal shift. Go ahead and do so now.
-
-::::alert{type="info" header="Redeployment"}
-The redeployment will deploy to 1 instance at a time with bake time in between each AZ. This could take up to 30 minutes to complete. You do not need to wait for the entire deployment to complete, just the first AZ before ending the zonal shift and then moving on to the next lab. It's also possible that a transient condition affecting the canary could produce errors that cause the alarm to trigger and stop the deployment. If you experience this, you can attempt to redeploy the original revision again. You only need it to succeed on the instances in the first AZ.
-::::
-
-## Conclusion
-
-In this lab you used zonal deployments with AWS CodeDeploy to contain the impact from a bad change to a single AZ. You were able to use the same observability and recovery tools for this type of failure as you did for the previous infrastructure failure. In a production environment, you can combine this approach with automated rollbacks to both quickly and safely mitigate the impact of failed deployments.
+## Reset the environment
+For the next lab, we need to change the traffic configuration back to *Round robin*. Go back to your two target groups and change the traffic configuration from *Weighted random* back to *Round robin*. Also, ensure you have stopped the running AWS FIS experiment. Once you've updated the target groups and ensured the experiment has ended, you can proceed to the next lab.
