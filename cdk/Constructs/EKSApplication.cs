@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using System;
 using System.Collections.Generic;
 using Amazon.CDK;
 using Amazon.CDK.AWS.EKS;
@@ -307,7 +308,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                             { "strategy", new Dictionary<string, object>() {
                                     {"type", "RollingUpdate"},
                                     {"rollingUpdate", new Dictionary<string, object>(){
-                                        {"maxUnavailable", 1},
+                                        {"maxUnavailable", 0},
                                         {"maxSurge", 1}
                                     }}
                                 }
@@ -318,7 +319,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                                         { "app", app }
                                     }},
                                     {"annotations", new Dictionary<string, object>() {
-                                        {"version", "2"}
+                                        {"version", Guid.NewGuid().ToString()} // Using a nonce will cause a redeployment
                                     }}
                                 }},
                                 { "spec", new Dictionary<string, object>() {
