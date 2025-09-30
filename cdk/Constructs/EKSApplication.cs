@@ -310,7 +310,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                                     {"type", "RollingUpdate"},
                                     {"rollingUpdate", new Dictionary<string, object>(){
                                         {"maxUnavailable", 0},
-                                        {"maxSurge", 1}
+                                        {"maxSurge", 2}
                                     }}
                                 }
                             },
