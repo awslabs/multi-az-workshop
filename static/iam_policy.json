@@ -4,7 +4,18 @@
         {
             "Effect": "Allow",
             "Action": [
-                "ec2:Describe*"
+                "ec2:Describe*",
+                "ec2:TerminateInstances"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "eks:Describe*",
+                "eks:List*",
+                "eks:UpdateClusterConfig",
+                "eks:AccessKubernetesApi"
             ],
             "Resource": "*"
         },
@@ -33,7 +44,8 @@
         {
             "Effect": "Allow",
             "Action": [
-                "autoscaling:Describe*"
+                "autoscaling:Describe*",
+                "autoscaling:UpdateAutoScalingGroup"
             ],
             "Resource": "*"
         },
@@ -102,7 +114,12 @@
                 "arc-zonal-shift:ListZonalShifts",
                 "arc-zonal-shift:StartZonalShift",
                 "arc-zonal-shift:UpdateZonalShift",
-                "arc-zonal-shift:ListAutoshifts"
+                "arc-zonal-shift:ListAutoshifts",
+                "arc-zonal-shift:CreatePracticeRunConfiguration",
+                "arc-zonal-shift:DeletePracticeRunConfiguration",
+                "arc-zonal-shift:ListAutoshifts",
+                "arc-zonal-shift:UpdatePracticeRunConfiguration",
+                "arc-zonal-shift:UpdateZonalAutoshiftConfiguration"
             ],
             "Resource": "*"
         },

@@ -45,12 +45,12 @@ For "Set zonal shift expiration", choose an expiration for the zonal shift. A zo
 
 ## How a zonal shift works
 
-Here's a simple explanation of how this works. Every NLB and ALB has zonal DNS A records in addition to its regional DNS A record. For example, your load balancer may provide you with this A record: `my-example-nlb-4e2d1f8bb2751e6a.elb.us-east-1.amazonaws.com`. However, there are also A records for each AZ the load balancer is deployed into, like the following:
+Here's a simple explanation of how this works. Every NLB and ALB has zonal DNS A records in addition to its regional DNS A record. For example, your load balancer may provide you with this A record: `my-example-nlb-4e2d1f8bb2751e6a.elb.us-east-2.amazonaws.com`. However, there are also A records for each AZ the load balancer is deployed into, like the following:
 
 ```
-us-east-1a.my-example-nlb-4e2d1f8bb2751e6a.elb.us-east-1.amazonaws.com
-us-east-1b.my-example-nlb-4e2d1f8bb2751e6a.elb.us-east-1.amazonaws.com
-us-east-1c.my-example-nlb-4e2d1f8bb2751e6a.elb.us-east-1.amazonaws.com
+us-east-2a.my-example-nlb-4e2d1f8bb2751e6a.elb.us-east-2.amazonaws.com
+us-east-2b.my-example-nlb-4e2d1f8bb2751e6a.elb.us-east-2.amazonaws.com
+us-east-2c.my-example-nlb-4e2d1f8bb2751e6a.elb.us-east-2.amazonaws.com
 ```
 
  When you start a zonal shift for a load balancer resource, Amazon Application Recovery Controller (ARC) requests that the resource move traffic away from the Availability Zone that you've specified. This request causes the load balancer health check for the Availability Zone to be set to unhealthy so that it fails its health check. An unhealthy health check, in turn, results in Amazon Route 53 withdrawing the corresponding IP addresses for the resource from DNS, so traffic is redirected from the Availability Zone. New connections are now routed to other Availability Zones in the AWS Region instead. This action utilizes the data plane of Route 53 to shift traffic away from the impaired AZ.
@@ -67,7 +67,7 @@ Now let's go back to the operational metrics dashboard for the `Ride` operation.
 You may need to wait for 5 minutes or more for metric data to populate in the dashboards after the zonal shift has been initiated. 
 ::::
 
-The first thing you'll notice is that the zonal *Isolated Impact* alarm is still in the `ALARM` state. 
+The first thing you'll notice is that the *isolated az impact* alarm is still in the `ALARM` state. 
 
 ![ride-operation-alarms](/static/ride-operation-alarms.png)
 
@@ -100,10 +100,10 @@ And we can see through our ALB metrics that `use2-az1` is once again processing 
 
 ## Conclusion
 
-In this lab we initiated a zonal shift to mitigate the impact from a single-AZ impairment. We verified that the latency metrics returned to normal when being accessed through load balancer's regional DNS record. You also saw that the canary testing the zonal endpoint continued to verify impact in that AZ. For a zonal shift to be effective, it's important to be pre-scaled to handle the shifting load, otherwise, this could lead to overwhelming your existing resources. Alternatively, you may need to temporarily load shed or rate limit traffic to the remaining AZs to protect your service while you add capacity in those locations to handle the additional load. Consider using [zonal autoshift](https://docs.aws.amazon.com/r53recovery/latest/dg/arc-zonal-autoshift.html), which will regularly test the readiness of your service to perform a zonal shift as well as initiate a zonal shift automatically when AWS telemetry indicates there could be an AZ impairment that might impact customers. This can help you build confidence that your service is ready as well as recover faster from incidents.
+In this lab we initiated a zonal shift to mitigate the impact from a single-AZ impairment. We verified that the latency metrics returned to normal when being accessed through load balancer's regional DNS record. You also saw that the canary testing the zonal endpoint continued to verify impact in that AZ. For a zonal shift to be effective, it's important to be pre-scaled to handle the shifting load, otherwise, this could lead to overwhelming your existing resources. Alternatively, you may need to temporarily load shed or rate limit traffic to the remaining AZs to protect your service while you add capacity in those locations to handle the additional load. 
 
 ::::alert{type="info" header="Additional zonal shift integrations"}
 While not utilized in this version of the workshop, zonal shift also integrates with [Amazon EKS](https://docs.aws.amazon.com/eks/latest/userguide/zone-shift.html) and [Amazon EC2 Auto Scaling](https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-zonal-shift.html), which can be used in conjuncion with your load balancer zonal shift or independently. 
 ::::
 
-In the next lab, you'll introduce a different type of failure and see how our application responds. 
+In the next lab, we're going to enable zonal autoshift to automatically respond to single AZ impairments.

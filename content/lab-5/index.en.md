@@ -1,55 +1,52 @@
 ---
-title : "Lab 5: Use automatic target weights"
+title : "Lab 5: Enable zonal autoshift"
 weight : 60
 ---
 
-AWS Application Load Balancers (ALB) offer several routing algorithms. The default is `Round robin`, which distributes traffic evenly to targets. Another option is `Least outstanding requests`, which routes requests to the target with the lowest number of in progress tasks. ALB also offers a routing algorithm that can help automatically detect and mitigate gray failures, called [`Automatic target weights` (ATW)](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-target-group-attributes.html#modify-routing-algorithm). 
+[Zonal autoshift]((https://docs.aws.amazon.com/r53recovery/latest/dg/arc-zonal-autoshift.html)) is a feature of Application Recovery Controller that allows you to automatically and safely shift your application's traffic away from an AZ when AWS's telemetry indicates that there is a potential impairment impacting AWS services or customer workloads. Detecting single-AZ impairments can sometime be difficult if the source of the interruption is from the underlying AWS infrastructure. We use our own AWS internal monitoring tools and metrics to decide when to trigger a network traffic shift. The shift starts automatically; there is no API to call. When we detect that a zone has a potential failure, such as a power or network disruption, we automatically trigger an autoshift of your enrolled resources.
 
-A gray failure occurs when an ALB target passes active load balancer health checks, making it look healthy, but still returns errors. This scenario could be caused by many things, including application bugs, a dependency failure, intermittent network packet loss, a cold cache on a newly launched target, CPU overload, and more. ATW’s anomaly detection analyzes the HTTP return status codes and TCP/TLS errors to identify targets with a disproportionate ratio of errors compared to other targets in the same target group. 
+As a best practice, you should have enough capacity pre-provisioned to absorb the increased load in the remaining AZs after the traffic has shifted. In order to ensure that you're confident that your application can do this succesfully when there truly is an AZ impairment, zonal autoshift includes a practice mode where we regularly test the shift during a maintenance window. Let's enable autoshift on our load balancer, auto scaling group, and EKS cluster. 
 
-When ATW identifies anomalous targets, it reduces traffic to the under-performing targets and gives a larger portion of the traffic to targets that are not exhibiting these errors. When the gray failures decrease or stop, ALB will slowly increase traffic back onto these targets. In this lab, we'll introduce failures that are mitigated by ATW.
+## Enable zonal shift
+The workshop automatically enables zonal shift on your ALB, but it hasn't been enabled for your EC2 Auto Scaling Group or your EKS cluster. We need to enable it first before we can turn on autoshift. Go to the [auto scaling console](https://console.aws.amazon.com/ec2/home#AutoScalingGroups:) and select the auto scaling group named like *`multi-az-workshop-ec2Nested...`*. Click on the *Integrations* tab and select *Edit* next to ARC Zonal Shift.
 
-## Enable Automatic Target Weights
-First, navigate to the [Target groups console page](https://console.aws.amazon.com/ec2/home#TargetGroups:). Select the first target group in the list. On the bottom half of the page, click the *Attributes* tab and then *Edit*.
+![asg-integrations](/static/asg-integrations.png)
 
-!["edit-target-group-attributes"](/static/edit-target-group-attributes.png)
+Select the checkbox to *Enable zonal shift*, then select the checkbox for *Skip zonal shift validation*, and finally select *Replace unhealthy* for the health check behavior. You can learn more about these options in the [auto scaling documentation](https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-zonal-shift.html).
 
-On the *Edit target group attributes* page, select the **Weighted random** traffic configuration and ensure the checkbox for **Turn on anomaly mitigation - *recommended*** is checked. Next, enable cross-zone load balancing. When cross-zone is enabled, ATW detects and mitigates failures on up to 50% of all targets in a target group. When cross-zone is disabled, ATW detects and mitigates failures on up to 50% of targets per AZ. Given that we only have 2 nodes in each AZ, mitigating just one node will help, but allowing ATW to mitigate all of the nodes in a single AZ will have a larger impact, so we need cross-zone enabled to do that.
+![asg-zonal-shift](/static/asg-zonal-shift.png)
 
-Then click *Save changes* on the bottom of the screen. **Do the same thing for the second target group.**
+Next, navigate to our [EKS cluster](https://console.aws.amazon.com/eks/clusters/multi-az-workshop-eks-cluster) and select *Manage* next to the zonal shift box.
 
-!["traffic-configuration"](/static/traffic-configuration.png)
+![eks-zonal-shift-manage](/static/eks-zonal-shift-manage.png)
 
-Now that we've enabled ATW and cross-zone load balancing for our two target groups, let's see how it responds when we introduce failures to a single AZ.
+Select *Enabled* and *Save changes*. Now that all of our supported resources have zonal shift enabled, we can turn on autoshift.
 
-## Simulate single-AZ impairment
-Because ATW operates on anomaly detection of HTTP status codes, we need to introduce a failure scenario that causes `5xx` response codes, not just high latency. To do this, we're going to use packet loss that causes requests to the database to timeout which are surfaced by the application as a 500 response. The application's database client is set with a timeout of 2 seconds. The canary's http client timeout is set to 3 seconds, so we should see 500 status codes being returned back to the canary. The Lambda running the canary tests has a timeout of 240 seconds. For 60 requests, each with a timeout of 3 seconds, the Lamnbda function will have time to finish all requests (180 seconds), but this will cause the requests to this specific operation to be reduced each minute. In order to ensure we see an anomalous volume of failed requests, we're going to update one of the packet loss experiments to drop 100% of the traffic to the database.  
+## Configure zonal authoshift
+First, we need to get an alarm ARN that is used by zonal autoshift to stop practice runs in case there is impact. We'll use the *`wildrydes-impact-alarm`* since it is an aggregate alarm of any impact to the application. You can get its ARN from the console [here](https://console.aws.amazon.com/cloudwatch/home#alarmsV2:alarm/wildrydes-impact-alarm).
 
-Go to the [AWS FIS Experiment Templates console page](https://console.aws.amazon.com/fis/home#ExperimentTemplates). Choose one of the *Add Packet Loss* experiments. In my case, I've chosen packet loss for us-east-2c.
+Next, navigate to the [ARC zonal autoshift console](https://console.aws.amazon.com/route53recovery/zonalshift/home#/autoshift).
 
-!["packet-loss"](/static/packet-loss.png)
+![configure-autoshift](/static/configure-autoshift.png)
 
-Click *Actions* and choose *Update experiment template*. From here, click *Edit* on *Step 2: Specify actions and targets*.
+Enable autoshift for your EKS cluster, auto scaling group, and ALB. Use the same alarm ARN for each resource. You don't need to specify a maintenance window.
 
-!["edit-fis-template"](/static/edit-fis-template.png)
+![zonal-autoshift-resources](/static/zonal-autoshift-resources.png)
 
-Then, click the "..." button on the **packetLoss** action and select *Edit*.
+## Perform a practice run
+Pick any of the three resources and select the *Actions* drop down. Then click *Start practice run*, select an AZ to test against, write a comment, and then click *Start*. This will initiate a zonal autoshift against whichever resource you selected. If you chose your ALB, review your operational dashboards to see the traffic shift. If you chose your auto scaling group, terminate an EC2 instance in the impacted AZ and observe auto scaling launch a new instance in one of the unimpacted AZs. If you chose EKS, you'll need to use `kubectl` to terminate a pod and see it rescheduled in a different AZ.
 
-!["edit-fis-action"](/static/edit-fis-action.png)
+::::expand{header="Instructions for terminating a pod"}
+First, navigate to the EKS console and review your cluster. Click the *Resources* tab, click *Deployments* on the left, and the select the *multi-az-workshop-app*. There should be 6 running pods. The easiest way to find a pod in the AZ you selected is by its IP address. The workshop uses the 192.168.0.0/16 address space. The first subnet uses 192.168.0.0/24, the next 192.168.1.0/24, and the last 192.168.2.0/24. So AZ "a" has 0.x addresses, AZ "b" has 1.x addresses, and AZ "c" has 2.x addresses. Select a pod name based on its IP mapping to the AZ you selected to run the practice in.
 
-In this screen, find the *Document parameters* field. 
+Next, navigate to the EC2 console and use session manager to access the worker node the same way you did in [Lab 2](/lab-2). Run the following command.
 
-!["fis-doc-parameters"](/static/fis-doc-parameters.png)
+```bash
+/tmp/kubectl delete pod <pod name> --namespace multi-az-workshop
+```
+::::
 
-This contains JSON configuration data used by the experiment run on the hosts. We want to change the *LossPercent* parameter from 30 to 100 to ensure every request from the instances to the database fails. Make this update and click *Save*. Click *Next*, *Next*, *Next*, and then *Update experiment template*. Confirm the update.
+::::alert{type="info" header="Transient failures"}
+It's possible transient conditions could cause the practice run to fail, such as temporary elevated latency that transitions the alarm we picked into the `ALARM` state. Feel free to rerun and practice you selected.
+::::
 
-Now, click *Start Experiment* on the top right.
-
-## Observe the impact and recovery
-Now, go back to your operational metrics dashboard for the *Ride* operation. We should see error rates increase, originating from a single AZ. Then, the ATW anomaly mitigation will start sending less traffic to the impacted targets, reducing the error rate. 
-
-Navigate to the *`wild-rydes-per-az-health-<region>`* dashboard. Scroll down to the bottom and look for the *Anomalous Hosts* and *Mitigated Hosts* graphs. This shows you the result of the ATW algorithm.
-
-
-## Reset the environment
-For the next lab, we need to change the traffic configuration back to *Round robin*. Go back to your two target groups and change the traffic configuration from *Weighted random* back to *Round robin*. Also, ensure you have stopped the running AWS FIS experiment. Once you've updated the target groups and ensured the experiment has ended, you can proceed to the next lab.
