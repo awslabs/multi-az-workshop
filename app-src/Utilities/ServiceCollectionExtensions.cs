@@ -238,20 +238,19 @@ namespace BAMCIS.MultiAZApp.Utilities
         }
 
         private static void SetupEmfMiddleware(this IApplicationBuilder app)
-        {
-            Stopwatch stopWatch = new Stopwatch();
+        {   
             IEnvironment env = app.ApplicationServices.GetRequiredService<IEnvironment>();
             
             // Register the middleware to run on each request
-            app.Use((context, next) => {
-                
-                stopWatch.Restart();
+            app.Use(async (context, next) =>
+            {
+                Stopwatch stopWatch = Stopwatch.StartNew();
 
                 IMetricsLogger logger = context.RequestServices.GetRequiredService<IMetricsLogger>();
-                SetupMetricsLogger(context, logger, env);
+                await SetupMetricsLogger(context, logger, env);
 
-                context.Response.OnStarting(() => {
-
+                context.Response.OnStarting(() =>
+                {
                     stopWatch.Stop();
 
                     context.Response.Headers.Append("X-Server-Side-Latency", stopWatch.ElapsedMilliseconds.ToString());
@@ -276,7 +275,7 @@ namespace BAMCIS.MultiAZApp.Utilities
                     int status = context.Response.StatusCode;
 
                     logger.PutProperty("HttpStatusCode", status);
-                
+
                     switch (status)
                     {
                         case int n when (n >= 200 && n <= 399):
@@ -312,11 +311,11 @@ namespace BAMCIS.MultiAZApp.Utilities
                     Guid id = Guid.NewGuid();
                     context.Response.Headers.Append("X-RequestId", id.ToString());
                     logger.PutProperty("RequestId", id.ToString());
-             
+
                     return Task.CompletedTask;
                 });
 
-                return next(context);
+                await next();
             });
         }
     }

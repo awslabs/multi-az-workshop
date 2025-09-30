@@ -35,7 +35,11 @@ Let's validate what customers of Wild Rydes are experiencing by scrolling down t
 
 ![canary-single-az-high-latency](/static/canary-single-az-high-latency.png)
 
-This graph is showing the measured latency from our synthetic canaries. The regional latency measurement targets the ALB's regional endpoint, while each of the zonal latency charts are derived from requests using the ALB's [zonal DNS names](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html#dns-name) (although the link is for NLB documentation, the same DNS names exist for ALBs as well) like `us-east-2a.myalb.elb.amazonaws.com`. In both cases, we can see that from a customer-perspective the impact is regional. No matter which AZ a customer interacts with, they see impact even though the fault is only being applied to instances in a single AZ. When their request gets sent to an ALB node in `us-east-2b`, the request can still be routed to an EC2 instance in `us-east-2a` where the impact is originating. 
+This graph is showing the measured latency from our synthetic canaries. The regional latency measurement targets the ALB's regional endpoint, while each of the zonal latency charts are derived from requests using the ALB's [zonal DNS names](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html#dns-name) (although the link is for NLB documentation, the same DNS names exist for ALBs as well) like `us-east-2a.myalb-name-and-hash.elb.us-east-2.amazonaws.com`. In both cases, we can see that from a customer-perspective the impact is regional. No matter which AZ a customer interacts with, they see impact even though the fault is only being applied to instances in a single AZ. When their request gets sent to an ALB node in `us-east-2b`, the request can still be routed to an EC2 instance in `us-east-2a` where the impact is originating. 
+
+::::alert{type="info" header="Transient latency spikes"}
+Although the canary witnesses transient latency spikes at p99, you can see on the Success Latency dashboard that after the experiment is started, all AZs and the regional endpoint consistently have elevated latency.
+::::
 
 The other thing to note is that from the ALB's perspective, all of its targets in the target groups are healthy. You can see this on the [EC2 Target Group console](https://console.aws.amazon.com/ec2/home#TargetGroups). Select the target group configured for port 80. The ALB is configured to target the `/health` route of the service for its health check. This API doesn't trigger communication with the database, it is a shallow health check. This is the concept of *differential observability* in practice. From the ALB's perspective, the service is healthy, but from the customer's perspective, there's broad impact to the *`Ride`* operation.
 
@@ -175,6 +179,23 @@ Now, your architecture looks like this and prevents traffic at the application t
 
 2. [Istio Locality Load Balancing](https://istio.io/latest/docs/tasks/traffic-management/locality-load-balancing/) - Locality load balancing provides [three options](https://istio.io/latest/docs/reference/config/networking/destination-rule/#LocalityLoadBalancerSetting) for specifying how traffic is routed in a `DestinationRule` or as part of the Global Mesh Config. The first is `failoverPriority`. This allows you to prioritize what endpoints are used, but it doesn't enforce only using endpoints in the same zone. The next option is `failover`. Zone and sub-zone failover is supported by default, so this only needs to be specified for regions when the operator needs to constrain traffic failover. While same zone routing is preferred using this option, it is not enforced. The third option is `distribute`. This is the option we chose to use because we can specify 100% of the traffic is only routed to the same zone, and if no endpoints are available, the requests fail. For AZI to be effective, we actually want all of the resources in a single AZ to fail together. However, you should consider your own use cases, pod distribution, and desired failure modes.
 ::::
+
+One other important consideration is to make sure that we have pods in each AZ so that requests can be handled in the same AZ that the load balancer receives them. To do that, we're going to use [`topologySpreadConstraints`](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/) in our deployment definition. 
+
+```yaml
+apiVersion: app/v1
+kind: Deployment
+spec:
+  template:
+    topologySpreadConstraints:
+      - topologyKey: topology.kubernetes.io/zone
+        maxSkew: 1
+        labelSelector:
+          matchLabels:
+            app: my-app
+        whenUnsatisfiable: ScheduleAnyway
+```
+The `maxSkew` describes the degree to which Pods may be unevenly distributed. In this case we want to make sure there isn't a skew of more than 1 Pod across the available AZs, which should help us try and keep 2 Pods in each AZ, but it could lead to slight imbalances depending on the number of Pods you are running. Like we mentioned in the previous lab, this imbalance combined with cross-zone load balancing enabled could cause unintentional skews in the amount of traffic being handled in each AZ and may not make single-AZ impairments detectable.
 
 ## Conclusion
 
