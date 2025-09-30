@@ -20,7 +20,7 @@ namespace BAMCIS.MultiAZApp.Utilities
         private readonly IAmazonSecretsManager _client;
         private readonly IEnvironment _environment;
         private static readonly int _delayMilliseconds = 60000; // 1 minute
-        private static readonly int _clientTimeoutSeconds = 4;
+        private static readonly int _clientTimeoutSeconds = 2;
 
         static CacheRefreshWorker()
         {

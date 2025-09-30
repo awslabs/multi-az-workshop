@@ -324,7 +324,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 LogGroupName = "/fis/experiments",
                 LogGroupRetention = RetentionDays.ONE_WEEK,
                 AutoScalingGroup = this.EC2Stack.AutoScalingGroup,
-                DelayMilliseconds = Duration.Millis(100),
+                DelayMilliseconds = Duration.Millis(150),
                 PacketLossPercent = 30
             });
 
