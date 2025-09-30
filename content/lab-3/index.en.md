@@ -59,7 +59,7 @@ This perspective reveals that the increased latency in `use2-az1` is also impact
 
 ![ride-operation-canary-high-latency-alarms](/static/ride-operation-canary-high-latency-alarms.png)
 
-This is to be expected. When accessing the service through the regional load balancer endpoint, requests are routed to each AZ the load balancer is deployed in, so 33% of those requests get sent to the impaired AZ. But our AZI implementation is preventing the faults from cascading into the other two AZs, which is what we wanted to achieve. We'll come back to these metrics after we mitigate the problem.
+This is to be expected. When accessing the service through the regional load balancer endpoint, requests are routed to each AZ the load balancer is deployed in, so with cross-zone load balancing disabled, 33% of those requests get sent to the impaired AZ. But our AZI implementation is preventing the faults from cascading into the other two AZs, which is what we wanted to achieve. We'll come back to these metrics after we mitigate the problem.
 
 ### Review composite alarm definition
 Next, review the structure of the composite alarm that indicates we have isolated AZ impact. Go to the top of the dashboard and click on the alarm widget for the zonal isolated impact alarm and right click *`View details page`* to open it in a new tab.
