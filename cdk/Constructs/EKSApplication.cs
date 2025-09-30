@@ -286,7 +286,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
 
             KubernetesManifest appDeployment = new KubernetesManifest(this, "AppDeployment", new KubernetesManifestProps() {
                 Cluster = props.Cluster,
-                Manifest = new Dictionary<string, object>[] {
+                Manifest = [
                     new Dictionary<string, object>() {
                         {"apiVersion", "apps/v1"},
                         {"kind", "Deployment"},
@@ -322,7 +322,34 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                                     }}
                                 }},
                                 { "spec", new Dictionary<string, object>() {
-                                    {"serviceAccountName", sa },
+                                    {"topologySpreadConstraints", new Dictionary<string, object>[] {
+                                            new Dictionary<string, object>() {
+                                                {"labelSelector", new Dictionary<string, object>() {
+                                                    { "matchLabels", new Dictionary<string, string>()
+                                                        {
+                                                            {"app", app}
+                                                        }
+                                                    }
+                                                }},
+                                                {"maxSkew", 1},
+                                                {"topologyKey", "topology.kubernetes.io/zone"},
+                                                {"whenUnsatisfiable", "ScheduleAnyway"}
+                                            },
+                                            new Dictionary<string, object>() {
+                                                {"labelSelector", new Dictionary<string, object>() {
+                                                    { "matchLabels", new Dictionary<string, string>()
+                                                        {
+                                                            {"app", app}
+                                                        }
+                                                    }
+                                                }},
+                                                {"maxSkew", 1},
+                                                {"topologyKey", "kubernetes.io/hostname"},
+                                                {"whenUnsatisfiable", "ScheduleAnyway"}
+                                            }
+                                        }
+                                    },
+                                    { "serviceAccountName", sa },
                                     {"volumes", new Dictionary<string, object>[] {
                                         new Dictionary<string, object>() {
                                             {"name", "cwagentconfig"},
@@ -392,7 +419,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                             }}
                         }}
                     }
-                }
+                ]
             });
 
             appDeployment.Node.AddDependency(appService);
