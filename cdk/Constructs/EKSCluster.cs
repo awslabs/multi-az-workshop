@@ -128,6 +128,25 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
 
             ((logRoleManifest.Node.FindChild("Resource") as CustomResource).Node.DefaultChild as CfnResource).AddPropertyOverride("ServiceTimeout", "300");
 
+             KubernetesManifest podDeleterManifest = cluster.AddManifest("PodDeleterRole", new Dictionary<string, object>[] {
+                new Dictionary<string, object>() {
+                    {"apiVersion", "rbac.authorization.k8s.io/v1" },
+                    {"kind", "ClusterRole"},
+                    {"metadata", new Dictionary<string, object>() {
+                        {"name", "pod-deleter"}
+                    }},
+                    {"rules", new Dictionary<string, object>[] {
+                        new Dictionary<string, object>() {
+                            {"apiGroups", new string[] { "" }},
+                            {"resources", new string[] { "pods" } },
+                            {"verbs", new string[] { "get", "list", "delete"}}
+                        }
+                    }}
+                }
+            });
+
+            ((podDeleterManifest.Node.FindChild("Resource") as CustomResource).Node.DefaultChild as CfnResource).AddPropertyOverride("ServiceTimeout", "300");
+
             KubernetesManifest networkingRoleManifest = cluster.AddManifest("NetworkingRole", new Dictionary<string, object>[] {
                 new Dictionary<string, object>() {
                     {"apiVersion", "rbac.authorization.k8s.io/v1" },
@@ -199,6 +218,32 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             networkingRoleBindingManifest.Node.AddDependency(networkingRoleManifest);
             ((networkingRoleBindingManifest.Node.FindChild("Resource") as CustomResource).Node.DefaultChild as CfnResource).AddPropertyOverride("ServiceTimeout", "300");
 
+            KubernetesManifest podDeleterRoleBindingManifest = cluster.AddManifest("PodDeleterRoleBinding", new Dictionary<string, object>[] {
+                new Dictionary<string, object>() {
+                    {"apiVersion", "rbac.authorization.k8s.io/v1" },
+                    { "kind", "ClusterRoleBinding"},
+                    {"metadata", new Dictionary<string, object>() {
+                        {"name", "pod-deleter-global"},
+                        {"namespace", "multi-az-workshop"}
+                    }},
+                    { "roleRef", new Dictionary<string, object>() {
+                        {"apiGroup", "rbac.authorization.k8s.io"},
+                        {"kind", "ClusterRole"},
+                        {"name", "pod-deleter"}
+                    }},
+                    { "subjects", new Dictionary<string, object>[] {
+                        new Dictionary<string, object>() {
+                            {"kind", "Group"},
+                            {"name", "system:authenticated"},
+                            {"apiGroup", "rbac.authorization.k8s.io"}
+                        }
+                    }}
+                }
+            });
+
+            podDeleterRoleBindingManifest.Node.AddDependency(networkingRoleManifest);
+            ((podDeleterRoleBindingManifest.Node.FindChild("Resource") as CustomResource).Node.DefaultChild as CfnResource).AddPropertyOverride("ServiceTimeout", "300");
+
             //cluster.AwsAuth.Node.AddDependency(logRoleBindingManifest);
             //cluster.AwsAuth.Node.AddDependency(networkingRoleBindingManifest);
 
@@ -248,7 +293,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             }));
             
             cluster.AwsAuth.AddRoleMapping(eksWorkerRole, new AwsAuthMapping() {
-                Groups = new string[] { "system:masters", "system:bootstrappers", "system:nodes", "log-viewer-global"},
+                Groups = new string[] { "system:masters", "system:bootstrappers", "system:nodes", "log-viewer-global", "pod-deleter"},
                 Username = "system:node:{{EC2PrivateDNSName}}"
             });
 
