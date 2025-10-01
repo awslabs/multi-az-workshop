@@ -50,8 +50,16 @@ Now, click *Start Experiment* on the top right.
 ## Observe the impact and recovery
 Now, go back to your operational metrics dashboard for the *Ride* operation. We should see error rates increase, originating from a single AZ. Then, the ATW anomaly mitigation will start sending less traffic to the impacted targets, reducing the error rate. 
 
-Navigate to the *`wild-rydes-per-az-health-<region>`* dashboard. Scroll down to the bottom and look for the *Anomalous Hosts* and *Mitigated Hosts* graphs. This shows you the result of the ATW algorithm.
+Navigate to the *`wild-rydes-per-az-health-<region>`* dashboard. Scroll down to the bottom and look for the *Anomalous Hosts* and *Mitigated Hosts* graphs. This shows you the result of the ATW algorithm. Also, look at the server-side and load balancer request count, you should see additional requests being handled by the other AZs and a drop in the requests being processed in the impacted AZ. Because cross-zone load balancing is enabled, even the canary traffic targeting the ALB endpoints in the impacted AZ can be routed to targets in other AZs. 
+
+After seeing an initial availability drop and elevated fault rate, you should see them start to drop off quickly. While it doesn't reduce the fault rate to 0, it does very quickly minimize the impact being seen in a single AZ. Instead of a 33% drop in availability, you likely only see an ~8% drop. 
+
+## Perform a zonal shift.
+Because we can see our anamolous hosts are all contained in a single AZ, we can use a zonal shift to mitigate the rest of the impact. Zonal shift supports both ALBs and NLBs with cross-zone load balancing enabled. When you perform a zonal shift, both the IP address for the shifted AZ is withdrawn from DNS as well as 
 
 
 ## Reset the environment
-For the next lab, we need to change the traffic configuration back to *Round robin*. Go back to your two target groups and change the traffic configuration from *Weighted random* back to *Round robin*. Also, ensure you have stopped the running AWS FIS experiment. Once you've updated the target groups and ensured the experiment has ended, you can proceed to the next lab.
+Go back to your two target groups and change the traffic configuration from *Weighted random* back to *Round robin* and disable cross-zone load balancing. Also, ensure you have stopped the running AWS FIS experiment. Once you've updated the target groups and ensured the experiment has ended, you can proceed to the next lab.
+
+## Summary
+In this lab you saw how to enable the Automatic Target Weights algorithm on your ALB. ATW quickly detected and partially mitigated the gray failures impacting your instances in a single AZ. You then added a zonal shift to mitigate the remaining impact. This approach allows you to 1/take advantage of the benefits of cross-zone load balancing, 2/significantly reduce the required observability to detect a single AZ impairment, and 3/quickly and automatically mitigate the impact.
