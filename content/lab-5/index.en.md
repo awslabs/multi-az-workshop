@@ -34,19 +34,29 @@ Enable autoshift for your EKS cluster, auto scaling group, and ALB. Use the same
 ![zonal-autoshift-resources](/static/zonal-autoshift-resources.png)
 
 ## Perform a practice run
-Pick any of the three resources and select the *Actions* drop down. Then click *Start practice run*, select an AZ to test against, write a comment, and then click *Start*. This will initiate a zonal autoshift against whichever resource you selected. If you chose your ALB, review your operational dashboards to see the traffic shift. If you chose your auto scaling group, terminate an EC2 instance in the impacted AZ and observe auto scaling launch a new instance in one of the unimpacted AZs. If you chose EKS, you'll need to use `kubectl` to terminate a pod and see it rescheduled in a different AZ.
+Pick any of the three resources and select the *Actions* drop down. Then click *Start practice run*, select an AZ to test against, write a comment, and then click *Start*. This will initiate a zonal autoshift against whichever resource you selected. If you chose your ALB, review your operational dashboards to see the traffic shift. If you chose your auto scaling group, terminate an EC2 instance in the impacted AZ and observe auto scaling launch a new instance in one of the unimpacted AZs. If you chose EKS, you'll need to use `kubectl` to terminate a pod and see it rescheduled in a different AZ. The practice run lasts for 30 minutes, it's not necessary to wait for it to complete and you can cancel the practice run at any time.
 
 ::::expand{header="Instructions for terminating a pod"}
 First, navigate to the EKS console and review your cluster. Click the *Resources* tab, click *Deployments* on the left, and the select the *multi-az-workshop-app*. There should be 6 running pods. The easiest way to find a pod in the AZ you selected is by its IP address. The workshop uses the 192.168.0.0/16 address space. The first subnet uses 192.168.0.0/24, the next 192.168.1.0/24, and the last 192.168.2.0/24. So AZ "a" has 0.x addresses, AZ "b" has 1.x addresses, and AZ "c" has 2.x addresses. Select a pod name based on its IP mapping to the AZ you selected to run the practice in.
 
-Next, navigate to the EC2 console and use session manager to access the worker node the same way you did in [Lab 2](/lab-2). Run the following command.
+Next, navigate to the EC2 console and use session manager to access the worker node **with the same IP address subnet as the Pod you want to delete** the same way you did in [Lab 2](/lab-2). You may have to download `kubectl` if it's not the same node you used in Lab 2. Then, run the following command.
 
 ```bash
 /tmp/kubectl delete pod <pod name> --namespace multi-az-workshop
 ```
+
+Worker nodes are only authorized to delete pods that are running on themself for security reasons, while there are other ways to accomplish this task, it simplifies the required authentication and authorization for the scope of the workshop.
 ::::
 
 ::::alert{type="info" header="Transient failures"}
-It's possible transient conditions could cause the practice run to fail, such as temporary elevated latency that transitions the alarm we picked into the `ALARM` state. Feel free to rerun and practice you selected.
+It's possible transient conditions could cause the practice run to fail, such as temporary elevated latency that transitions the alarm we picked into the `ALARM` state. Feel free to redo any practice you selected.
 ::::
 
+## Review the results
+If there weren't any transient problems that occured, your practice run should have succeeded (if you chose to wait for the whole time), but it's not critical for the sake of the workshop if it didn't. The goal here was to understand how to enable autoshift and how practice runs are conducted. For ALB, you should have observed the same results as performing the zonal shift we did in the last lab, where there was a noticeable drop in requests being processed in the selected AZ. For auto scaling, you should have observed EC2 launching a new EC2 instance in one of the remaining AZs after you terminated one. After the practice run ended, auto scaling should have then rebalanced your auto scaling group evenly back into all AZs. For EKS, you should have observed a new pod being scheduled in a different AZ and when the practice run ended, the pods should have rebalanced.
+
+## Turn on autoshift observer notifications
+
+
+## Conclusion
+Once you've completed your practice runs, you can move on to the next lab. Make sure you've ended all of your practice runs if you haven't already.

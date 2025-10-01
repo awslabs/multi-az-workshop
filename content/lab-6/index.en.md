@@ -3,11 +3,13 @@ title : "Lab 6: Use automatic target weights"
 weight : 70
 ---
 
-AWS Application Load Balancers (ALB) offer several routing algorithms. The default is `Round robin`, which distributes traffic evenly to targets. Another option is `Least outstanding requests`, which routes requests to the target with the lowest number of in progress tasks. ALB also offers a routing algorithm that can help automatically detect and mitigate gray failures, called [`Automatic target weights` (ATW)](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-target-group-attributes.html#modify-routing-algorithm). 
+Application Load Balancers (ALB) offer several routing algorithms. The default is `Round robin`, which distributes traffic evenly to targets. Another option is `Least outstanding requests`, which routes requests to the target with the lowest number of in progress tasks. ALB also offers a routing algorithm that can help automatically detect and mitigate gray failures, called [`Automatic target weights` (ATW)](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-target-group-attributes.html#modify-routing-algorithm). 
 
 A gray failure occurs when an ALB target passes active load balancer health checks, making it look healthy, but still returns errors. This scenario could be caused by many things, including application bugs, a dependency failure, intermittent network packet loss, a cold cache on a newly launched target, CPU overload, and more. ATW’s anomaly detection analyzes the HTTP return status codes and TCP/TLS errors to identify targets with a disproportionate ratio of errors compared to other targets in the same target group. 
 
-When ATW identifies anomalous targets, it reduces traffic to the under-performing targets and gives a larger portion of the traffic to targets that are not exhibiting these errors. When the gray failures decrease or stop, ALB will slowly increase traffic back onto these targets. In this lab, we'll introduce failures that are mitigated by ATW.
+When ATW identifies anomalous targets, it reduces traffic to the under-performing targets and gives a larger portion of the traffic to targets that are not exhibiting these errors. When the gray failures decrease or stop, ALB will slowly increase traffic back onto these targets. 
+
+In this lab, you'll update the ALB to use ATW and then introduce failures that are automatically mitigated by the routing algorithm.
 
 ## Enable Automatic Target Weights
 First, navigate to the [Target groups console page](https://console.aws.amazon.com/ec2/home#TargetGroups:). Select the first target group in the list. On the bottom half of the page, click the *Attributes* tab and then *Edit*.
