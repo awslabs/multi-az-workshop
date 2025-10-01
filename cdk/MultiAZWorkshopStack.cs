@@ -13,6 +13,7 @@ using Amazon.AWSLabs.MultiAZWorkshop.Constructs;
 using Amazon.AWSLabs.MultiAZWorkshop.NestedStacks;
 using Cdklabs.MultiAZObservability;
 using Amazon.CDK.AWS.Lambda;
+using System;
 //using io.bamcis.cdk.MultiAZObservability;
 
 namespace Amazon.AWSLabs.MultiAZWorkshop
@@ -267,7 +268,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 }
             }
 
-            IService wildRydesService = CreateService(this.LoadBalancer, this.NetworkStack.Vpc, new ILogGroup[] {frontEndLogGroup});
+            IService wildRydesService = CreateService(this.LoadBalancer, this.NetworkStack.Vpc, new ILogGroup[] {frontEndLogGroup}, [this.EC2Stack.TargetGroup, this.EKSStack.EKSAppTargetGroup]);
 
             var mazNestedStack = new NestedStackWithSource(this, "multi-az-observability-");
             InstrumentedServiceMultiAZObservability multiAvailabilityZoneObservability = new InstrumentedServiceMultiAZObservability(mazNestedStack, "instrumented-service-", new InstrumentedServiceMultiAZObservabilityProps() {
@@ -280,7 +281,15 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
           
             BasicServiceMultiAZObservability multiAZObservability = new BasicServiceMultiAZObservability(this, "basic-service-", new BasicServiceMultiAZObservabilityProps() {             
                 ApplicationLoadBalancerProps = new ApplicationLoadBalancerDetectionProps() {
-                    ApplicationLoadBalancers = [ this.LoadBalancer ],
+                    AlbTargetGroupMap = [
+                        new AlbTargetGroupMap() {
+                            ApplicationLoadBalancer = this.LoadBalancer,
+                            TargetGroups = [
+                                this.EC2Stack.TargetGroup,
+                                this.EKSStack.EKSAppTargetGroup
+                            ]
+                        }
+                    ],
                     LatencyStatistic = Stats.Percentile(99),
                     FaultCountPercentThreshold = 1,
                     LatencyThreshold = Duration.Millis(500)
@@ -357,7 +366,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             #endregion
         }
 
-        internal static IService CreateService(ILoadBalancerV2 loadBalancer, IVpc vpc, ILogGroup[] serverLogGroups)
+        internal static IService CreateService(ILoadBalancerV2 loadBalancer, IVpc vpc, ILogGroup[] serverLogGroups, IApplicationTargetGroup[] targetGroups = null)
         {
             var newService = new Service(new ServiceProps()
             {
@@ -367,6 +376,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 AvailabilityZoneNames = vpc.AvailabilityZones,
                 Period = Duration.Seconds(60),
                 LoadBalancer = loadBalancer,
+                TargetGroups = targetGroups,
                 DefaultAvailabilityMetricDetails = new ServiceAvailabilityMetricDetails(new ServiceAvailabilityMetricDetailsProps()
                 {
                     AlarmStatistic = "Sum",
