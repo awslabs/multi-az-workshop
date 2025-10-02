@@ -4,10 +4,10 @@ on:
     types: [opened, synchronize]
     branches:
       - main
-    paths:
-      - app-src/**
-      - cdk/**
-      - .github/workflows/build.yml
+    #paths:
+    #  - app-src/**
+    #  - cdk/**
+    #  - .github/workflows/build.yml
         
 permissions: {}
 
@@ -16,7 +16,7 @@ jobs:
   build:
     permissions:
       contents: read
-    #runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
+
     runs-on: ubuntu-24.04-arm
 
     env:
