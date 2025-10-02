@@ -94,7 +94,7 @@ jobs:
         run: |
           START_TIME=$(date +%s)
 
-          SELF_JOB_NAME="auto-approve"
+          SELF_JOB_NAME="approve"
 
           while true; do
             echo "🔍 Checking status of check runs for $SHA"
