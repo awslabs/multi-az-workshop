@@ -95,38 +95,44 @@ jobs:
           START_TIME=$(date +%s)
 
           SELF_JOB_NAME="auto-approve"
-          
+
           while true; do
             echo "🔍 Checking status of check runs for $SHA"
-          
+
             CHECK_RUNS=$(gh api repos/${{ github.repository }}/commits/$SHA/check-runs --paginate \
               --jq '[.check_runs[] | select(.name != "'"$SELF_JOB_NAME"'")]')
-          
+
+            echo "📋 All check run statuses:"
+            echo "$CHECK_RUNS" | jq -r '.[] | "- \(.name): \(.status) / \(.conclusion)"'
+
             FAILED=$(echo "$CHECK_RUNS" | jq '[.[] | select(.conclusion == "failure" or .conclusion == "cancelled" or .conclusion == "timed_out")] | length')
             PENDING=$(echo "$CHECK_RUNS" | jq '[.[] | select(.status != "completed")] | length')
-          
+
             echo "Pending checks (excluding this job): $PENDING"
             echo "Failed checks: $FAILED"
-          
+
             if [ "$FAILED" -gt 0 ]; then
               echo "❌ One or more required checks failed."
               echo "conclusion=failure" >> "$GITHUB_OUTPUT"
               break
             fi
-          
+
             if [ "$PENDING" -eq 0 ]; then
               echo "✅ All required checks (excluding this job) have completed successfully."
               echo "conclusion=success" >> "$GITHUB_OUTPUT"
               break
+            else
+              echo "⏳ Still waiting on the following checks:"
+              echo "$PENDING_CHECKS" | jq -r '.[] | "- \(.name): \(.status)"'
             fi
-          
+
             ELAPSED=$(( $(date +%s) - START_TIME ))
             if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
               echo "⏰ Timeout reached while waiting for checks."
               echo "conclusion=timed_out" >> "$GITHUB_OUTPUT"
               break
             fi
-          
+
             sleep $INTERVAL
           done
 
