@@ -28,6 +28,8 @@ jobs:
       TERMINATING_STATUS: "completed,action_required,cancelled,failure,neutral,skipped,stale,success,timed_out"
 
     steps:
+      
+      # ✅ STEP 1: Wait for build workflow to complete
       - name: Wait for Build to Complete
         id: wait-for-build
         run: | 
@@ -40,10 +42,10 @@ jobs:
 
             if [ -z "$WORKFLOW_RUN" ]; then
               echo "No build workflow run found for commit $SHA."
-              echo "conclusion=skipped" >> "$GITHUB_OUTPUT"
+              echo "conclusion=success" >> "$GITHUB_OUTPUT"
 
               {
-                  echo "conclusion=skipped"
+                  echo "conclusion=success"
                   echo "sha=$SHA"
               } >> builddata.txt
 
@@ -86,13 +88,67 @@ jobs:
             sleep $INTERVAL
           done
 
-      - name: Fail If Build Did Not Succeed
-        id: fail
-        if: ${{ !contains('success,neutral,skipped', steps.wait-for-build.outputs.conclusion) }}
+      # ✅ STEP 2: Wait for all required checks to complete
+      - name: Wait for Required Checks to Complete
+        id: wait-for-required-checks
         run: |
-          echo "❌ Build workflow failed. Conclusion: ${{ steps.wait-for-build.outputs.conclusion }}"
+          START_TIME=$(date +%s)
+
+          SELF_JOB_NAME="approve"
+
+          while true; do
+            echo "🔍 Checking status of check runs for $SHA"
+
+            CHECK_RUNS=$(gh api repos/${{ github.repository }}/commits/$SHA/check-runs --paginate \
+              --jq '[.check_runs[] | select(.name != "'"$SELF_JOB_NAME"'")]')
+
+            echo "📋 All check run statuses:"
+            echo "$CHECK_RUNS" | jq -r '.[] | "- \(.name): \(.status) / \(.conclusion)"'
+
+            FAILED=$(echo "$CHECK_RUNS" | jq '[.[] | select(.conclusion == "failure" or .conclusion == "cancelled" or .conclusion == "timed_out")] | length')
+            PENDING=$(echo "$CHECK_RUNS" | jq '[.[] | select(.status != "completed")] | length')
+
+            echo "Pending checks (excluding this job): $PENDING"
+            echo "Failed checks: $FAILED"
+
+            if [ "$FAILED" -gt 0 ]; then
+              echo "❌ One or more required checks failed."
+              echo "conclusion=failure" >> "$GITHUB_OUTPUT"
+              break
+            fi
+
+            if [ "$PENDING" -eq 0 ]; then
+              echo "✅ All required checks (excluding this job) have completed successfully."
+              echo "conclusion=success" >> "$GITHUB_OUTPUT"
+              break
+            else
+              echo "⏳ Still waiting on the following checks:"
+              echo "$PENDING_CHECKS" | jq -r '.[] | "- \(.name): \(.status)"'
+            fi
+
+            ELAPSED=$(( $(date +%s) - START_TIME ))
+            if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
+              echo "⏰ Timeout reached while waiting for checks."
+              echo "conclusion=timed_out" >> "$GITHUB_OUTPUT"
+              break
+            fi
+
+            sleep $INTERVAL
+          done
+
+      # ❌ STEP 3: Fail if either the build or the required checks failed
+      - name: Fail If Checks or Build Failed
+        id: fail
+        if: |
+          steps.wait-for-build.outputs.conclusion != 'success' ||
+          steps.wait-for-required-checks.outputs.conclusion != 'success'
+        run: |
+          echo "❌ Build or required checks did not succeed."
+          echo "Build status: ${{ steps.wait-for-build.outputs.conclusion }}"
+          echo "Checks status: ${{ steps.wait-for-required-checks.outputs.conclusion }}"
           exit 1
           
+      # ✅ STEP 4: Auto-approve if
       - name: Auto-Approve PR
         id: auto-approve
         uses: hmarr/auto-approve-action@v2.2.1
@@ -100,6 +156,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      # 📝 STEP 5: Optional - Upload log info
       - name: Upload data artifact
         id: create-artifact
         uses: actions/upload-artifact@v4
