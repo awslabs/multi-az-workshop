@@ -18,19 +18,19 @@ You can adapt these strategies and patterns for your own services to operate mor
 
 ## Workshop flow
 
-1. **Lab 1 -** You'll start by reviewing the operational metrics dashboards for the environment. This will present how availability and latency are being measured and tracked.
+- **Lab 1 -** You'll start by reviewing the operational metrics dashboards for the environment. This will present how availability and latency are being measured and tracked.
 
-2. **Lab 2 -** You'll inject a failure and observe its impact. Then you'll make changes to the application's architecture to implement AZI that will help contain the scope of impact from future zonal impairments.
+- **Lab 2 -** You'll inject a failure and observe its impact. Then you'll make changes to the application's architecture to implement AZI that will help contain the scope of impact from future zonal impairments.
 
-3. **Lab 3 -** After implementing AZI, you'll inject a single-AZ impairment using AWS Fault Injection Service (FIS).
+- **Lab 3 -** After implementing AZI, you'll inject a single-AZ impairment using AWS Fault Injection Service (FIS).
 
-4. **Lab 4 -** You will perform a zonal shift to mitigate the impact of the single-AZ impairment.
+- **Lab 4 -** You will perform a zonal shift to mitigate the impact of the single-AZ impairment.
 
-5. **Lab 5 -** In this lab, you will enable zonal autoshift on your resources and conduct a practice run.
+- **Lab 5 -** In this lab, you will enable zonal autoshift on your resources and conduct a practice run.
 
-6. **Lab 6 -** Next you'll use the Automatic Target Weights (ATW) feature of ALB to automatically detect and recover from a gray failure.
+- **Lab 6 -** Next you'll use the Automatic Target Weights (ATW) feature of ALB to automatically detect and recover from a gray failure.
 
-7. **Lab 7 -** You will introduce a deployment related failure so you can see how the same obervability and recovery patterns can be used for both infrastructure impairments as well as deployment related problems.
+- **Lab 7 -** You will introduce a deployment related failure so you can see how the same obervability and recovery patterns can be used for both infrastructure impairments as well as deployment related problems.
 
 ## Architecture
 This workload is representative of a traditional 3-tier web architecture, shown below.
