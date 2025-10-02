@@ -6,7 +6,7 @@ In order to take better advantage of the fault isolation that AZs offer, we need
 
 ![wild-rydes-original-architecture](/static/wild-rydes-original-architecture.png)
 
-You can see that in our APIs, the Application Load Balancer is using cross-zone load balancing. This means each load balancer node distributes traffic across the registered targets in all registered Availability Zones. When cross-zone load balancing is off, each load balancer node distributes traffic only across the registered targets in its Availability Zone. There are tradeoffs to consider when disabling cross-zone load balancing (described in [How Elastic Load Balancing works](https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/how-elastic-load-balancing-works.html)), but for our service, we're choosing the smaller, predictable scope of impact offered by AZI.
+You can see that in our APIs, the Application Load Balancer is using cross-zone load balancing. This means each load balancer node distributes traffic across the registered targets in all Availability Zones. When cross-zone load balancing is off, each load balancer node distributes traffic only across the registered targets in its Availability Zone. There are tradeoffs to consider when disabling cross-zone load balancing (described in [How Elastic Load Balancing works](https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/how-elastic-load-balancing-works.html)), but for our service, we're choosing to have cross-zone disabled. This helps prevent failures originating from targets say in AZ2 from being observed when the request is processed by the ALB node in AZ1. 
 
 Additionally, you can see that the pods running on EKS can talk to pods in other AZs. We will also update the architecture to keep their traffic within the same AZ.
 
@@ -27,25 +27,32 @@ Then, navigate to the [AWS FIS experiments console](https://console.aws.amazon.c
 
 ![fis-az-target](/static/fis-az-target.png)
 
-In this experiment, you can see it's only targeting instances in `us-east-2a` using the *`Placement.AvailabilityZone`* filter (your random AZ may be different). Now let's go to our dashboards and see what is being impacted, [CloudWatch Dasboards console](https://console.aws.amazon.com/cloudwatch/home#dashboards/). Select the *`wildrydes-ride-availability-and-latency-<region>`* dashboard. We're picking this one in particular because we know this operation interacts with the Aurora database. Scroll down to the *Server-side Metrics* section. You can see here that there is latency impact in a single AZ, but it's also raising the overall p99 latency for the region.
+In this experiment, you can see it's only targeting instances in `us-east-2a` using the *`Placement.AvailabilityZone`* filter (your random AZ may be different). Now let's go to our [dashboards](https://console.aws.amazon.com/cloudwatch/home#dashboards/) and see what is being impacted. Select the *`wildrydes-ride-availability-and-latency-<region>`* dashboard. We're picking this one in particular because we know this operation interacts with the Aurora database. Scroll down to the *Server-side Metrics* section. You can see here that there is latency impact in a single AZ, but it's also raising the overall p99 latency for the region.
 
 ![server-side-single-az-high-latency](/static/server-side-single-az-high-latency.png)
 
-Let's validate what customers of Wild Rydes are experiencing by scrolling down to the *Canary Metrics* section. 
+From the server-side perspective, it looks like there's only impact in one AZ. Let's validate what customers of Wild Rydes are experiencing by scrolling down to the *Canary Metrics* section. 
 
 ![canary-single-az-high-latency](/static/canary-single-az-high-latency.png)
 
-This graph is showing the measured latency from our synthetic canaries. The regional latency measurement targets the ALB's regional endpoint, while each of the zonal latency charts are derived from requests using the ALB's [zonal DNS names](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html#dns-name) (although the link is for NLB documentation, the same DNS names exist for ALBs as well) like `us-east-2a.myalb-name-and-hash.elb.us-east-2.amazonaws.com`. In both cases, we can see that from a customer-perspective the impact is regional. No matter which AZ a customer interacts with, they see impact even though the fault is only being applied to instances in a single AZ. When their request gets sent to an ALB node in `us-east-2b`, the request can still be routed to an EC2 instance in `us-east-2a` where the impact is originating. 
+Our canaries, and hence our customers, are having a different experience than the server-side metrics are indicating. We can see that from the canary's perspective that there's regional impact; it appears that all three AZs are impacted. The way the canary is making this determination is by testing the A record ELB provides for our ALB, i.e. `myalb-name-and-hash.elb.us-east-2.amazonaws.com` as well as the [zonal DNS names](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html#dns-name) (although the link is for NLB documentation, the same DNS names exist for ALBs as well) like `us-east-2a.myalb-name-and-hash.elb.us-east-2.amazonaws.com`. So, in total, the canary is testing 4 endpoints for this application:
+
+- `https://myalb-name-and-hash.elb.us-east-2.amazonaws.com/ride`
+- `https://us-east-2a.myalb-name-and-hash.elb.us-east-2.amazonaws.com/ride`
+- `https://us-east-2b.myalb-name-and-hash.elb.us-east-2.amazonaws.com/ride`
+- `https://us-east-2c.myalb-name-and-hash.elb.us-east-2.amazonaws.com/ride`
+
+For each of these endpoints, the canary is observing a spike in p99 latency, so although we've introduced the failure in a single AZ, it's being propagated to every AZ. No matter which AZ a customer interacts with, they see impact. When their request gets sent to an ALB node in `us-east-2b`, the request can still be routed to an EC2 instance in `us-east-2a` where the impact is originating. 
 
 ::::alert{type="info" header="Transient latency spikes"}
-Although the canary witnesses transient latency spikes at p99, you can see on the Success Latency dashboard that after the experiment is started, all AZs and the regional endpoint consistently have elevated latency.
+Although the canary may see transient latency spikes at p99 before the experiment started, you can see on the Success Latency dashboard that after the experiment is started, all AZs and the regional endpoint consistently have elevated latency.
 ::::
 
-The other thing to note is that from the ALB's perspective, all of its targets in the target groups are healthy. You can see this on the [EC2 Target Group console](https://console.aws.amazon.com/ec2/home#TargetGroups). Select the target group configured for port 80. The ALB is configured to target the `/health` route of the service for its health check. This API doesn't trigger communication with the database, it is a shallow health check. This is the concept of *differential observability* in practice. From the ALB's perspective, the service is healthy, but from the customer's perspective, there's broad impact to the *`Ride`* operation.
+The other thing to note is that from the ALB's perspective, all of its targets in the target groups are healthy. You can see this on the [EC2 Target Groups console](https://console.aws.amazon.com/ec2/home#TargetGroups). Select the target group using the *Instance* target type. The ALB is configured to send health checks to the `/health` route of the application. This API doesn't trigger communication with the database, it is a shallow health check. This is the concept of *differential observability* in practice. From the ALB's perspective, the application is healthy, but from the customer's perspective, there's broad impact to the *`Ride`* operation.
 
 ![alb-targets-healthy](/static/alb-targets-healthy.png)
 
-As you can see, determining the scope of impact and identifying what is going wrong can be a complex challenge even with a relatively simple service with a small number of failure modes. To make our multi-AZ architecture more effective and this observability challenge easier, we want the scope of impact to be smaller than the whole Region when these types of events occur; to do so we'll implement AZI in our service.
+As you can see, determining the scope of impact and identifying what is going wrong can be a complex challenge even with a relatively simple service with a small number of failure modes. To make our multi-AZ architecture more effective and this observability challenge easier, we want the scope of impact to be smaller than the whole Region when these types of events occur; to do so we'll implement AZI in the Wild Rydes application.
 
 ::::alert{type="info" header="End experiment"}
 At this point, if the AWS FIS experiment has not already automatically terminated, please end it before moving on. You can stop it by clicking *`Stop experiment`* in the AWS FIS console.
@@ -54,7 +61,7 @@ At this point, if the AWS FIS experiment has not already automatically terminate
 ::::
 
 ## Implementing AZI for your ALB's target groups
-Next, navigate to the [Target Groups console](https://console.aws.amazon.com/ec2/home#TargetGroups). You should have two target groups, one for the EC2 auto scaling group and one for your EKS cluster. Select the one that is named like "*`multi-front-`*". Then click the *`Attributes`* tab. You can see that cross-zone load balancing is enabled for this target group.
+In the Target Groups console you should have two target groups, one for the EC2 auto scaling group and one for your EKS cluster. Select the one that is named like "*`multi-front-`*". Then click the *`Attributes`* tab. You can see that cross-zone load balancing is enabled for this target group.
 
 ![ec2-target-cross-zone-on](/static/ec2-target-cross-zone-on.png)
 
@@ -62,7 +69,7 @@ Click the *Edit* button, turn cross-zone load balancing off, and then click *Sav
 
 ![cross-zone-off](/static/cross-zone-off.png)
 
-Do the same thing for the other target group whose name starts with "*`multi-EKSAp-`*". Once that is complete, you've disabled cross-zone load balancing for all of the target groups behind your ALB. This means requests received by an ALB node in one AZ will only send traffic to EC2 and EKS nodes in the same AZ. That's our first step in implementing AZI. If we were using VPC endpoints or other zonal services in our service, we'd want to be sure our compute resources and the code they are running were configured to use the resource in the same AZ that they are located in.
+Do the same thing for the other target group whose name starts with "*`multi-EKSAp-`*". Once that is complete, you've disabled cross-zone load balancing for all of the target groups behind your ALB. This means requests received by an ALB node in one AZ will only send traffic to EC2 and EKS nodes in the same AZ. That's our first step in implementing AZI. If we were using VPC endpoints or other zonal services in our application, we'd want to be sure our compute resources and the code they are running were configured to use the resource in the same AZ that they are located in.
 
 ## Implementing AZI for Istio on EKS
 
@@ -72,7 +79,7 @@ One of the operations hosted as a pod on our EKS cluster, *`Signin`* interacts w
 service.kubernetes.io/topology-mode: auto
 ```
 
-However, this only causes the default routing logic to prefer destinations in the same AZ, but doesn't enforce it. If there isn't an endpoint available in the same zone, it will route to other zones, which could cascade failure. In order to enforce AZI, we actually want to override this behavior. To do so, we'll use a `DestinationRule` with Istio to achieve AZI within the EKS cluster. A [`DestinationRule`](https://istio.io/latest/docs/reference/config/networking/destination-rule/) supports defining how traffic is distributed from source to destination based on the applied labels of a service.
+However, this only causes the default routing logic to prefer destinations in the same AZ, but doesn't enforce it. If there isn't an endpoint available in the same zone, it will route to other zones, which could cascade failure. In order to enforce AZI, we may want to override this behavior. To do so, we'll use a `DestinationRule` with Istio to achieve AZI within the EKS cluster. A [`DestinationRule`](https://istio.io/latest/docs/reference/config/networking/destination-rule/) supports defining how traffic is distributed from source to destination based on the applied labels of a service.
 
 ```yaml
 apiVersion: networking.istio.io/v1beta1
@@ -180,7 +187,7 @@ Now, your architecture looks like this and prevents traffic at the application t
 2. [Istio Locality Load Balancing](https://istio.io/latest/docs/tasks/traffic-management/locality-load-balancing/) - Locality load balancing provides [three options](https://istio.io/latest/docs/reference/config/networking/destination-rule/#LocalityLoadBalancerSetting) for specifying how traffic is routed in a `DestinationRule` or as part of the Global Mesh Config. The first is `failoverPriority`. This allows you to prioritize what endpoints are used, but it doesn't enforce only using endpoints in the same zone. The next option is `failover`. Zone and sub-zone failover is supported by default, so this only needs to be specified for regions when the operator needs to constrain traffic failover. While same zone routing is preferred using this option, it is not enforced. The third option is `distribute`. This is the option we chose to use because we can specify 100% of the traffic is only routed to the same zone, and if no endpoints are available, the requests fail. For AZI to be effective, we actually want all of the resources in a single AZ to fail together. However, you should consider your own use cases, pod distribution, and desired failure modes.
 ::::
 
-One other important consideration is to make sure that we have pods in each AZ so that requests can be handled in the same AZ that the load balancer receives them. To do that, we're going to use [`topologySpreadConstraints`](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/) in our deployment definition. 
+One other important consideration is to make sure that we have pods in each AZ so that requests can be handled in the same AZ that the load balancer receives them. To do that, we use [`topologySpreadConstraints`](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/) in our deployment definition. 
 
 ```yaml
 apiVersion: app/v1

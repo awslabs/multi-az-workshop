@@ -20,6 +20,8 @@ additionalLinks:
     link: https://aws.amazon.com/blogs/networking-and-content-delivery/using-cross-zone-load-balancing-with-zonal-shift/
   - title: Multi-AZ Observability CDK Construct
     link: https://github.com/bamcis-io/multi-az-observability/
+  - title: Improving availability with Application Load Balancer automatic target weights
+    link: https://aws.amazon.com/blogs/networking-and-content-delivery/improving-availability-with-application-load-balancer-automatic-target-weights/
 awsAccountConfig:
   accountSources:
     - WorkshopStudio

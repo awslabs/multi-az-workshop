@@ -7,4 +7,5 @@ Many customer run their workloads in highly available, multi-Availability Zone (
 
 1. How to build architectures than can contain failures to a single AZ
 2. How to detect single AZ impairments
-3. How to mitigate their impacts when they occur
+3. How to test multi-AZ applications for single-AZ impairments
+4. How to mitigate their impacts when they occur

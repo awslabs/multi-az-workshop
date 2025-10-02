@@ -47,28 +47,26 @@ In this case, the failure was simulated for the ```use2-az1``` AZ. Let's see if 
 
 ![service-server-side-single-az-high-latency](/static/service-server-side-single-az-high-latency.png)
 
-Now that we've pinpointed the impacted operation, let's check its dashboard to confirm the impact matches what we observed at the service level. Scroll back to the top of the service dashboard and open the `Ride` operation dashboard from the link there. The alarms here confirm what we saw on the service level dashboard. There's impact occuring, but it's scope is limited to a single AZ.
+Now that we've pinpointed the impacted operation, let's check its dashboard to confirm the impact matches what we observed at the service level. Scroll back to the top of the service dashboard and open the `Ride` operation dashboard from the link there. The alarms here confirm what we saw on the service level dashboard. There's impact occuring, but its scope is limited to a single AZ.
 
 ![ride-operation-alarms](/static/ride-operation-alarms.png)
 
-Scroll down the dashboard and review the server-side metrics. You should be able to confirm how the additional latency is impacting the `Ride` operation. Next, let's scroll down to the canary metrics to see how this failure is impacting the customer experience for the `Ride` operation.
+Scroll down the dashboard and review the server-side metrics. You should be able to confirm how the additional latency is impacting the `Ride` operation. Next, let's scroll down to the canary metrics to see how this failure is impacting the customer experience.
 
 ![ride-operation-canary-high-latency](/static/ride-operation-canary-high-latency.png)
 
-This perspective reveals that the increased latency in `use2-az1` is also impacting the p99 latency all clients experience when accessing the service in `us-east-2` through the regional ALB endpoint. In fact, the canary alarms show that there's latency impact from testing both the zonal endpoint for `use2-az1` and the regional endpoint.
+The canary perspective tells us 2 things. First, we can see that the impact is still affecting all customers that access the application through the ALB's regional DNS record. This is to be expected, 33% of the requests using the *`Round robin`* load balancing algorithm are going to land on the ALB node in the impacted AZ. Second, we can see that only the per-zone canary tests are only seeing impact in the AZ where we have injected the failure. This means that our AZI implementation was successful in preventing failure from cascading from one AZ to the others. Our alarms validate these observations.
 
 ![ride-operation-canary-high-latency-alarms](/static/ride-operation-canary-high-latency-alarms.png)
 
-This is to be expected. When accessing the service through the regional load balancer endpoint, requests are routed to each AZ the load balancer is deployed in, so with cross-zone load balancing disabled, 33% of those requests get sent to the impaired AZ. But our AZI implementation is preventing the faults from cascading into the other two AZs, which is what we wanted to achieve. We'll come back to these metrics after we mitigate the problem.
-
-### Review composite alarm definition
+#### Review composite alarm definition
 Next, review the structure of the composite alarm that indicates we have isolated AZ impact. Go to the top of the dashboard and click on the alarm widget for the zonal isolated impact alarm and right click *`View details page`* to open it in a new tab.
 
 ![alarm-details](/static/alarm-details.png)
 
-We can see that both the server-side and canary alarms are in the `ALARM` state, confirming that both perspectives see the impact of the failure. If you recall, one of the requirements for the server-side alarm to identify single AZ impact was to ensure more than one server was being impacted. Said another way, we want to ensure that the failure impact is seen broadly in that AZ. Otherwise, replacing a single bad instance is a more efficient mitigation strategy. The next section will explore that specific requirement.
+We can see that both the server-side and canary alarms are in the `ALARM` state, confirming that both perspectives see the impact of the failure. One of the requirements for the server-side alarm to identify single AZ impact was to ensure more than one server was being impacted. Said another way, we want to ensure that the failure impact is seen broadly in that AZ. Otherwise, replacing a single bad instance is a more efficient mitigation strategy. The next section will explore that specific requirement.
 
-### Look at Contributor Insights Data
+#### Look at Contributor Insights Data
 
 Click the link for the *`<az>-ride-isolated-impact-alarm-server`* child alarm. In this composite alarm page, click the link for the *`<az>-ride-multiple-instances-high-latency-server`* child alarm. On this page, look at the *Math expression* in the alarm *Details* pane.
 
@@ -82,74 +80,58 @@ The first parameter of the `INSIGHT_RULE_METRIC` CloudWatch metric math function
 Depending on how much time has passed since you simulated the failure, you may want to decrease the displayed time range to 5 or 15 minutes to see more detail in the graph.
 ::::
 
-This graph shows us that two instances started to return responses that exceed the defined latency threshold. This helps us know that the impact is more than a single instance. In fact, for this workshop, the impact is seen by every instance in the AZ. Feel free to examine the rule's definition. We are able to use Contributor Insights because the application is writing CloudWatch Logs using the [Embedded Metric Format](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Embedded_Metric_Format_Specification.html) (EMF). EMF provides a single approach for both producing structured logs as well as extracting custom CloudWatch metrics from those logs. This allows us to create CloudWatch dashboards and alarms on the embedded metric data as well as query the logs with tools like Contributor Insights and [Log Insights](https://console.aws.amazon.com/cloudwatch/home?#logsV2:logs-insights) in a single solution. You can use EMF with applications running on [EC2, ECS, EKS, and Lambda](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Embedded_Metric_Format_Generation_CloudWatch_Agent.html). Here's an example of the logs produced by the EKS pods in the Wild Rydes fleet.
+This graph shows us that two instances started to return responses that exceed the defined latency threshold. This helps us know that the impact is more than a single instance. In fact, for this workshop, the impact is seen by every instance in the AZ. We are able to use Contributor Insights because the application is writing CloudWatch Logs using the [Embedded Metric Format](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Embedded_Metric_Format_Specification.html) (EMF), just like the canary is. 
+
+Contributor Insights lets us visualize the Top-N contributors to high cardinality metrics. In this case, we want to look at instance contributors to high latency. This is the Contributor Insights rule:
 
 ```json
 {
-    "_aws": {
-        "Timestamp": 1719073281270,
-        "CloudWatchMetrics": [
-            {
-                "Namespace": "multi-az-workshop/frontend",
-                "Metrics": [
-                    {
-                        "Name": "SuccessLatency",
-                        "Unit": "Milliseconds"
-                    },
-                    {
-                        "Name": "Success",
-                        "Unit": "Count"
-                    },
-                    {
-                        "Name": "Fault",
-                        "Unit": "Count"
-                    },
-                    {
-                        "Name": "Error",
-                        "Unit": "Count"
-                    },
-                    {
-                        "Name": "Failure",
-                        "Unit": "Count"
-                    }
-                ],
-                "Dimensions": [
-                    [
-                        "Operation",
-                        "Region",
-                        "AZ-ID"
-                    ],
-                    [
-                        "Operation",
-                        "Region"
-                    ]
-                ]
-            }
-        ],
-        "LogGroupName": "/multi-az-workshop/frontend"
+    "Schema": {
+        "Name": "CloudWatchLogRule",
+        "Version": 1
     },
-    "RequestId": "9aeb228b-5833-4c4a-90a2-b4efe86f9bdb",
-    "InstanceId": "multi-az-workshop-app-7bfcb9657f-vhscl",
-    "Ec2InstanceId": "i-0623c1307f7d06028",
-    "AZ": "us-east-2a",
-    "HttpStatusCode": 200,
-    "Host": "us-east-2a.internal-multi--alb8a-ghkyzldbal7g-1689442580.us-east-2.elb.amazonaws.com",
-    "SourceIp": "192.168.0.145",
-    "XRayTraceId": "Self=1-6676fa01-2362a70c18704d6560ea5c7f;Root=1-6676f9f4-17945ac70e1cea2158bf253f;Parent=44dc880efaeade3c;Sampled=1;Lineage=00f48b1e:0",
-    "TraceId": "00-e59bc76562570eda97f5f003edb009ad-aa6c83f6b69ded41-00",
-    "Path": "/home",
-    "OneBox": false,
-    "Operation": "Home",
-    "Region": "us-east-2",
-    "AZ-ID": "use2-az1",
-    "LogGroupName": "/multi-az-workshop/frontend",
-    "SuccessLatency": 18,
-    "Success": 1,
-    "Fault": 0,
-    "Error": 0,
-    "Failure": 0
+    "AggregateOn": "Count",
+    "Contribution": {
+        "Keys": ["$.InstanceId"],
+        "Filters":[
+            {"Match": "$.AZ-ID", "In": ["use2-az1"]},
+            {"Match": "$.Operation", "In": ["Ride"]},
+            {"Match": "$.SuccessLatency", "GreaterThan": 350}
+        ]
+    },
+    "LogFormat":"JSON",
+    "LogGroupNames":["/multi-az-workshop/frontend"]
 }
 ```
+
+It filters our log files against the rules and then counts the number of matches per instance id. Navigate to the server-side log group [here](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups/log-group/$252Fmulti-az-workshop$252Ffrontend). Then select one of the log streams and review the format of the log files. Because we have log data and metric data combined into one solution, we query and filter this metric data using log analysis tools like Contributor Insights or Log Insights. Contributor Insights rules are only evaluated against log data as it is ingested, it isn't applied retroactively to existing logs. If you haven't pre-materialized those type of rules, you can run ad-hoc Log Insights queries. Navigate to the [Log Insights console](https://console.aws.amazon.com/cloudwatch/home#logsV2:logs-insights). See if you can write a Log Insights QL or OpenSearch SQL statement to identify the top contributors to Latency in the Ride operation.
+
+::::expand{header="Solution"}
+
+Log Insights QL:
+```
+fields InstanceId
+| filter SuccessLatency > 350 and Operation = "Ride"
+| stats count() by InstanceId
+```
+
+Optional Log Insights QL with AZ-ID of each instance:
+```
+fields InstanceId, `AZ-ID`
+| filter SuccessLatency > 350 and Operation = "Ride"
+| stats count() by InstanceId, `AZ-ID`
+```
+
+OpenSearch SQL statement:
+```sql
+SELECT InstanceId, count(*) FROM `/multi-az-workshop/frontend` WHERE SuccessLatency>350 AND Operation="Ride" GROUP BY InstanceId
+```
+
+Optional OpenSearch SQL statement with AZ-ID of each instance:
+```sql
+SELECT InstanceId, `AZ-ID`, count(*) FROM `/multi-az-workshop/frontend` WHERE SuccessLatency>350 AND Operation="Ride" GROUP BY InstanceId, `AZ-ID`
+```
+::::
 
 # Conclusion
 After simulating the zonal failure, we can see that the changes you made to the Wild Rydes architecture correctly isolates the scope of impact to a single AZ. Our alarms were also able to detect the impact and correctly identified that the AZ was an outlier for latency and was being caused by more than one instance. In the next lab we will start to take action to mitigate the impact to customers.
