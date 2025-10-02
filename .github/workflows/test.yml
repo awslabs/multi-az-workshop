@@ -50,6 +50,7 @@ jobs:
             echo "should_deploy=false" >> $GITHUB_OUTPUT
           else
             echo "should_deploy=true" >> $GITHUB_OUTPUT
+          fi
 
           PR_SHA=$(grep '^sha=' builddata.txt | cut -d'=' -f2)
           echo "pr_sha=$PR_SHA" >> $GITHUB_OUTPUT
