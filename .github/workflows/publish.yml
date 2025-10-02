@@ -186,7 +186,7 @@ jobs:
           # Extract the version numbers from the tag (e.g., v1.2.3 -> [1, 2, 3])
           tag="${latest_tag//v/}"  # Remove 'v' prefix
           prerelease_label_input="${{ inputs.prerelease }}"
-          regex="^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-((0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\+([0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*))?$"
+          regex='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9A-Za-z-][0-9A-Za-z-]*))*))?(\+([0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*))?$'
      
           if [[ "$tag" =~ $regex ]]; then
             major="${BASH_REMATCH[1]}"  # major
