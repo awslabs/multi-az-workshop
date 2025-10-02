@@ -40,6 +40,8 @@ jobs:
 
             if [ -z "$WORKFLOW_RUN" ]; then
               echo "No build workflow run found for commit $SHA."
+              echo "conclusion=skipped"
+              break
             else
               STATUS=$(echo "$WORKFLOW_RUN" | jq -r '.conclusion')
               RUN_NUMBER=$(echo "$WORKFLOW_RUN" | jq -r '.run_number')
