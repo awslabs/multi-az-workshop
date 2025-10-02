@@ -94,27 +94,39 @@ jobs:
         run: |
           START_TIME=$(date +%s)
 
+          SELF_JOB_NAME="auto-approve"
+          
           while true; do
-            STATUS_STATE=$(gh api repos/${{ github.repository }}/commits/$SHA/status \
-              --jq '.state')
-
-            echo "Combined status: $STATUS_STATE"
-
-            if [[ "$STATUS_STATE" == "success" ]]; then
-              echo "conclusion=success" >> "$GITHUB_OUTPUT"
-              break
-            elif [[ "$STATUS_STATE" == "failure" ]]; then
+            echo "🔍 Checking status of check runs for $SHA"
+          
+            CHECK_RUNS=$(gh api repos/${{ github.repository }}/commits/$SHA/check-runs --paginate \
+              --jq '[.check_runs[] | select(.name != "'"$SELF_JOB_NAME"'")]')
+          
+            FAILED=$(echo "$CHECK_RUNS" | jq '[.[] | select(.conclusion == "failure" or .conclusion == "cancelled" or .conclusion == "timed_out")] | length')
+            PENDING=$(echo "$CHECK_RUNS" | jq '[.[] | select(.status != "completed")] | length')
+          
+            echo "Pending checks (excluding this job): $PENDING"
+            echo "Failed checks: $FAILED"
+          
+            if [ "$FAILED" -gt 0 ]; then
+              echo "❌ One or more required checks failed."
               echo "conclusion=failure" >> "$GITHUB_OUTPUT"
               break
             fi
-
+          
+            if [ "$PENDING" -eq 0 ]; then
+              echo "✅ All required checks (excluding this job) have completed successfully."
+              echo "conclusion=success" >> "$GITHUB_OUTPUT"
+              break
+            fi
+          
             ELAPSED=$(( $(date +%s) - START_TIME ))
-            if [ $ELAPSED -ge $TIMEOUT ]; then
-              echo "Timeout waiting for required checks."
+            if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
+              echo "⏰ Timeout reached while waiting for checks."
               echo "conclusion=timed_out" >> "$GITHUB_OUTPUT"
               break
             fi
-
+          
             sleep $INTERVAL
           done
 
