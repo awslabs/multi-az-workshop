@@ -23,7 +23,7 @@ Next, navigate to our [EKS cluster](https://console.aws.amazon.com/eks/clusters/
 Select *Enabled* and *Save changes*. Now that all of our supported resources have zonal shift enabled, we can turn on autoshift.
 
 ## Configure zonal authoshift
-First, we need to get an alarm ARN that is used by zonal autoshift to stop practice runs in case there is impact. We'll use the *`wildrydes-impact-alarm`* since it is an aggregate alarm of any impact to the application. You can get its ARN from the console [here](https://console.aws.amazon.com/cloudwatch/home#alarmsV2:alarm/wildrydes-impact-alarm).
+First, we need to get an alarm ARN that is used by zonal autoshift to stop practice runs in case there is impact. We'll use the *`wildrydes-impact-alarm`* since it is an aggregate alarm for any impact to the application. You can get its ARN from the console [here](https://console.aws.amazon.com/cloudwatch/home#alarmsV2:alarm/wildrydes-impact-alarm).
 
 Next, navigate to the [ARC zonal autoshift console](https://console.aws.amazon.com/route53recovery/zonalshift/home#/autoshift).
 
@@ -49,14 +49,32 @@ Worker nodes are only authorized to delete pods that are running on themself for
 ::::
 
 ::::alert{type="info" header="Transient failures"}
-It's possible transient conditions could cause the practice run to fail, such as temporary elevated latency that transitions the alarm we picked into the `ALARM` state. Feel free to redo any practice you selected.
+It's possible transient conditions could cause the practice run to fail, such as temporary elevated latency that transitions the alarm we picked into the `ALARM` state. Feel free to redo any practice run you selected.
 ::::
 
 ## Review the results
 If there weren't any transient problems that occured, your practice run should have succeeded (if you chose to wait for the whole time), but it's not critical for the sake of the workshop if it didn't. The goal here was to understand how to enable autoshift and how practice runs are conducted. For ALB, you should have observed the same results as performing the zonal shift we did in the last lab, where there was a noticeable drop in requests being processed in the selected AZ. For auto scaling, you should have observed EC2 launching a new EC2 instance in one of the remaining AZs after you terminated one. After the practice run ended, auto scaling should have then rebalanced your auto scaling group evenly back into all AZs. For EKS, you should have observed a new pod being scheduled in a different AZ and when the practice run ended, the pods should have rebalanced.
 
 ## Turn on autoshift observer notifications
+Another feature of zonal autoshift is [observer notifications](https://docs.aws.amazon.com/r53recovery/latest/dg/arc-zonal-autoshift.how-it-works.notifications.html). You can choose to be notified about practice runs and autoshifts for your resource by setting up Amazon EventBridge notifications. You can set up EventBridge notifications even when you haven't enabled zonal autoshift for any resources. In case you don't want AWS to start the zonal shift for you, you can use the observer notifications as an input to when AWS starts or stops an autoshift for customers.
 
+Navigate to the [autoshift home page](https:/console.aws.amazon.com/route53recovery/zonalshift/home#/autoshift). Expand the *Getting started with zonal autoshift* and click *Set up zonal autoshift observer notifications*.
+
+![setup-observer-notifications](/static/setup-observer-notifications.png)
+
+Select the check box to *Enable zonal autoshift observer notification* and then select the default EventBridge event bus. You can either create EventBridge rules to process those events and trigger automation or define an SNS topic where you can receive emails or other alerts when AWS starts or stops an autoshift. For example, you could define a simple rule like this:
+
+```json
+{
+    "source": [
+        "aws.arc-zonal-shift"
+    ],
+    "detail-type": [
+        "Autoshift In Progress"
+    ]
+}
+```
+See the [zonal autoshift EventBridge documentation](https://docs.aws.amazon.com/r53recovery/latest/dg/eventbridge-zonal-autoshift.html) for more details.
 
 ## Conclusion
 Once you've completed your practice runs, you can move on to the next lab. Make sure you've ended all of your practice runs if you haven't already.

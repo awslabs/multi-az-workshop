@@ -3,14 +3,14 @@ title : "Lab 7: Simulate a deployment failure"
 weight : 80
 ---
 
-Up to now we've been injecting failures by adding latency. However, building AZI architectures and using zonal shift can be beneficial for other types of failures as well. In this lab, we'll create a new deployment of the application that gets deployed one AZ at a time. The deployment will fail and we can leverage zonal shift to recover the same way we did in the previous lab.
+Up to now we've been injecting failures by adding latency and packet loss to simulate infrastructure failures. However, building AZI architectures and using zonal shift can be beneficial for other types of failures as well. In this lab, we'll create a new version of the application and deploy it one AZ at a time. The deployment will fail and we can leverage zonal shift to recover the same way we did in the previous lab.
 
-::::alert{type="warning" header="End the zonal shift"} 
-If you did not end the zonal shift in the previous lab, please do so now.
+::::alert{type="warning" header="Clean up previous lab"} 
+If you did not end the zonal shift or the FIS experiment or reset the load balancer target groups' configurations in the previous lab, please do so now.
 ::::
 
 ## Start the deployment
-First, we need to register a new deployment artifact in CodeDeploy. First, get the bucket path that contains the assets for the workshop, it's stored in an SSM Parameter. Go to the [SSM Parameter Store console for the `DeploymentAsset` parameter](https://console.aws.amazon.com/systems-manager/parameters/DeploymentAsset/). Copy the string from the *`Value`* property, it should be something like:
+First, we need to register a new deployment artifact in CodeDeploy. Get the bucket path that contains the assets for the workshop, it's stored in an SSM Parameter. Go to the [SSM Parameter Store console for the `DeploymentAsset` parameter](https://console.aws.amazon.com/systems-manager/parameters/DeploymentAsset/). Copy the string from the *`Value`* property, it should be something like:
 
 ```
 s3://ws-assets-us-east-1/e9383b42-6c6f-416b-b50a-9313e476e372/assets/app_arm64_fail.zip
@@ -66,21 +66,19 @@ Go to the impacted operation's dashboard and confirm the impact there.
 ::::
 
 ## Perform a zonal shift
-
-Following the same steps you followed in the last lab, perform a zonal shift to mitigate the impact. Confirm that the impact has been mitigated by specifically looking at the canary availability metrics for the regional endpoint.
+Following the same steps you followed in Lab 4, perform a zonal shift to mitigate the impact. Confirm that the impact has been mitigated by specifically looking at the canary availability metrics for the regional endpoint.
 
 ::::expand{header="See the dashboard"}
 ![deployment-recovery-after-shift](/static/deployment-recovery-after-shift.png)
 ::::
 
-After the zonal shift, you should see the alarm that stopped the unsuccessful deployment transition back to the `OK` state. [Navigate to the CloudWatch alarms console](https://console.aws.amazon.com/cloudwatch/home?#alarmsV2:) and search for the alarm name, *`<region>-wildrydes-canary-availability-aggregate-alarm`*.
+After the zonal shift, you should see the alarm that stopped the unsuccessful deployment transition back to the `OK` state. [Navigate to the CloudWatch alarms console](https://console.aws.amazon.com/cloudwatch/home?#alarmsV2:) and search for the alarm name, *`wildrydes-server-side-regional-impact`*.
 
 ![after-redeployment](/static/after-redeployment.png)
 
 This indicates that we're able to start a rollback to the previous version.
 
 ## Rollback the deployment
-
 Now that we've mitigated the customer impact, we can rollback the deployment to recover the environment. Go to your [CodeDeploy application revisions](https://console.aws.amazon.com/codesuite/codedeploy/applications/multi-az-workshop/revisions).
 
 Select the revision named like *`app_arm64.zip`* and click *`Deploy application`*
@@ -94,9 +92,8 @@ Select the deployment group *`ZonalDeploymentGroup`* and select *`Overwrite the 
 Finally, click *`Create deployment`*. This will rollout the previous version of the application to all of the instances in the Auto Scaling group. After the deployment is complete in the first AZ, you should see availability return to 100%. This is the indication once again that you can end the zonal shift. Go ahead and do so now.
 
 ::::alert{type="info" header="Redeployment"}
-The redeployment will deploy to 1 instance at a time with bake time in between each AZ. This could take up to 30 minutes to complete. You do not need to wait for the entire deployment to complete, just the first AZ before ending the zonal shift and then moving on to the next lab. It's also possible that a transient condition affecting the canary could produce errors that cause the alarm to trigger and stop the deployment. If you experience this, you can attempt to redeploy the original revision again. You only need it to succeed on the instances in the first AZ.
+The redeployment will deploy to 1 instance at a time with bake time in between each AZ. This could take up to 30 minutes to complete. You do not need to wait for the entire deployment to complete, just the first AZ before ending the zonal shift and then moving on. It's also possible that a transient condition affecting the canary could produce errors that cause the alarm to trigger and stop the deployment. If you experience this, you can attempt to redeploy the original revision again. You only need it to succeed on the instances in the first AZ.
 ::::
 
 ## Conclusion
-
-In this lab you used zonal deployments with AWS CodeDeploy to contain the impact from a bad change to a single AZ. You were able to use the same observability and recovery tools for this type of failure as you did for the previous infrastructure failure. In a production environment, you can combine this approach with automated rollbacks to both quickly and safely mitigate the impact of failed deployments.
+In this lab you used zonal deployments with AWS CodeDeploy to contain the impact from a bad change to a single AZ. You were able to use the same observability and recovery tools for this type of failure as you did for the previous infrastructure failures. In a production environment, you can combine this approach with automated rollbacks to both quickly and safely mitigate the impact of failed deployments.
