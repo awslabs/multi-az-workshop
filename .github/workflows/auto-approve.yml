@@ -40,6 +40,14 @@ jobs:
 
             if [ -z "$WORKFLOW_RUN" ]; then
               echo "No build workflow run found for commit $SHA."
+              echo "conclusion=skipped" >> "$GITHUB_OUTPUT"
+
+              {
+                  echo "conclusion=skipped"
+                  echo "sha=$SHA"
+              } >> builddata.txt
+
+              break
             else
               STATUS=$(echo "$WORKFLOW_RUN" | jq -r '.conclusion')
               RUN_NUMBER=$(echo "$WORKFLOW_RUN" | jq -r '.run_number')
