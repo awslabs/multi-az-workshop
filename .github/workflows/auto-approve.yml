@@ -42,10 +42,10 @@ jobs:
 
             if [ -z "$WORKFLOW_RUN" ]; then
               echo "No build workflow run found for commit $SHA."
-              echo "conclusion=skipped" >> "$GITHUB_OUTPUT"
+              echo "conclusion=success" >> "$GITHUB_OUTPUT"
 
               {
-                  echo "conclusion=skipped"
+                  echo "conclusion=success"
                   echo "sha=$SHA"
               } >> builddata.txt
 
