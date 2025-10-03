@@ -117,7 +117,6 @@ jobs:
   wait_for_stack:
       runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
       needs: [ test ]
-      if: github.job.deployment.outputs.SHOULD_DEPLOY == 'true'
       env:
         CHANGE_SET: ${{ needs.test.outputs.CHANGE_SET }}
         STACK_NAME: ${{ needs.test.outputs.STACK_NAME }}
@@ -221,7 +220,7 @@ jobs:
           
   cleanup:
     runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
-    
+   
     needs: [ wait_for_stack, test, deployment ]
     
     if: ${{ always() && needs.test.outputs.S3_STATUS == 'success' }}
