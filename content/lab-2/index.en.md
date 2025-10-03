@@ -29,20 +29,26 @@ Then, navigate to the [AWS FIS experiments console](https://console.aws.amazon.c
 
 In this experiment, you can see it's only targeting instances in `us-east-2a` using the *`Placement.AvailabilityZone`* filter (your random AZ may be different). Now let's go to our [dashboards](https://console.aws.amazon.com/cloudwatch/home#dashboards/) and see what is being impacted. Select the *`wildrydes-ride-availability-and-latency-<region>`* dashboard. We're picking this one in particular because we know this operation interacts with the Aurora database. Scroll down to the *Server-side Metrics* section. You can see here that there is latency impact in a single AZ, but it's also raising the overall p99 latency for the region.
 
+::::alert{type="info" header="Dashboard refresh"}
+You may need to press the refresh button on the dashboard and/or wait a few minutes for the metrics to appear
+
+![dashboard-refresh](/static/dashboard-refresh.png)
+::::
+
 ![server-side-single-az-high-latency](/static/server-side-single-az-high-latency.png)
 
 From the server-side perspective, it looks like there's only impact in one AZ. Let's validate what customers of Wild Rydes are experiencing by scrolling down to the *Canary Metrics* section. 
 
 ![canary-single-az-high-latency](/static/canary-single-az-high-latency.png)
 
-Our canaries, and hence our customers, are having a different experience than the server-side metrics are indicating. We can see that from the canary's perspective that there's regional impact; it appears that all three AZs are impacted. The way the canary is making this determination is by testing the A record ELB provides for our ALB, i.e. `myalb-name-and-hash.elb.us-east-2.amazonaws.com` as well as the [zonal DNS names](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html#dns-name) (although the link is for NLB documentation, the same DNS names exist for ALBs as well) like `us-east-2a.myalb-name-and-hash.elb.us-east-2.amazonaws.com`. So, in total, the canary is testing 4 endpoints for this application:
+Our canaries, and hence our customers, are having a different experience than the server-side metrics are indicating. We can see that from the canary's perspective that there's regional impact; it appears that all three AZs are impacted. The way the canary is making this determination is by testing the DNS A record ELB provides for our ALB, e.g. `myalb-name-and-hash.elb.us-east-2.amazonaws.com` as well as the [zonal DNS names](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html#dns-name) (although the link is for NLB documentation, the same DNS names exist for ALBs) like `us-east-2a.myalb-name-and-hash.elb.us-east-2.amazonaws.com`. So, in total, the canary is testing 4 endpoints for this application:
 
 - `https://myalb-name-and-hash.elb.us-east-2.amazonaws.com/ride`
 - `https://us-east-2a.myalb-name-and-hash.elb.us-east-2.amazonaws.com/ride`
 - `https://us-east-2b.myalb-name-and-hash.elb.us-east-2.amazonaws.com/ride`
 - `https://us-east-2c.myalb-name-and-hash.elb.us-east-2.amazonaws.com/ride`
 
-For each of these endpoints, the canary is observing a spike in p99 latency, so although we've introduced the failure in a single AZ, it's being propagated to every AZ. No matter which AZ a customer interacts with, they see impact. When their request gets sent to an ALB node in `us-east-2b`, the request can still be routed to an EC2 instance in `us-east-2a` where the impact is originating. 
+For each of these endpoints, the canary is observing a spike in p99 latency, so although we've introduced the failure in a single AZ, it's being propagated to every AZ. So even if a customer's request lands on an ALB node in `us-east-2b`, it can still be routed to instances in `us-east-2a` where the impact is occuring.
 
 ::::alert{type="info" header="Transient latency spikes"}
 Although the canary may see transient latency spikes at p99 before the experiment started, you can see on the Success Latency dashboard that after the experiment is started, all AZs and the regional endpoint consistently have elevated latency.
@@ -54,14 +60,12 @@ The other thing to note is that from the ALB's perspective, all of its targets i
 
 As you can see, determining the scope of impact and identifying what is going wrong can be a complex challenge even with a relatively simple service with a small number of failure modes. To make our multi-AZ architecture more effective and this observability challenge easier, we want the scope of impact to be smaller than the whole Region when these types of events occur; to do so we'll implement AZI in the Wild Rydes application.
 
-::::alert{type="info" header="End experiment"}
-At this point, if the AWS FIS experiment has not already automatically terminated, please end it before moving on. You can stop it by clicking *`Stop experiment`* in the AWS FIS console.
+Please stop the running experiment by clicking *`Stop experiment`* in the AWS FIS console before moving on.
 
 ![stop-experiment](/static/stop-experiment.png)
-::::
 
 ## Implementing AZI for your ALB's target groups
-In the Target Groups console you should have two target groups, one for the EC2 auto scaling group and one for your EKS cluster. Select the one that is named like "*`multi-front-`*". Then click the *`Attributes`* tab. You can see that cross-zone load balancing is enabled for this target group.
+In the Target Groups console you should have two target groups, one for the EC2 auto scaling group and one for your EKS cluster. Select the one that is named like "*`multi-front-`*" (this is the same one you were just looking at). Then click the *`Attributes`* tab. You can see that cross-zone load balancing is enabled for this target group.
 
 ![ec2-target-cross-zone-on](/static/ec2-target-cross-zone-on.png)
 
