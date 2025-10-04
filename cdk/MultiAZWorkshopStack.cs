@@ -358,7 +358,12 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 TotalEC2InstancesInFleet = fleetSize,
                 ApplicationName = "multi-az-workshop",
                 MinimumHealthyHostsPerZone = 1,
-                Alarms = new IAlarm[] { multiAvailabilityZoneObservability.ServiceAlarms.RegionalServerSideImpactAlarm }
+                Alarms = [
+                    multiAvailabilityZoneObservability.PerOperationAlarmsAndRules["Ride"].CanaryRegionalAlarmsAndRules.AvailabilityOrLatencyAlarm,
+                    multiAvailabilityZoneObservability.PerOperationAlarmsAndRules["Pay"].CanaryRegionalAlarmsAndRules.AvailabilityOrLatencyAlarm,
+                    multiAvailabilityZoneObservability.PerOperationAlarmsAndRules["Signin"].CanaryRegionalAlarmsAndRules.AvailabilityOrLatencyAlarm,
+                    multiAvailabilityZoneObservability.PerOperationAlarmsAndRules["Home"].CanaryRegionalAlarmsAndRules.AvailabilityOrLatencyAlarm,
+                ]
             });  
 
             CodeDeployStack.Node.AddDependency(listener);       

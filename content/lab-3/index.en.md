@@ -13,7 +13,7 @@ First, navigate to the [AWS Systems Manager console](https://console.aws.amazon.
 The link may open the AWS SSM console in a different Region than the one you're running in the workshop, please validate you are in the correct Region.
 ::::
 
-Select the tab *Owned by me*. There are several SSM documents here that will start FIS experiments to inject faults into the workshop environment. To test our new architecture, let's use the runbook with *`addLatency`* in the title.
+Select the tab *Owned by me*. We're going to re-run the *`addLatency`* experiment, select that document.
 
 ![simulate-failure-runbook](/static/add-latency-runbook.png)
 
@@ -30,18 +30,12 @@ On this page, do not update any of the default input parameters for *`LatencyExp
 Navigate back to the Wild Rydes service level dashboard we reviewed during [Lab 1](/lab-1). 
 
 ::::alert{type="info" header="Alarms take time to be triggered"}
-The alarm may take up to 3 minutes to change state to `ALARM`. It is using an [M of N](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/AlarmThatSendsEmail.html#alarm-evaluation) configuration, requiring 2 datapoints in 3 minutes. Making alarms that react quickly while not being overly sensitive to transient issues is a careful balance. Using a "2 of 3" or "3 of 5" configuration is common.
+Alarms may take up to 3 minutes to change state to `ALARM`. It is using an [M of N](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/AlarmThatSendsEmail.html#alarm-evaluation) configuration, requiring 2 datapoints in 3 minutes. Making alarms that react quickly while not being overly sensitive to transient issues is a careful balance. Using a "2 of 3" or "3 of 5" configuration is common.
 ::::
 
 While you wait, feel free to explore the other operational metrics dashboards. After a few minutes, you should see one of the zonal alarms transition to the `ALARM` state. 
 
 ![service-az-isolated-impact-alarm](/static/service-az-isolated-impact-alarm.png)
-
-::::alert{type="info" header="Dashboard refresh"}
-You may need to press the refresh button on the dashboard to see the updated metrics
-
-![dashboard-refresh](/static/dashboard-refresh.png)
-::::
 
 In this case, the failure was simulated for the ```use2-az1``` AZ. Let's see if we can figure out what operation is causing impact. Scroll down to the server-side metrics section and review the latency metrics. In this instance, we can see the `Ride` operation has an elevated number of high latency responses as measured from the server-side.
 
@@ -55,7 +49,7 @@ Scroll down the dashboard and review the server-side metrics. You should be able
 
 ![ride-operation-canary-high-latency](/static/ride-operation-canary-high-latency.png)
 
-The canary perspective tells us 2 things. First, we can see that the impact is still affecting all customers that access the application through the ALB's regional DNS record. This is to be expected, 33% of the requests using the *`Round robin`* load balancing algorithm are going to land on the ALB node in the impacted AZ. Second, we can see that only the per-zone canary tests are only seeing impact in the AZ where we have injected the failure. This means that our AZI implementation was successful in preventing failure from cascading from one AZ to the others. Our alarms validate these observations.
+The canary perspective tells us 2 things. First, we can see that the impact is still affecting all customers that access the application through the ALB's regional DNS record. This is to be expected, 33% of the requests using the *`Round robin`* load balancing algorithm are going to land on the ALB node in the impacted AZ and be sent to targets in that same AZ. Second, we can see that the per-zone canary tests are only seeing impact in the AZ where we have injected the failure. This means that our AZI implementation was successful in preventing failure from cascading from one AZ to the others. Our alarms validate these observations.
 
 ![ride-operation-canary-high-latency-alarms](/static/ride-operation-canary-high-latency-alarms.png)
 
@@ -64,7 +58,7 @@ Next, review the structure of the composite alarm that indicates we have isolate
 
 ![alarm-details](/static/alarm-details.png)
 
-We can see that both the server-side and canary alarms are in the `ALARM` state, confirming that both perspectives see the impact of the failure. One of the requirements for the server-side alarm to identify single AZ impact was to ensure more than one server was being impacted. Said another way, we want to ensure that the failure impact is seen broadly in that AZ. Otherwise, replacing a single bad instance is a more efficient mitigation strategy. The next section will explore that specific requirement.
+We can see that both the server-side and canary alarms are in the `ALARM` state, confirming that both perspectives see the impact of the failure. If you recall from Lab 1, one of the requirements for the server-side zonal impact alarm is for more than one server was being impacted. Said another way, we want to ensure that the failure impact is seen broadly in that AZ. Otherwise, replacing a single bad instance is a more efficient mitigation strategy. The next section will explore that specific requirement.
 
 #### Look at Contributor Insights Data
 
@@ -104,19 +98,19 @@ Contributor Insights lets us visualize the Top-N contributors to high cardinalit
 }
 ```
 
-It filters our log files against the rules and then counts the number of matches per instance id. Navigate to the server-side log group [here](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups/log-group/$252Fmulti-az-workshop$252Ffrontend). Then select one of the log streams and review the format of the log files. Because we have log data and metric data combined into one solution, we query and filter this metric data using log analysis tools like Contributor Insights or Log Insights. Contributor Insights rules are only evaluated against log data as it is ingested, it isn't applied retroactively to existing logs. If you haven't pre-materialized those type of rules, you can run ad-hoc Log Insights queries. Navigate to the [Log Insights console](https://console.aws.amazon.com/cloudwatch/home#logsV2:logs-insights). See if you can write a Log Insights QL or OpenSearch SQL statement to identify the top contributors to Latency in the Ride operation.
+It filters our log files against the rules and then counts the number of matches per instance id. Navigate to the server-side log group [here](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups/log-group/$252Fmulti-az-workshop$252Ffrontend). Then select one of the log streams and review the format of the log files. Because we have log data and metric data combined into one solution, we can query and filter this metric data using log analysis tools like Contributor Insights or Log Insights. Contributor Insights rules are only evaluated against log data as it is ingested, it isn't applied retroactively to existing logs. If you haven't pre-materialized those types of rules, you can run ad-hoc Log Insights queries. Navigate to the [Log Insights console](https://console.aws.amazon.com/cloudwatch/home#logsV2:logs-insights). See if you can write a Log Insights QL or OpenSearch SQL statement to identify the top contributors to Latency in the Ride operation.
 
 ::::expand{header="Solution"}
 
-Log Insights QL:
-```
+Log Insights QL (make sure to select the `/multi-az-workshop/frontend` log group):
+```sql
 fields InstanceId
 | filter SuccessLatency > 350 and Operation = "Ride"
 | stats count() by InstanceId
 ```
 
 Optional Log Insights QL with AZ-ID of each instance:
-```
+```sql
 fields InstanceId, `AZ-ID`
 | filter SuccessLatency > 350 and Operation = "Ride"
 | stats count() by InstanceId, `AZ-ID`

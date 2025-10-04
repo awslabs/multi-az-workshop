@@ -13,7 +13,7 @@ If you did not end the zonal shift or the FIS experiment or reset the load balan
 First, we need to register a new deployment artifact in CodeDeploy. Get the bucket path that contains the assets for the workshop, it's stored in an SSM Parameter. Go to the [SSM Parameter Store console for the `DeploymentAsset` parameter](https://console.aws.amazon.com/systems-manager/parameters/DeploymentAsset/). Copy the string from the *`Value`* property, it should be something like:
 
 ```
-s3://ws-assets-us-east-1/e9383b42-6c6f-416b-b50a-9313e476e372/assets/app_arm64_fail.zip
+s3://ws-event-62fbf81a-aa2-us-east-1/0dfe06fd-f84a-40d7-8154-ef14f5c59a86/assets/app_deploy_fail.zip
 ```
 
 Next, go to the [CodeDeploy application console](https://console.aws.amazon.com/codesuite/codedeploy/applications/multi-az-workshop).
@@ -34,7 +34,7 @@ In the *`Additional deployment behavior settings`* select the *`Overwrite the co
 
 Then finally click *`Create deployment`* at the bottom of the screen.
 
-The application will begin deploying to one server in the first AZ. This deployment is using a feature of AWS CodeDeploy called zonal deployments. It allows you to deploy your applications one AZ at a time. This enables you to respond to failed deployments in the same way you respond to single-AZ infrastructure events. While rollbacks are an essential part of a CI/CD system, they can take awhile to finish, and not every change can be rolled back. Shifting away from an AZ can be a simpler and faster solution. It also means you don't have to spend precious time during an event trying to figure out if a failure is deployment-related or due to an infrastructure event. For more details see [Fault-isolated, zonal deployments with AWS CodeDeploy](https://aws.amazon.com/blogs/devops/fault-isolated-zonal-deployments-with-aws-codedeploy/).
+The application will begin deploying to one server in the first AZ. This deployment is using a feature of AWS CodeDeploy called [zonal deployments](https://docs.aws.amazon.com/codedeploy/latest/userguide/deployment-configurations-create.html). It allows you to deploy your applications one AZ at a time. This enables you to respond to failed deployments in the same way you respond to single-AZ infrastructure events. While rollbacks are an essential part of a CI/CD system, they can take awhile to finish, and not every change can be rolled back. Shifting away from an AZ can be a simpler and faster solution. It also means you don't have to spend precious time during an event trying to figure out if a failure is deployment-related or due to an infrastructure event. For more details see [Fault-isolated, zonal deployments with AWS CodeDeploy](https://aws.amazon.com/blogs/devops/fault-isolated-zonal-deployments-with-aws-codedeploy/).
 
 The deployment will take a few minutes (typically about 3.5 to 4 minutes) and you can see the progress on the bottom of the page.
 
@@ -66,22 +66,22 @@ Go to the impacted operation's dashboard and confirm the impact there.
 ::::
 
 ## Perform a zonal shift
-Following the same steps you followed in Lab 4, perform a zonal shift to mitigate the impact. Confirm that the impact has been mitigated by specifically looking at the canary availability metrics for the regional endpoint.
+Following the same steps you followed in Lab 4, perform a zonal shift on the ALB to mitigate the impact. Confirm that the impact has been mitigated by specifically looking at the canary availability metrics for the regional endpoint.
 
 ::::expand{header="See the dashboard"}
 ![deployment-recovery-after-shift](/static/deployment-recovery-after-shift.png)
 ::::
 
-After the zonal shift, you should see the alarm that stopped the unsuccessful deployment transition back to the `OK` state. [Navigate to the CloudWatch alarms console](https://console.aws.amazon.com/cloudwatch/home?#alarmsV2:) and search for the alarm name, *`wildrydes-server-side-regional-impact`*.
+After the zonal shift, you should see the alarm that stopped the unsuccessful deployment transition back to the `OK` state. [Navigate to the CloudWatch alarms console](https://console.aws.amazon.com/cloudwatch/home?#alarmsV2:) and search for the alarm name, *`<region>-pay-customer-experience-impact-canary`*.
 
-![after-redeployment](/static/after-redeployment.png)
+![alarm-after-zonal-shift](/static/alarm-after-zonal-shift.png)
 
-This indicates that we're able to start a rollback to the previous version.
+Wait for it to transition to the `OK` state. This indicates that we've successfully mitigated the customer impact and we can start a rollback.
 
 ## Rollback the deployment
-Now that we've mitigated the customer impact, we can rollback the deployment to recover the environment. Go to your [CodeDeploy application revisions](https://console.aws.amazon.com/codesuite/codedeploy/applications/multi-az-workshop/revisions).
+Go to your [CodeDeploy application revisions](https://console.aws.amazon.com/codesuite/codedeploy/applications/multi-az-workshop/revisions).
 
-Select the revision named like *`app_arm64.zip`* and click *`Deploy application`*
+Select the revision named like *`app_deploy.zip`* and click *`Deploy application`*
 
 ![app-revisions](/static/app-revisions.png)
 
