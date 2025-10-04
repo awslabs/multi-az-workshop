@@ -12,34 +12,44 @@ The workshop automatically enables zonal shift on your ALB, but it hasn't been e
 
 ![asg-integrations](/static/asg-integrations.png)
 
-Select the checkbox to *Enable zonal shift*, then select the checkbox for *Skip zonal shift validation*, and finally select *Replace unhealthy* for the health check behavior. You can learn more about these options in the [auto scaling documentation](https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-zonal-shift.html).
+Select the checkbox to *Enable zonal shift*, then select the checkbox for *Skip zonal shift validation*, and finally select *Ignore unhealthy* for the health check behavior. In this case, we don't want auto scaling to replace instances that are terminated because we want to prevent the automatic AZ rebalancing that is performed. This prevents new instances from being launched in the impacted AZ due to rebalancing. If you select *Replace unhealthy*, auto scaling will replace terminated or unhealthy instances in the other AZs, but will then launch new instances in the impacted AZ to rebalance. You can learn more about these options in the [auto scaling documentation](https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-zonal-shift.html).
 
 ![asg-zonal-shift](/static/asg-zonal-shift.png)
 
-Next, navigate to our [EKS cluster](https://console.aws.amazon.com/eks/clusters/multi-az-workshop-eks-cluster) and select *Manage* next to the zonal shift box.
+Next, navigate to our [EKS cluster](https://console.aws.amazon.com/eks/clusters/multi-az-workshop-eks-cluster) and select *Manage* next to the *ARC Zonal shift* box.
 
 ![eks-zonal-shift-manage](/static/eks-zonal-shift-manage.png)
 
 Select *Enabled* and *Save changes*. Now that all of our supported resources have zonal shift enabled, we can turn on autoshift.
 
 ## Configure zonal authoshift
-First, we need to get an alarm ARN that is used by zonal autoshift to stop practice runs in case there is impact. We'll use the *`wildrydes-impact-alarm`* since it is an aggregate alarm for any impact to the application. You can get its ARN from the console [here](https://console.aws.amazon.com/cloudwatch/home#alarmsV2:alarm/wildrydes-impact-alarm).
+First, we need to get an alarm ARN that is used by zonal autoshift to stop practice runs in case there is impact. We'll use the *`wildrydes-server-side-regional-impact`* since it is an aggregate alarm for any impact to the application, but won't be affected by transient latency that the canary may experience. You can get its ARN from the console [here](https://console.aws.amazon.com/cloudwatch/home#alarmsV2:alarm/wildrydes-server-side-regional-impact).
 
-Next, navigate to the [ARC zonal autoshift console](https://console.aws.amazon.com/route53recovery/zonalshift/home#/autoshift).
+Next, navigate to the [ARC zonal autoshift console](https://console.aws.amazon.com/route53recovery/zonalshift/home#/autoshift) and click *Configure zonal autoshift*.
 
 ![configure-autoshift](/static/configure-autoshift.png)
 
-Enable autoshift for your EKS cluster, auto scaling group, and ALB. Use the same alarm ARN for each resource. You don't need to specify a maintenance window.
+Enable autoshift for your EKS cluster, auto scaling group, and ALB. Use the alarm ARN you retrieved for the *Monitor practice run health: outcome alarm* ARN value. You don't need to specify a maintenance window. 
 
 ![zonal-autoshift-resources](/static/zonal-autoshift-resources.png)
 
 ## Perform a practice run
-Pick any of the three resources and select the *Actions* drop down. Then click *Start practice run*, select an AZ to test against, write a comment, and then click *Start*. This will initiate a zonal autoshift against whichever resource you selected. If you chose your ALB, review your operational dashboards to see the traffic shift. If you chose your auto scaling group, terminate an EC2 instance in the impacted AZ and observe auto scaling launch a new instance in one of the unimpacted AZs. If you chose EKS, you'll need to use `kubectl` to terminate a pod and see it rescheduled in a different AZ. The practice run lasts for 30 minutes, it's not necessary to wait for it to complete and you can cancel the practice run at any time.
+Pick any of the three resources and select the *Actions* drop down. Then click *Start practice run*, select an AZ to test against, write a comment, and then click *Start*. This will initiate a zonal autoshift against whichever resource you selected. If you chose your ALB, review your operational dashboards to see the traffic shift. If you chose your auto scaling group, terminate an EC2 instance in the impacted AZ. If you chose EKS, you'll need to use `kubectl` to terminate a pod and see it rescheduled in a different AZ. The practice run lasts for 30 minutes, it's not necessary to wait for it to complete and you can cancel the practice run at any time.
 
 ::::expand{header="Instructions for terminating a pod"}
 First, navigate to the EKS console and review your cluster. Click the *Resources* tab, click *Deployments* on the left, and the select the *multi-az-workshop-app*. There should be 6 running pods. The easiest way to find a pod in the AZ you selected is by its IP address. The workshop uses the 192.168.0.0/16 address space. The first subnet uses 192.168.0.0/24, the next 192.168.1.0/24, and the last 192.168.2.0/24. So AZ "a" has 0.x addresses, AZ "b" has 1.x addresses, and AZ "c" has 2.x addresses. Select a pod name based on its IP mapping to the AZ you selected to run the practice in.
 
-Next, navigate to the EC2 console and use session manager to access the worker node **with the same IP address subnet as the Pod you want to delete** the same way you did in [Lab 2](/lab-2). You may have to download `kubectl` if it's not the same node you used in Lab 2. Then, run the following command.
+Next, navigate to the EC2 console and use session manager to access the worker node **with the same IP address subnet as the Pod you want to delete** the same way you did in [Lab 2](/lab-2). You may have to download `kubectl` if it's not the same node you used in Lab 2. 
+
+```bash
+BUCKET_PATH=$(aws ssm get-parameter --name BucketPath --query 'Parameter.Value' | tr -d '"')
+aws s3 cp ${BUCKET_PATH}kubectl /tmp/kubectl
+chmod +x /tmp/kubectl
+CLUSTER=$(aws ssm get-parameter --name ClusterName --query 'Parameter.Value' | tr -d '"')
+aws eks update-kubeconfig --name $CLUSTER --region <region>
+```
+
+Then, run the following command.
 
 ```bash
 /tmp/kubectl delete pod <pod name> --namespace multi-az-workshop
@@ -53,16 +63,20 @@ It's possible transient conditions could cause the practice run to fail, such as
 ::::
 
 ## Review the results
-If there weren't any transient problems that occured, your practice run should have succeeded (if you chose to wait for the whole time), but it's not critical for the sake of the workshop if it didn't. The goal here was to understand how to enable autoshift and how practice runs are conducted. For ALB, you should have observed the same results as performing the zonal shift we did in the last lab, where there was a noticeable drop in requests being processed in the selected AZ. For auto scaling, you should have observed EC2 launching a new EC2 instance in one of the remaining AZs after you terminated one. After the practice run ended, auto scaling should have then rebalanced your auto scaling group evenly back into all AZs. For EKS, you should have observed a new pod being scheduled in a different AZ and when the practice run ended, the pods should have rebalanced.
+If there weren't any transient problems that occured, your practice run should have succeeded (if you chose to wait for the whole time), but it's not critical for the sake of the workshop if it didn't. The goal here was to understand how to enable autoshift and how practice runs are conducted. For ALB, you should have observed the same results as performing the zonal shift in the last lab where there was a noticeable drop in requests being processed in the selected AZ. For auto scaling, you should have observed that EC2 Auto Scaling doesn't take any action in response to the instance termination. If an auto scaling rule was triggered, new capacity would have been deployed into the other AZs. After the practice run ended, auto scaling  rebalanced your auto scaling group evenly back into all AZs. For EKS, you should have observed a new pod being scheduled in a different AZ. Rebalancing won't occur with 1 pod termination because we allow a `maxSkew` of 1. To see the rebalancing, try terminating 2 pods in the same AZ.
+
+::::alert{type="info" header="EKS zonal shift availability impact"}
+During the zonal shift, the pods in the selected AZ are deregistered from the load balancer, but because the load balancer has 2 target groups, it still has healthy targets in that AZ and still receives requests for the operations hosted on your EKS cluster on load balancer nodes in that AZ. With cross-zone load balancing disabled, there are no available targets for the `Signin` and `Home` operations in that AZ and it results in a 503 response from the load balancer. If you use zonal shift on your EKS cluster that uses an AWS load balancer to route external traffic, you should perform a zonal shift on the load balancer first, then on the EKS cluster. Alternatively, you can use cross-zone enabled load balancing. If you only have a single target group registered with the load balancer, this isn't a problem. When the targets are removed, the load balancer will withdraw its IP address from that zone and stop receiving traffic there, preventing the impact.
+::::
 
 ## Turn on autoshift observer notifications
-Another feature of zonal autoshift is [observer notifications](https://docs.aws.amazon.com/r53recovery/latest/dg/arc-zonal-autoshift.how-it-works.notifications.html). You can choose to be notified about practice runs and autoshifts for your resource by setting up Amazon EventBridge notifications. You can set up EventBridge notifications even when you haven't enabled zonal autoshift for any resources. In case you don't want AWS to start the zonal shift for you, you can use the observer notifications as an input to when AWS starts or stops an autoshift for customers.
+Another feature of zonal autoshift is [observer notifications](https://docs.aws.amazon.com/r53recovery/latest/dg/arc-zonal-autoshift.how-it-works.notifications.html). You can choose to be notified about practice runs and autoshifts for your resource by setting up Amazon EventBridge notifications. You can set up EventBridge notifications even when you haven't enabled zonal autoshift for any resources. In case you don't want AWS to start the zonal shift for you, you can use the observer notifications as an input to decide whether to use a manual zonal shift.
 
-Navigate to the [autoshift home page](https:/console.aws.amazon.com/route53recovery/zonalshift/home#/autoshift). Expand the *Getting started with zonal autoshift* and click *Set up zonal autoshift observer notifications*.
+Navigate to the [autoshift home page](https://console.aws.amazon.com/route53recovery/zonalshift/home#/autoshift). Expand the *Getting started with zonal autoshift* and click *Set up zonal autoshift observer notifications*.
 
 ![setup-observer-notifications](/static/setup-observer-notifications.png)
 
-Select the check box to *Enable zonal autoshift observer notification* and then select the default EventBridge event bus. You can either create EventBridge rules to process those events and trigger automation or define an SNS topic where you can receive emails or other alerts when AWS starts or stops an autoshift. For example, you could define a simple rule like this:
+Select the check box to *Enable zonal autoshift observer notification*, select the default EventBridge event bus, and click *Complete*. You can either create EventBridge rules to process those events and trigger automation or define an SNS topic where you can receive emails or other alerts when AWS starts or stops an autoshift. For example, you could define a simple rule like this:
 
 ```json
 {

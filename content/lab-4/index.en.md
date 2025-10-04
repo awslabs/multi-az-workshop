@@ -55,11 +55,9 @@ Name:   internal-multi--alb8A-yDdk2kXThgkh-1739996193.us-east-2.elb.amazonaws.co
 Address: 192.168.0.41
 ```
 
-Try connecting to one of your EC2 instances with session manager and retrieve the IP addresses of your ALB. How many IP addresses are returned? Is that what you expected? You should only see 2 IP addresses at this point because you've already initiated the zonal shift.
+Try connecting to one of your EC2 instances (choose one with a name matching `multi-az-workshop/ec2/front-end-launch-template`, the others don't have the nslookup tool installed) with session manager and retrieve the IP addresses of your ALB (you can get the A record from the [Load balancers console](https://console.aws.amazon.com/ec2/home#LoadBalancers:). How many IP addresses are returned? Is that what you expected? You should only see 2 IP addresses at this point because you've already initiated the zonal shift, meaning customers of the Wild Rydes service will only access load balancer endpoints in the remaining AZs.
  
-When you start a zonal shift for a load balancer resource, Amazon Application Recovery Controller (ARC) requests that the resource move traffic away from the Availability Zone that you've specified. This request causes the load balancer health check for the Availability Zone to be set to unhealthy so that it fails its health check. An unhealthy health check, in turn, results in Amazon Route 53 withdrawing the corresponding IP addresses for the resource from DNS, so traffic is redirected from the Availability Zone. New connections are now routed to other Availability Zones in the AWS Region instead. This action utilizes the data plane of Route 53 to shift traffic away from the impaired AZ.
-
-When you start a zonal shift, the zonal shift is created in Amazon ARC, but because of the steps in the process, you might not see traffic move out of the Availability Zone immediately. It also can take a short time for existing, in-progress connections in the Availability Zone to complete, depending on client behavior and connection reuse. Typically, however, this takes just a few minutes.
+When you start a zonal shift for a load balancer, Amazon Application Recovery Controller (ARC) causes the load balancer health check for the Availability Zone to be set to unhealthy so that it fails its health check. An unhealthy health check, in turn, results in Amazon Route 53 withdrawing the corresponding IP addresses for the resource from DNS. When clients query DNS for your application, only the remaining, healthy IP addresses are returned. New connections are now routed to other Availability Zones in the AWS Region instead. Clients that have existing connections will still continue to use the withdrawn IP address, but upon resolving DNS, they'll target the unimpacted AZs.
 
 Finally, when a zonal shift expires or you cancel it, Amazon ARC reverses the process, requesting the Route 53 health checks to be set to healthy again, so the original zonal IP addresses are restored and the Availability Zone is included in the load balancer's routing again.
 
@@ -83,7 +81,7 @@ After the zonal shift, the latency of the regional endpoint returned to normal l
 
 ![alb-during-zonal-shift](/static/alb-during-zonal-shift.png)
 
-We can see that `use2-az1` has lower request count and lower processed bytes metrics than the other AZs. This is because it's no longer processing the regional requests from the canary, which is what's also causing the higher request rate and increased processed bytes in the other AZs. There is still some traffic being sent to the AZ all the time from the canary that's targeting the AZ specific endpoint. Zonal shift doesn't impact this access, just the routing to the impacted AZ through the regional ALB DNS record.
+We can see that `use2-az1` has a lower request count and lower processed bytes metrics than the other AZs. This is because it's no longer processing the regional requests from the canary, which is what's also causing the higher request rate and increased processed bytes in the other AZs. There is a canary still testing the zonal endpoint where the impact is occuring, so you'll always see some traffic being sent to the AZ. This can help us determine when the impact ends.
 
 ## Recover the environment
 Navigate back to the FIS console and find the experiment you started. Click *`Stop experiment`* to end the experiment.

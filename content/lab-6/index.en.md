@@ -52,11 +52,11 @@ Go back to the service level operational metrics dashboard and review your load 
 
 ![atw-recovery](/static/atw-recovery.png)
 
-What you also should see is a drop in the number of requests being handled by the instances in the AZ where you injected the failure. The ALB automatically reduces the amount of traffic being sent to the targets that have anomalous behavior and we can see that the ALB is emitting metrics to tell us that the 2 anomalous targets are being automatically mitigated.
+What you should also see is a drop in the number of requests being handled by the instances in the AZ where you injected the failure. The ALB automatically reduces the amount of traffic being sent to the targets that have anomalous behavior and we can see that the ALB is emitting metrics to tell us that the 2 anomalous targets are being automatically mitigated.
 
 ![mitigated-targets](/static/mitigated-targets.png)
 
-If we look at the fault rate being recorded by our load balancer metrics, in this example, it hits a high of around over 20% and then quickly drops to around 7%. Without needing to take any action, the ALB has automatically mitigated over half of the impact. While it doesn't reduce the fault rate to 0, it does very quickly minimize the impact being seen in a single AZ. Because we are using cross-zone load balancing, the impact from the instances in the selected AZ is observed by all customers, as shown by the canary metrics.
+If we look at the fault rate being recorded by our load balancer metrics, in this example, it hits a high of a little over 20% and then quickly drops to around 5-7%. Without needing to take any action, the ALB has automatically mitigated a significant portion of the impact. While it doesn't reduce the fault rate to 0, it does very quickly minimize the impact being seen in a single AZ. Because we are using cross-zone load balancing, the impact from the instances in the selected AZ is observed by all customers, as shown by the canary metrics.
 
 ![atw-canary-impact](/static/atw-canary-impact.png)
 
@@ -71,18 +71,21 @@ After the zonal shift, all traffic is prevented from being sent to the impacted 
 
 ![mitigated-hosts-after-zonal-shift](/static/mitigated-hosts-after-zonal-shift.png)
 
-Now you've mitigated the impact completely for your customers using both ATW and zonal shift without any additional observability required beyond the metrics ALB provides for each target group for anomalous hosts. You can also create an alarm on the anomalous host metric using our outlier detection logic. As an optional challenge, try creating a Cloudwatch Alarm to detect when a single AZ is an outlier for anomalous hosts.
+Now you've mitigated the impact completely for your customers using both ATW and zonal shift without any additional observability required beyond the metrics ALB provides for each target group for anomalous hosts. You can also create an alarm on the anomalous host metric using our outlier detection logic. 
+
+#### Optional challenge
+As an optional challenge, try creating a Cloudwatch Alarm to detect when a single AZ is an outlier for anomalous hosts. If you want step by step instructions, they are provided below.
 
 ::::expand{header="Anomalous host outlier alarm instructions"}
 The simplest way to do this is by using the existing metric on the service level dashboard. Navigate to the *`wildrydes-availability-and-latency-<region>`* dashboard and scroll to the bottom where the Anomalous Hosts graph is located. Click the three dots and select *View in metrics*.
 
 ![anomalous-hosts-view-in-metrics](/static/anomalous-hosts-view-in-metrics.png)
 
-Here, we can see the metrics being displayed. First, rename the second "m1" to "m2", and the third "m1" to "m3". Then Click *Add math* and *Start with empty expression*.
+Here, we can see the metrics being displayed. First, click the "edit" button next to first "m1" and hit apply, then rename the second "m1" to "m2", and the third "m1" to "m3". Then Click *Add math* and *Start with empty expression*.
 
 ![anomalous-hosts-metrics](/static/anomalous-hosts-metrics.png)
 
-Create a math expression to determine the percent of anomalous hosts in each AZ.
+Create a math expression to determine the percent of anomalous hosts in each AZ. After you create the first one, you can copy it and just update the numerator in the equation.
 
 ![anomalous-hosts-math-expression](/static/anomalous-hosts-math-expression.png)
 
@@ -97,6 +100,22 @@ This brings you to the alarm creation wizard. Specify "Greater/Equal" and define
 In the *Additional configuration*, update the *Datapoints to alarm* to be 2 out 3.
 
 Click *Next*, choose to remove the *Notification*, click *Next*, give the alarm a name like `use2-az1-anomalous-hosts-outlier`, click *Next*, then *Create alarm*. You can do the same thing to create alarms for the other 2 AZs.
+
+You might also want to ensure that it's not a single anomalous host that triggers this alarm, so you could create a composite alarm, combining this alarm with one that triggers if it's 2 or more anomalous hosts in the same AZ. Create a new metric alarm and select the `AnomalousHostCount` metric for one of the AZs and the EC2 target group named like `targetgroup/multi-front-...`. 
+
+![anomalous-host-metric](/static/anomalous-host-metric.png)
+
+Select this metric, specify the condition as *Greater/Equal* and specify a threshold of 2. Use the same 2 out of 3 datapoint configuration. Remove the notification, and give the alarm a name like `use2-az1-multiple-anomalous-hosts`. Finally, we need to create a composite alarm. Select the two alarms we've created for the same AZ, and click *Create composite alarm*.
+
+![create-composite-alarm](/static/create-composite-alarm.png)
+
+Update the composite alarm to use `AND`.
+
+```json
+ALARM("use2-az1-anomalous-hosts-outlier") AND ALARM("use2-az1-multiple-anomalous-hosts")
+```
+
+Click *Next*, remove the notification, give the alarm a name like `use2-az1-anomalous-host-isolated-impact` and complete creating the alarm. Now you have a simple composite alarm that you can use with ATW and cross-zone enabled load balancing to detect single-AZ impact. This allows ATW to quickly mitigate a majority of the impact and then provides you a signal for initiating a zonal shift to fully mitigate the impact.
 ::::
 
 ## Reset the environment
