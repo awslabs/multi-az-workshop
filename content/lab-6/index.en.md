@@ -43,16 +43,16 @@ In this screen, find the *Document parameters* field.
 
 !["fis-doc-parameters"](/static/fis-doc-parameters.png)
 
-This contains JSON configuration data used by the experiment run on the hosts. We want to change the *LossPercent* parameter from 30 to 100 to ensure every request from the instances to the database fails. Make this update and click *Save*. Click *Next*, *Next*, *Next*, and then *Update experiment template*. Confirm the update.
+This contains JSON configuration data used by the experiment run on the hosts. We want to change the *LossPercent* parameter from `30` to `100` to ensure every request from the instances to the database fails. Make this update and click *Save*. Click *Next*, *Next*, *Next*, and then *Update experiment template*. Confirm the update.
 
 Now, click *Start Experiment* on the top right.
 
 ## Observe the impact and recovery
-Go back to the service level operational metrics dashboard and review your load balancer metrics. What you should see is a brief spike in faults and then a very quick, automated response that reduces that error rate.
+Go back to the service level operational metrics dashboard and review your load balancer metrics. What you should see is a brief spike in faults and then a very quick, automated response that reduces that error rate. The graph on the left shows that traffic is automatically rebalanced to the other AZs where success rate increases. On the right-hand side, you will see the error rate spike and then quickly reduce as the traffic is weighted away from that AZ.
 
 ![atw-recovery](/static/atw-recovery.png)
 
-What you should also see is a drop in the number of requests being handled by the instances in the AZ where you injected the failure. The ALB automatically reduces the amount of traffic being sent to the targets that have anomalous behavior and we can see that the ALB is emitting metrics to tell us that the 2 anomalous targets are being automatically mitigated.
+You should also see is a drop in the number of requests being handled by the instances in the AZ where you injected the failure. The ALB automatically reduces the amount of traffic being sent to the targets that have anomalous behavior and we can see that the ALB is emitting metrics to tell us that the 2 anomalous targets are being automatically mitigated.
 
 ![mitigated-targets](/static/mitigated-targets.png)
 
@@ -119,9 +119,13 @@ Click *Next*, remove the notification, give the alarm a name like `use2-az1-anom
 ::::
 
 ## Reset the environment
-First, end the zonal shift you started. If you chose to do the optional step to create the anomalous hosts outlier alarms, go to the alarm that corresponds to the AZ where you are running the packet loss experiment. In a few minutes you should see that alarm transition into the `ALARM` state. This would be your notification that the AZ is an outlier because of its percentage of targets being mitigated by ATW and could indicate that a zonal shift would help mitigate impact further.
+First, end the zonal shift you started. 
 
-Next, go back to your two target groups and change the traffic configuration from *Weighted random* back to *Round robin* and disable cross-zone load balancing. Also, ensure you have stopped the running AWS FIS experiment if it hasn't already ended. Once you've ended the zonal shift, updated the target groups, and ensured the experiment has ended, you can proceed to the next lab.
+::::alert{type="info" header="Optional step"}
+If you chose to do the optional step to create the anomalous hosts outlier alarms, go to the alarm you created that corresponds to the AZ where you are running the packet loss experiment, like `usw2-az1-anomalous-host-isolated-impact`. In a few minutes you should see that alarm transition into the `ALARM` state because the FIS experiment is still running and causing hosts in that AZ to produce errors. This would be your notification that the AZ is an outlier because of its percentage of targets being mitigated by ATW and could indicate that a zonal shift would help mitigate impact further.
+::::
+
+Next, go back to your two target groups and change the traffic configuration from *Weighted random* back to *Round robin* and disable cross-zone load balancing. Finally, stop the running AWS FIS experiment if it hasn't already ended. Once you've ended the zonal shift, updated the target groups, and ensured the experiment has ended, you can proceed to the next lab.
 
 ## Summary
-In this lab you saw how to enable the Automatic Target Weights algorithm on your ALB. ATW quickly detected and partially mitigated the gray failures impacting your instances in a single AZ. You then added a zonal shift to mitigate the remaining impact. This approach allows you to 1/take advantage of the benefits of cross-zone load balancing, 2/significantly reduce the required observability to detect a single AZ impairment, and 3/quickly and automatically mitigate a majority of the impact.
+In this lab you saw how to enable the Automatic Target Weights (ATW) algorithm on your ALB. ATW quickly detected and partially mitigated the gray failures impacting your instances in a single AZ. You then added a zonal shift to mitigate the remaining impact. This approach allows you to 1/take advantage of the benefits of cross-zone load balancing, 2/significantly reduce the required observability to detect a single AZ impairment, and 3/quickly and automatically mitigate a majority of the impact.

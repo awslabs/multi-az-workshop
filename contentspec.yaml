@@ -2,7 +2,7 @@ version: 2.0
 defaultLocaleCode: en-US
 localeCodes:
   - en-US
-  - ja-JP
+#  - ja-JP
 additionalLinks:
   - title: Advanced Multi-AZ Resilience Patterns Whitepaper
     link: https://docs.aws.amazon.com/whitepapers/latest/advanced-multi-az-resilience-patterns/advanced-multi-az-resilience-patterns.html
@@ -22,6 +22,8 @@ additionalLinks:
     link: https://github.com/bamcis-io/multi-az-observability/
   - title: Improving availability with Application Load Balancer automatic target weights
     link: https://aws.amazon.com/blogs/networking-and-content-delivery/improving-availability-with-application-load-balancer-automatic-target-weights/
+  - title: Monitoring and automating recovery from AZ impairments in Amazon EKS with Istio and ARC Zonal Shift
+    link: https://aws.amazon.com/blogs/containers/monitoring-and-automating-recovery-from-az-impairments-in-amazon-eks-with-istio-and-arc-zonal-shift/ 
 awsAccountConfig:
   accountSources:
     - WorkshopStudio
