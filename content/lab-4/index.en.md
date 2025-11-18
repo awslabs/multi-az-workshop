@@ -39,7 +39,11 @@ For "Set zonal shift expiration", choose an expiration for the zonal shift. A zo
 
 ## How a zonal shift works
 
-Here's a simple explanation of how this works. Every NLB and ALB has zonal DNS A records in addition to its regional DNS A record. For example, your load balancer may provide you with this A record: `my-example-nlb-4e2d1f8bb2751e6a.elb.us-east-2.amazonaws.com`. When you resolve that DNS record, you get back the IP addresses of each load balancer node. In this workshop, the load balancer is deployed across 3 AZs, so we'd expect to see at least 3 IP addresses returned.
+Here's a simple explanation of how this works. Every NLB and ALB has zonal DNS A records in addition to its regional DNS A record. For example, your load balancer may provide you with this A record: `my-example-nlb-4e2d1f8bb2751e6a.elb.us-east-2.amazonaws.com`. 
+
+![load-balancer-dns-record](/static/load-balancer-dns-record.png)
+
+When you resolve that DNS record, you get back the IP addresses of each load balancer node. In this workshop, the load balancer is deployed across 3 AZs, so we'd expect to see at least 3 IP addresses returned.
 
 ```
 sh-5.2$ nslookup internal-multi--alb8A-yDdk2kXThgkh-1739996193.us-east-2.elb.amazonaws.com
@@ -63,7 +67,7 @@ Finally, when a zonal shift expires or you cancel it, Amazon ARC reverses the pr
 
 ## Review operational metrics
 
-Now let's go back to the operational metrics dashboard for the `Ride` operation.
+Now let's go back to the operational metrics dashboard for the `Ride` operation. Link to the [dashboards home page](https://console.aws.amazon.com/cloudwatch/home?#dashboards:).
 
 ::::alert{type="info" header="Metric population"}
 You may need to wait for 5 minutes or more for metric data to populate in the dashboards after the zonal shift has been initiated. 

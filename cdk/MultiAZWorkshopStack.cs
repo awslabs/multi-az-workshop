@@ -102,9 +102,15 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
 
             #region Stacks 
 
-            new StringParameter(this, "bucket-ssm-parameter", new StringParameterProps() {
+            new StringParameter(this, "bucket-ssm-parameter", new StringParameterProps()
+            {
                 ParameterName = "BucketPath",
                 StringValue = Fn.Sub("s3://${AssetsBucketName}/${AssetsBucketPrefix}")
+            });
+            
+            new StringParameter(this, "region-parameter", new StringParameterProps() {
+                ParameterName = "Region",
+                StringValue = Aws.REGION
             });
 
             new StringParameter(this, "failing-deployment-asset", new StringParameterProps() {
