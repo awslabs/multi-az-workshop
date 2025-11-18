@@ -17,7 +17,19 @@ First, to demonstrate the benefit of AZI, we'll introduce a random fault to a pa
 The link may open the AWS SSM console in a different Region than the one you're running in the workshop, please validate you are in the correct Region.
 ::::
 
-Select the *`Owned by me`* tab. From here, select the document with a name like *`multi-az-workshop-*-addLatency`* by clicking the link of the document's name. Next, click the *`Execute automation`* button at the top of the screen. This will open a new tab. At the bottom of this page, click *`Execute`*. This starts an AWS FIS experiment by randomly picking one of the AZs where it will inject latency to instances in that AZ when they communicate with the database. 
+Select the *`Owned by me`* tab. 
+
+![owned-by-me](/static/owned-by-me.png)
+
+From here, select the document with a name like *`multi-az-workshop-*-addLatency`* by clicking the link of the document's name. Next, click the *`Execute automation`* button at the top of the screen. 
+
+![execute-automation-page](/static/execute-automation-page.png)
+
+This will open a new tab. Leave all of the defaults. At the bottom of this page, click *`Execute`*. 
+
+![press-execute](/static/press-execute.png)
+
+This starts an AWS FIS experiment by randomly picking one of the AZs where it will inject latency to instances in that AZ when they communicate with the database. 
 
 Wait for the SSM document execution's *`Overall status`* to be *`Success`*, this can take several minutes. 
 
@@ -41,12 +53,12 @@ From the server-side perspective, it looks like there's only impact in one AZ. L
 
 ![canary-single-az-high-latency](/static/canary-single-az-high-latency.png)
 
-Our canaries, and hence our customers, are having a different experience than the server-side metrics are indicating. We can see that from the canary's perspective that there's regional impact; it appears that all three AZs are impacted. The way the canary is making this determination is by testing the DNS A record ELB provides for our ALB, e.g. `myalb-name-and-hash.elb.us-east-2.amazonaws.com` as well as the [zonal DNS names](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html#dns-name) (although the link is for NLB documentation, the same DNS names exist for ALBs) like `us-east-2a.myalb-name-and-hash.elb.us-east-2.amazonaws.com`. So, in total, the canary is testing 4 endpoints for this application:
+Our canaries, and hence our customers, are having a different experience than the server-side metrics are indicating. We can see that from the canary's perspective that there's regional impact; it appears that all three AZs are impacted. The way the canary is making this determination is by testing the DNS A record ELB provides for our ALB, e.g. `name-id.elb.us-east-2.amazonaws.com` as well as the [zonal DNS names](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/application-load-balancers.html#dns-name) like `us-east-2a.name-id.elb.us-east-2.amazonaws.com`. So, in total, the canary is testing 4 endpoints for this application:
 
-- `https://myalb-name-and-hash.elb.us-east-2.amazonaws.com/ride`
-- `https://us-east-2a.myalb-name-and-hash.elb.us-east-2.amazonaws.com/ride`
-- `https://us-east-2b.myalb-name-and-hash.elb.us-east-2.amazonaws.com/ride`
-- `https://us-east-2c.myalb-name-and-hash.elb.us-east-2.amazonaws.com/ride`
+- `https://name-id.elb.us-east-2.amazonaws.com/ride`
+- `https://us-east-2a.name-id.elb.us-east-2.amazonaws.com/ride`
+- `https://us-east-2b.name-id.elb.us-east-2.amazonaws.com/ride`
+- `https://us-east-2c.name-id.elb.us-east-2.amazonaws.com/ride`
 
 For each of these endpoints, the canary is observing a spike in p99 latency, so although we've introduced the failure in a single AZ, it's being propagated to every AZ. So even if a customer's request lands on an ALB node in `us-east-2b`, it can still be routed to instances in `us-east-2a` where the impact is occuring.
 
@@ -123,14 +135,15 @@ Let's log in to one of our EKS worker nodes to make the update by navigating to 
 
 ![ec2-ssm-connect](/static/ec2-ssm-connect.png)
 
-If not directed to the *`Session Manager`* tab on the *`Connect to instance`* tab, select it, then press the *`Connect`* button on the bottom right. This will start an interactive CLI on the EC2 instance. The first thing we need to do is download the `kubectl` command line utility and configure it (remember to change `<region>` to the AWS Region you're running the workshop in).
+If not directed to the *`Session Manager`* tab on the *`Connect to instance`* tab, select it, then press the *`Connect`* button on the bottom right. This will start an interactive CLI on the EC2 instance. The first thing we need to do is download the `kubectl` command line utility and configure it. Copy and paste the whole block of commands and execute them.
 
 ```bash
 BUCKET_PATH=$(aws ssm get-parameter --name BucketPath --query 'Parameter.Value' | tr -d '"')
 aws s3 cp ${BUCKET_PATH}kubectl /tmp/kubectl
 chmod +x /tmp/kubectl
 CLUSTER=$(aws ssm get-parameter --name ClusterName --query 'Parameter.Value' | tr -d '"')
-aws eks update-kubeconfig --name $CLUSTER --region <region>
+REGION=$(aws ssm get-parameter --name Region --query 'Parameter.Value' | tr -d '"')
+aws eks update-kubeconfig --name $CLUSTER --region $REGION
 ```
 
 Next, download the manifest we'll use to apply the change (or feel free to create it yourself).

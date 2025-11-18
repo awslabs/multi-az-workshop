@@ -7,8 +7,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MultiAzWorkshop", "cdk\Mult
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "multi-az-workshop-application", "app-src\multi-az-workshop-application.csproj", "{01298A78-ADE5-4637-B7FE-1B0471A022E8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "multi-az-workshop-pipeline", "pipeline\MultiAZWorkshopPipeline.csproj", "{01298A78-ADE5-4637-B7FE-1B0471A021111}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
