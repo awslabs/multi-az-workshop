@@ -81,8 +81,7 @@ jobs:
       deployments: write
 
     outputs:
-      BUILD_RUN_ID: ${{ needs.check_build_status.outputs.build_run_id }}
-      DEPLOYMENT_ID: ${{ steps.create-deployment.outputs.deployment_id }}
+      DEPLOYMENT_ID: ${{ steps.create_deployment.outputs.deployment_id }}
 
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -90,7 +89,7 @@ jobs:
 
     steps:
       - name: Create Deployment
-        id: create-deployment
+        id: create_deployment
         run: |
           DEPLOYMENT_ID=$(gh api repos/${{ github.repository }}/deployments \
             -f ref=${{ needs.check_build_status.outputs.pr_sha }} \
@@ -129,7 +128,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           mask-aws-account-id: true
 
-      - name: Additional steps
+      - name: Verify identity
         run: |
           aws sts get-caller-identity 
           
@@ -138,7 +137,7 @@ jobs:
         with:
           name: ContentArtifact
           github-token: ${{ github.token }}
-          run-id: ${{ needs.create_deployment.outputs.BUILD_RUN_ID }}
+          run-id: ${{ needs.check_build_status.outputs.build_run_id }}
 
       - name: Upload to S3
         id: s3
