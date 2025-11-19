@@ -77,7 +77,6 @@ jobs:
   
   build:
     needs: filter
-    if: needs.filter.outputs.should_run == 'true'
 
     permissions:
       contents: read
@@ -92,19 +91,31 @@ jobs:
       USE_CODEBUILD: false
       
     steps:
+      - name: Check if build should run
+        id: should-build
+        run: |
+          if [ "${{ needs.filter.outputs.should_run }}" = "false" ]; then
+            echo "Only ignored paths changed. Skipping build steps."
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Checkout code
+        if: steps.should-build.outputs.skip == 'false'
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
 
       - name: Install dotnet
+        if: steps.should-build.outputs.skip == 'false'
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0'
        
       - name: Dotnet version update
-        if: env.USE_CODEBUILD == true
+        if: steps.should-build.outputs.skip == 'false' && env.USE_CODEBUILD == 'true'
         run: |
           cat /codebuild/global.json
           dotnet --info
@@ -112,17 +123,21 @@ jobs:
           cat /codebuild/global.json
 
       - name: Install cdk
+        if: steps.should-build.outputs.skip == 'false'
         run: |
           npm install aws-cdk -g
           cdk --version
 
       - name: Create tmp
+        if: steps.should-build.outputs.skip == 'false'
         run: mkdir -p ${{ github.workspace }}/tmp
 
       - name: Create assets
+        if: steps.should-build.outputs.skip == 'false'
         run: mkdir -p ${{ github.workspace }}/assets
 
       - name: Set versions
+        if: steps.should-build.outputs.skip == 'false'
         run: |
           # Read the JSON file and iterate over each key-value pair
           for key in $(jq -r 'keys[]' ${{ github.workspace }}/build/versions.json); do
@@ -133,6 +148,7 @@ jobs:
           done
 
       - name: Create helm lambda layer
+        if: steps.should-build.outputs.skip == 'false'
         run: |
           file=helm-v$HELM-linux-arm64.tar.gz
           curl --location https://get.helm.sh/$file --output /tmp/$file
@@ -144,6 +160,7 @@ jobs:
           zip -r ${{ github.workspace }}/$CDK_LOCATION/helm-layer.zip .
 
       - name: Copy destination rules
+        if: steps.should-build.outputs.skip == 'false'
         run: |
           file=destination-rule.yaml
           src_dir="${{ github.workspace }}/$CDK_LOCATION/Configs"
@@ -158,11 +175,13 @@ jobs:
           done
 
       - name: Get kubectl
+        if: steps.should-build.outputs.skip == 'false'
         run: |
           file=kubectl
           curl --location https://dl.k8s.io/release/v$KUBECTL/bin/linux/arm64/$file --output ${{ github.workspace }}/assets/$file
           
       - name: Get istio helm charts
+        if: steps.should-build.outputs.skip == 'false'
         run: |
           BASE=https://istio-release.storage.googleapis.com/charts
           istio_deps=("base-$ISTIO.tgz" "istiod-$ISTIO.tgz" "gateway-$ISTIO.tgz" "cni-$ISTIO.tgz")
@@ -171,11 +190,13 @@ jobs:
           done
 
       - name: Get AWS load balancer controller helm chart
+        if: steps.should-build.outputs.skip == 'false'
         run: |
           file=aws-load-balancer-controller-$LB_CONTROLLER_HELM.tgz
           curl --location https://aws.github.io/eks-charts/$file --output ${{ github.workspace }}/assets/$file
 
       - name: Pull istio containers
+        if: steps.should-build.outputs.skip == 'false'
         run: |
             MAX_RETRIES=10
             SLEEP_INTERVAL=2
@@ -214,6 +235,7 @@ jobs:
             done
             
       - name: Pull load balancer controller container image
+        if: steps.should-build.outputs.skip == 'false'
         run: |
           BASE=public.ecr.aws
           file="eks/aws-load-balancer-controller:$LB_CONTROLLER_CONTAINER-linux_arm64"
@@ -222,6 +244,7 @@ jobs:
           docker save $BASE/$file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
 
       - name: Pull cloudwatch agent container image
+        if: steps.should-build.outputs.skip == 'false'
         run: |
           BASE=public.ecr.aws
           file="cloudwatch-agent/cloudwatch-agent:latest"
@@ -231,10 +254,11 @@ jobs:
           docker save $file | gzip > ${{ github.workspace }}/assets/$name.tar.gz
 
       - name: Pull docker compose
+        if: steps.should-build.outputs.skip == 'false'
         run: curl -SL https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-aarch64 -o ${{ github.workspace }}/assets/docker-compose
 
       - name: Build arm64 web app
-        if: env.BUILD_APP == true
+        if: steps.should-build.outputs.skip == 'false' && env.BUILD_APP == 'true'
         run: |
           rm -rf ${{ github.workspace }}/app-src/output
           mkdir -p ${{ github.workspace }}/app-src/output
@@ -249,7 +273,7 @@ jobs:
           rm -rf ${{ github.workspace }}/app-src/output
 
       - name: Build failing arm64 web app
-        if: env.BUILD_APP == true
+        if: steps.should-build.outputs.skip == 'false' && env.BUILD_APP == 'true'
         run: |
           rm -rf ${{ github.workspace }}/app-src/output
           mkdir -p ${{ github.workspace }}/app-src/output
@@ -266,6 +290,7 @@ jobs:
       #  uses: docker/setup-buildx-action@v3
 
       - name: Build arm64 container
+        if: steps.should-build.outputs.skip == 'false'
         run: |
           rm -rf ${{ github.workspace }}/app-src/output
           mkdir -p ${{ github.workspace }}/app-src/output
@@ -285,6 +310,7 @@ jobs:
           rm -rf ${{ github.workspace }}/app-src/output
 
       - name: Build failing arm64 container
+        if: steps.should-build.outputs.skip == 'false'
         run: |
           rm -rf ${{ github.workspace }}/app-src/output
           mkdir -p ${{ github.workspace }}/app-src/output
@@ -305,6 +331,7 @@ jobs:
           rm -rf ${{ github.workspace }}/app-src/output
 
       - name: Build assets
+        if: steps.should-build.outputs.skip == 'false'
         run: |
           cd ${{ github.workspace }}/$CDK_LOCATION
           cdk synth --quiet
@@ -318,6 +345,7 @@ jobs:
           cp ${{ github.workspace }}/content.zip ${{ github.workspace }}/assets
           
       - name: Upload workshop artifact
+        if: steps.should-build.outputs.skip == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: WorkshopArtifact
@@ -327,21 +355,25 @@ jobs:
             ${{ github.workspace }}/contentspec.yaml
 
       - name: Upload assets artifact
+        if: steps.should-build.outputs.skip == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: AssetsArtifact
           path: ${{ github.workspace }}/assets/**/*
 
       - name: Upload content artifact
+        if: steps.should-build.outputs.skip == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: ContentArtifact
           path: ${{ github.workspace }}/content.zip
 
       - name: Save PR Number
+        if: steps.should-build.outputs.skip == 'false'
         run: echo "${{ github.event.pull_request.number }}" > pr_number.txt
       
       - name: Upload PR Number Artifact
+        if: steps.should-build.outputs.skip == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: PullRequestNumber
