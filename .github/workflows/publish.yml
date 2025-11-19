@@ -5,12 +5,16 @@ on:
     inputs:
         aws_access_key_id:
           type: string
+          description: The access key id
         aws_secret_access_key:
           type: string
+          description: The secret access key
         aws_session_token:
           type: string
+          description: The session token
         email:
           type: string
+          description: The email used for the git commit
         prerelease:
           type: string
           description: If you want to make this a pre-release specify the value like 'alpha' or 'beta'
