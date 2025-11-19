@@ -7,12 +7,6 @@ on:
 
 permissions: {}
 
-env: 
-  BUCKET: ${{ secrets.BUCKET }}
-  DEPLOYMENT_ROLE: ${{ secrets.DEPLOYMENT_ROLE }}
-  PROJECT_NAME: ${{ github.event.repository.name }}
-  AWS_REGION: ${{ secrets.AWS_REGION }}
-
 jobs:
   check_build_status:
     runs-on: ubuntu-latest
@@ -113,6 +107,12 @@ jobs:
       contents: read
       id-token: write
 
+    env:
+      BUCKET: ${{ secrets.BUCKET }}
+      DEPLOYMENT_ROLE: ${{ secrets.DEPLOYMENT_ROLE }}
+      PROJECT_NAME: ${{ github.event.repository.name }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+
     outputs:
       CHANGE_SET: ${{ steps.changeset.outputs.CHANGE_SET }}
       STACK_NAME: ${{ steps.changeset.outputs.STACK_NAME }}
@@ -121,10 +121,6 @@ jobs:
       S3_STATUS: ${{ steps.s3.outcome }}
 
     steps:
-      - name: Display should skip
-        run: |
-          echo should skip cfn template: ${{needs.check_build_status.outputs.skip_cloudformation}}
-
       - name: Configure AWS Credentials
         id: credentials
         uses: aws-actions/configure-aws-credentials@v5.1.0     
@@ -212,6 +208,8 @@ jobs:
         id-token: write
 
       env:
+        DEPLOYMENT_ROLE: ${{ secrets.DEPLOYMENT_ROLE }}
+        AWS_REGION: ${{ secrets.AWS_REGION }}
         STACK_NAME: ${{ needs.deploy_cfn_stack.outputs.STACK_NAME }}
         STACK_EXISTS: ${{ needs.deploy_cfn_stack.outputs.STACK_EXISTS }}
         
@@ -256,6 +254,9 @@ jobs:
     if: always() && needs.deploy_cfn_stack.outputs.S3_STATUS == 'success'
     
     env:
+      BUCKET: ${{ secrets.BUCKET }}
+      DEPLOYMENT_ROLE: ${{ secrets.DEPLOYMENT_ROLE }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
       DATE: ${{ needs.deploy_cfn_stack.outputs.DATE }}
     
     steps:   
@@ -301,6 +302,7 @@ jobs:
             echo "STACK_STATUS=success" >> $GITHUB_OUTPUT
           else
             echo "STACK_STATUS=failure" >> $GITHUB_OUTPUT
+          fi
 
       - name: Report deployment status
         env:
