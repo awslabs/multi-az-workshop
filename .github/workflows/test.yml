@@ -9,7 +9,9 @@ permissions: {}
 
 env: 
   BUCKET: ${{ secrets.BUCKET }}
+  DEPLOYMENT_ROLE: ${{ secrets.DEPLOYMENT_ROLE }}
   PROJECT_NAME: ${{ github.event.repository.name }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
 
 jobs:
   deployment:
@@ -61,13 +63,15 @@ jobs:
           echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
   
   test:
-    runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
+    #runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-latest
     needs: [ deployment ]
 
     permissions:
       actions: read
       checks: read
       contents: read
+      id-token: write
 
     outputs:
       CHANGE_SET: ${{ steps.changeset.outputs.CHANGE_SET }}
@@ -76,6 +80,16 @@ jobs:
       S3_STATUS: ${{ steps.s3.outcome }}
 
     steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@5.1.0     
+        with:
+          role-to-assume: ${{ env.DEPLOYMENT_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+          mask-aws-account-id: true
+
+      - name: Additional steps
+        run: |
+          aws sts get-caller-identity 
           
       - name: Get workshop content
         uses: actions/download-artifact@v4
@@ -115,12 +129,29 @@ jobs:
     
     
   wait_for_stack:
-      runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
+      #runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
+      runs-on: ubuntu-latest
       needs: [ test ]
+      
+      permissions:
+        id-token: write
+
       env:
         CHANGE_SET: ${{ needs.test.outputs.CHANGE_SET }}
         STACK_NAME: ${{ needs.test.outputs.STACK_NAME }}
+        
       steps:
+        - name: Configure AWS Credentials
+          uses: aws-actions/configure-aws-credentials@5.1.0     
+          with:
+            role-to-assume: ${{ env.DEPLOYMENT_ROLE }}
+            aws-region: ${{ env.AWS_REGION }}
+            mask-aws-account-id: true
+  
+        - name: Additional steps
+          run: |
+            aws sts get-caller-identity 
+
         - name: Wait for CloudFormation Stack to complete
           run: |
             echo "Waiting for CloudFormation stack to complete..."
@@ -219,7 +250,11 @@ jobs:
             done
           
   cleanup:
-    runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
+    #runs-on: codebuild-AwsLabsMultiAZWorkshopArm64GithubRunner-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
    
     needs: [ wait_for_stack, test, deployment ]
     
@@ -229,6 +264,17 @@ jobs:
       DATE: ${{ needs.test.outputs.DATE }}
     
     steps:   
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@5.1.0     
+        with:
+          role-to-assume: ${{ env.DEPLOYMENT_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+          mask-aws-account-id: true
+
+      - name: Additional steps
+        run: |
+          aws sts get-caller-identity 
+          
       - name: Cleanup Old S3 Content
         if: ${{ needs.wait_for_stack.result == 'success' }}
         run: |
