@@ -78,10 +78,19 @@ jobs:
           cd ${{ github.workspace }}/$CDK_LOCATION/layer
           zip -r ${{ github.workspace }}/$CDK_LOCATION/helm-layer.zip .
 
-      - name: Copy destination rule
+      - name: Copy destination rules
         run: |
           file=destination-rule.yaml
-          cp ${{ github.workspace }}/$CDK_LOCATION/Configs/$file ${{ github.workspace }}/assets/$file
+          src_dir="${{ github.workspace }}/$CDK_LOCATION/Configs"
+          dest_dir="${{ github.workspace }}/assets"
+          cp $src_dir/$file $dest_dir/$file
+          regions=(us-east-1 us-east-2 us-west-2 eu-west-1 ap-southeast-1 ap-southeast-2)
+          for region in "${regions[@]}"; do
+            regional_file="destination-rule-${region}.yaml"
+            if [[ -f "$src_dir/$regional_file" ]]; then
+              cp "$src_dir/$regional_file" "$dest_dir/$regional_file"
+            fi
+          done
 
       - name: Get kubectl
         run: |

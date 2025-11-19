@@ -39,7 +39,9 @@ Then, navigate to the [AWS FIS experiments console](https://console.aws.amazon.c
 
 ![fis-az-target](/static/fis-az-target.png)
 
-In this experiment, you can see it's only targeting instances in `us-east-2a` using the *`Placement.AvailabilityZone`* filter (your random AZ may be different). Now let's go to our [dashboards](https://console.aws.amazon.com/cloudwatch/home#dashboards/) and see what is being impacted. Select the *`wildrydes-ride-availability-and-latency-<region>`* dashboard. We're picking this one in particular because we know this operation interacts with the Aurora database. Scroll down to the *Server-side Metrics* section. You can see here that there is latency impact in a single AZ, but it's also raising the overall p99 latency for the region.
+In this experiment, you can see it's only targeting instances in `us-east-2a` using the *`Placement.AvailabilityZone`* filter (your random AZ may be different). 
+
+Now let's go to our [dashboards](https://console.aws.amazon.com/cloudwatch/home#dashboards/) and see what is being impacted. Select the *`wildrydes-ride-availability-and-latency-<region>`* dashboard. We're picking this one in particular because we know this operation interacts with the Aurora database. Scroll down to the *Server-side Metrics* section. You can see here that there is latency impact in a single AZ, but it's also raising the overall p99 latency for the region.
 
 ::::alert{type="info" header="Dashboard refresh"}
 You may need to press the refresh button on the dashboard and/or wait a few minutes for the metrics to appear
@@ -89,7 +91,7 @@ Do the same thing for the other target group whose name starts with "*`multi-EKS
 
 ## Implementing AZI for Istio on EKS
 
-One of the operations hosted as a pod on our EKS cluster, *`Signin`* interacts with another operation, *`Home`*, also hosted on the EKS cluster. This inter-operation communication doesn't traverse the ALB, so the traffic is managed by [Istio](https://istio.io/), a common Kubernetes open-source service mesh. We are using [topology aware routing](https://kubernetes.io/docs/concepts/services-networking/topology-aware-routing/) in our Kubernetes service by defining this annotation:
+One of the operations hosted as a pod on our EKS cluster, *`Signin`*, interacts with another operation, *`Home`*, also hosted on the EKS cluster. This inter-operation communication doesn't traverse the ALB, so the traffic is managed by [Istio](https://istio.io/), a common Kubernetes open-source service mesh. We are using [topology aware routing](https://kubernetes.io/docs/concepts/services-networking/topology-aware-routing/) in our Kubernetes service by defining this annotation:
 
 ```yaml
 service.kubernetes.io/topology-mode: auto
@@ -149,17 +151,23 @@ aws eks update-kubeconfig --name $CLUSTER --region $REGION
 Next, download the manifest we'll use to apply the change (or feel free to create it yourself).
 
 ```bash
+aws s3 cp ${BUCKET_PATH}destination-rule-${REGION}.yaml /tmp/destination-rule.yaml
+```
+
+::::expand{header="If you're not running the workshop in us-east-1, us-east-2, us-west-2, eu-west-1, ap-southeast-1, or ap-southeast-2, follow these directions instead for downloading the destination rule file." variant="container"}
+If you're running the workshop in another Region, you'll need to run:
+
+```bash
 aws s3 cp ${BUCKET_PATH}destination-rule.yaml /tmp/destination-rule.yaml
 ```
 
-If you're running the workshop in a Region other than `us-east-1`, you'll need to update the destination rule routing policies with the region and AZ names for the Region. Open your favorite editor and change the rules. 
+Then, you will need to update the destination rule routing policies with the region and AZ names for the Region. Open your favorite editor and change the rules. For example using vi:
 
-::::expand{header="For example using vi:" variant="container"}
 ```bash
 vi /tmp/destination-rule.yaml
 ```
 
-Press `i` to enter `insert` mode, update the rules, and then press `esc` and type `:wq` and press `enter` to exit. If you are running the workshop in `us-west-2` which has four AZs, your rule would look like the following:
+Press `i` to enter `insert` mode, update the rules, and then press `esc` and type `:wq` and press `enter` to exit. If you are running the workshop in `us-west-1` which has three AZs, your rule would look like the following:
 
 ```yaml
 apiVersion: networking.istio.io/v1beta1
@@ -173,18 +181,15 @@ spec:
       localityLbSetting:
         enabled: true
         distribute:
-          - from: "us-west-2/us-west-2a/*"
+          - from: "us-west-1/us-west-1a/*"
             to:
-              "us-west-2/us-west-2a/*": 100
-          - from: "us-west-2/us-west-2b/*"
+              "us-west-1/us-west-1a/*": 100
+          - from: "us-west-1/us-west-1b/*"
             to:
-              "us-west-2/us-west-2b/*": 100
-          - from: "us-west-2/us-west-2c/*"
+              "us-west-1/us-west-1b/*": 100
+          - from: "us-west-1/us-west-1c/*"
             to:
-              "us-west-2/us-west-2c/*": 100
-          - from: "us-west-2/us-west-2d/*"
-            to:
-              "us-west-2/us-west-2d/*": 100
+              "us-west-1/us-west-1c/*": 100
 ```
 ::::
 
@@ -223,4 +228,4 @@ The `maxSkew` describes the degree to which Pods may be unevenly distributed. In
 
 ## Conclusion
 
-In this lab you saw the regional impact from not using AZI when the failure was contained within a single AZ. Then, you updated your ALB target groups to disable cross-zone load balancing. After that, you created an Istio `DestinationRule` to enforce AZI traffic routing for the Kubernetes pods in our service. In the next lab we're going to simulate a random failure and see how this improved architecture responds.
+In this lab you saw the regional impact from not using AZI when the failure was contained within a single AZ. Then, you updated your ALB target groups to disable cross-zone load balancing. After that, you created an Istio `DestinationRule` to enforce AZI traffic routing for the Kubernetes pods in our service. In the next lab we're going to verify the new configuration by injecting a single-AZ failure and observe how this improved architecture responds.

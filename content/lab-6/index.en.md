@@ -5,7 +5,7 @@ weight : 70
 
 Application Load Balancers (ALB) offer several routing algorithms. The default is `Round robin`, which distributes traffic evenly to targets. Another option is `Least outstanding requests`, which routes requests to the target with the lowest number of in progress tasks. ALB also offers a routing algorithm that can help automatically detect and mitigate gray failures, called [`Automatic target weights` (ATW)](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-target-group-attributes.html#modify-routing-algorithm). 
 
-A gray failure occurs when an ALB target passes active load balancer health checks, making it look healthy, but still returns errors. This scenario could be caused by many things, including application bugs, a dependency failure, intermittent network packet loss, a cold cache on a newly launched target, CPU overload, and more. ATW’s anomaly detection analyzes the HTTP return status codes and TCP/TLS errors to identify targets with a disproportionate ratio of errors compared to other targets in the same target group. 
+A gray failure occurs when an ALB target passes active load balancer health checks, making it look healthy, but still returns errors to clients. This scenario could be caused by many things, including application bugs, a dependency failure, intermittent network packet loss, a cold cache on a newly launched target, CPU overload, and more. ATW’s anomaly detection analyzes the HTTP return status codes and TCP/TLS errors to identify targets with a disproportionate ratio of errors compared to other targets in the same target group. 
 
 When ATW identifies anomalous targets, it reduces traffic to the under-performing targets and gives a larger portion of the traffic to targets that are not exhibiting these errors. When the gray failures decrease or stop, ALB will slowly increase traffic back onto these targets. 
 
@@ -67,7 +67,9 @@ Because we can see our anamolous hosts are all contained in a single AZ, we can 
 
 ![atw-and-zonal-shift](/static/atw-and-zonal-shift.png)
 
-After the zonal shift, all traffic is prevented from being sent to the impacted AZ, even with cross-zone load balancing enabled. This means that even the canary traffic targeting the impacted AZ is redirected to targets in other AZs. Because of this, the targets that were producing errors are no longer mitigated by ATW.
+After the zonal shift, all traffic is prevented from being sent to the impacted AZ, even with cross-zone load balancing enabled. This means that even the canary traffic targeting the impacted AZ is redirected to targets in other AZs. This can present a challenge, because no traffic is being sent to the impacted AZ, it may be hard to determine when the impact is over when you use cross-zone enabled load balancing and perform a zonal shift. You will need to decide whether cross-zone enabled or disabled is a better choice for your environment.
+
+Because no traffic is being sent to the shifted AZ, the targets that were producing errors are no longer mitigated by ATW.
 
 ![mitigated-hosts-after-zonal-shift](/static/mitigated-hosts-after-zonal-shift.png)
 
