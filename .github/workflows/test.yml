@@ -122,6 +122,7 @@ jobs:
 
     steps:
       - name: Configure AWS Credentials
+        id: credentials
         uses: aws-actions/configure-aws-credentials@v5.1.0     
         with:
           role-to-assume: ${{ env.DEPLOYMENT_ROLE }}
