@@ -9,7 +9,6 @@ permissions: {}
 
 jobs:
   filter:
-    name: Determine if workflow should run
     runs-on: ubuntu-latest
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
@@ -347,3 +346,27 @@ jobs:
         with:
           name: PullRequestNumber
           path: pr_number.txt
+
+  final:
+    needs: [filter, build]
+    # always() so it runs even if build is skipped due to should_run=false
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Decide final outcome
+        run: |
+          echo "filter.should_run=${{ needs.filter.outputs.should_run }}"
+          echo "build.result=${{ needs.build.result }}"
+
+          if [ "${{ needs.filter.outputs.should_run }}" = "false" ]; then
+            echo "Only ignored paths changed; treating as success."
+            exit 0
+          fi
+
+          if [ "${{ needs.build.result }}" = "success" ]; then
+            echo "Build succeeded; treating as success."
+            exit 0
+          fi
+
+          echo "Build did not succeed when it should have run; failing."
+          exit 1
