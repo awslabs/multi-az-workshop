@@ -11,13 +11,12 @@ spec:
       localityLbSetting:
         enabled: true
         distribute:
-          - from: "us-west-1/us-west-1a/*"
+          - from: "eu-west-1/eu-west-1a/*"
             to:
-              "us-west-1/us-west-1a/*": 100
-          - from: "us-west-1/us-west-1b/*"
+              "eu-west-1/eu-west-1a/*": 100
+          - from: "eu-west-1/eu-west-1b/*"
             to:
-              "us-west-1/us-west-1b/*": 100
-          - from: "us-west-1/us-west-1c/*"
+              "eu-west-1/eu-west-1b/*": 100
+          - from: "eu-west-1/eu-west-1c/*"
             to:
-              "us-west-1/us-west-1c/*": 100
-          
+              "eu-west-1/eu-west-1c/*": 100

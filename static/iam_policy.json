@@ -76,7 +76,8 @@
             "Effect": "Allow",
             "Action": [
                 "events:Describe*",
-                "events:List*"
+                "events:List*",
+                "events:PutRule"
             ],
             "Resource": "*"
         },
