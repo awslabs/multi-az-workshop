@@ -14,49 +14,65 @@ env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
 
 jobs:
-  check-build-status:
+  check_build_status:
     runs-on: ubuntu-latest
     outputs:
       skip_cloudformation: ${{ steps.check.outputs.skip_cf }}
+      build_run_id: ${{ steps.check.outputs.build_run_id }}
+      pr_sha: ${{ steps.check.outputs.pr_sha }}
     steps:
-      - uses: actions/github-script@v7
-        id: check
+      - name: Download build data artifact
+        uses: actions/download-artifact@v4
         with:
-          script: |
-            const jobsUrl = context.payload.workflow_run.jobs_url;
-            const jobsResp = await github.request(`GET ${jobsUrl}`);
-            const jobs = jobsResp.data.jobs;
+          name: BuildDataArtifact
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
 
-            const filterJob = jobs.find(j => j.name === 'build/filter');
-            const buildJob = jobs.find(j => j.name === 'build/build');
+      - name: Check build status
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # First, verify the auto-approve workflow completed successfully
+          if [[ "${{ github.event.workflow_run.conclusion }}" != "success" ]]; then
+            echo "Auto-approve workflow did not complete successfully"
+            exit 1
+          fi
 
-            let skip_cf = false;
+          # Extract data from the artifact
+          BUILD_RUN_ID=$(grep '^run_id=' builddata.txt | cut -d'=' -f2)
+          BUILD_CONCLUSION=$(grep '^conclusion=' builddata.txt | cut -d'=' -f2)
+          PR_SHA=$(grep '^sha=' builddata.txt | cut -d'=' -f2)
 
-            // Check if filter job determined that build should not run
-            // In this case, build job runs but skips all steps
-            if (filterJob?.conclusion === 'success' && buildJob?.conclusion === 'success') {
-              // Look for the filter job's output in its steps
-              const filterSteps = filterJob.steps || [];
-              const checkStep = filterSteps.find(s => s.name === 'Decide if only ignored paths changed');
-              
-              // If we can't determine from steps, check if build job has a "Check if build should run" step
-              const buildSteps = buildJob.steps || [];
-              const shouldBuildStep = buildSteps.find(s => s.name === 'Check if build should run');
-              
-              // If the "Check if build should run" step exists and completed, 
-              // but no subsequent build steps ran, then we should skip CloudFormation
-              if (shouldBuildStep?.conclusion === 'success') {
-                const checkoutStep = buildSteps.find(s => s.name === 'Checkout code');
-                if (checkoutStep?.conclusion === 'skipped') {
-                  skip_cf = true;
-                }
-              }
-            }
+          echo "Build workflow run ID: $BUILD_RUN_ID"
+          echo "Build workflow conclusion: $BUILD_CONCLUSION"
+          echo "PR SHA: $PR_SHA"
 
-            core.setOutput('skip_cf', skip_cf ? 'true' : 'false');
+          # Output the data for other jobs
+          echo "build_run_id=$BUILD_RUN_ID" >> $GITHUB_OUTPUT
+          echo "pr_sha=$PR_SHA" >> $GITHUB_OUTPUT
 
-  deployment:
+          # Verify the build workflow completed successfully
+          if [[ "$BUILD_CONCLUSION" != "success" ]]; then
+            echo "Build workflow did not complete successfully"
+            exit 1
+          fi
+
+          # Check if ContentArtifact was created in the build workflow
+          ARTIFACTS=$(gh api repos/${{ github.repository }}/actions/runs/$BUILD_RUN_ID/artifacts --jq '.artifacts[].name')
+
+          if echo "$ARTIFACTS" | grep -q "^ContentArtifact$"; then
+            echo "ContentArtifact found - proceeding with CloudFormation deployment"
+            echo "skip_cf=false" >> $GITHUB_OUTPUT
+          else
+            echo "ContentArtifact not found - skipping CloudFormation deployment"
+            echo "skip_cf=true" >> $GITHUB_OUTPUT
+          fi
+
+  create_deployment:
     if: github.event.workflow_run.conclusion == 'success'
+
+    needs: [ check_build_status ]
 
     runs-on: ubuntu-latest
 
@@ -65,8 +81,7 @@ jobs:
       deployments: write
 
     outputs:
-      PR_SHA: ${{ steps.set-build-data.outputs.pr_sha }}
-      BUILD_RUN_ID: ${{ steps.set-build-data.outputs.build_run_id }}
+      BUILD_RUN_ID: ${{ needs.check_build_status.outputs.build_run_id }}
       DEPLOYMENT_ID: ${{ steps.create-deployment.outputs.deployment_id }}
 
     env:
@@ -74,28 +89,11 @@ jobs:
       ENVIRONMENT: AWS
 
     steps:
-      - name: Get run data
-        uses: actions/download-artifact@v4
-        with:
-          name: BuildDataArtifact
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ github.event.workflow_run.id }}
-
-      - name: Set build data
-        id: set-build-data
-        run: |
-          BUILD_RUN_ID=$(grep '^run_id=' builddata.txt | cut -d'=' -f2)
-          echo "build_run_id=$BUILD_RUN_ID" >> $GITHUB_OUTPUT
-          echo $BUILD_RUN_ID
-          PR_SHA=$(grep '^sha=' builddata.txt | cut -d'=' -f2)
-          echo "pr_sha=$PR_SHA" >> $GITHUB_OUTPUT
-          echo $PR_SHA
-
       - name: Create Deployment
         id: create-deployment
         run: |
           DEPLOYMENT_ID=$(gh api repos/${{ github.repository }}/deployments \
-            -f ref=${{ steps.set-build-data.outputs.pr_sha }} \
+            -f ref=${{ needs.check_build_status.outputs.pr_sha }} \
             -f environment=$ENVIRONMENT \
             -F auto_merge=false \
             --jq '.id')
@@ -103,10 +101,10 @@ jobs:
           echo DEPLOYMENT_ID: $DEPLOYMENT_ID
           echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
   
-  test:
+  deploy_cfn_stack:
     runs-on: ubuntu-latest
-    needs: [ deployment, check-build-status ]
-    if: ${{ needs.check-build-status.outputs.skip_cloudformation }} == 'false'
+    needs: [ create_deployment, check_build_status ]
+    if: ${{ needs.check_build_status.outputs.skip_cloudformation }} == 'false'
     
     environment: AWS
 
@@ -140,7 +138,7 @@ jobs:
         with:
           name: ContentArtifact
           github-token: ${{ github.token }}
-          run-id: ${{ needs.deployment.outputs.BUILD_RUN_ID }}
+          run-id: ${{ needs.create_deployment.outputs.BUILD_RUN_ID }}
 
       - name: Upload to S3
         id: s3
@@ -198,11 +196,10 @@ jobs:
           echo "STACK_NAME=$PROJECT_NAME" >> "$GITHUB_OUTPUT"
           echo "STACK_EXISTS=$STACK_EXISTS" >> "$GITHUB_OUTPUT"
     
-    
   wait_for_stack:
       runs-on: ubuntu-latest
-      needs: [ test ]
-      if: ${{ needs.test.result}} == 'success'
+      needs: [ deploy_cfn_stack ]
+      if: ${{ needs.deploy_cfn_stack.result}} == 'success'
       
       environment: AWS
       
@@ -210,8 +207,8 @@ jobs:
         id-token: write
 
       env:
-        STACK_NAME: ${{ needs.test.outputs.STACK_NAME }}
-        STACK_EXISTS: ${{ needs.test.outputs.STACK_EXISTS }}
+        STACK_NAME: ${{ needs.deploy_cfn_stack.outputs.STACK_NAME }}
+        STACK_EXISTS: ${{ needs.deploy_cfn_stack.outputs.STACK_EXISTS }}
         
       steps:
         - name: Configure AWS Credentials
@@ -249,12 +246,12 @@ jobs:
     permissions:
       id-token: write
    
-    needs: [ wait_for_stack, test ]
+    needs: [ wait_for_stack, deploy_cfn_stack ]
     
-    if: ${{ always() && needs.test.outputs.S3_STATUS == 'success' }}
+    if: ${{ always() && needs.deploy_cfn_stack.outputs.S3_STATUS == 'success' }}
     
     env:
-      DATE: ${{ needs.test.outputs.DATE }}
+      DATE: ${{ needs.deploy_cfn_stack.outputs.DATE }}
     
     steps:   
       - name: Configure AWS Credentials
@@ -280,11 +277,11 @@ jobs:
           echo Deleting new S3 content because deployment did not succeed
           aws s3 rm s3://$BUCKET/ --recursive --exclude "*" --include "$DATE/*"
 
-  report:
+  finish_deployment:
     runs-on: ubuntu-latest  
-    needs: [ cleanup, wait_for_stack, deployment, check-build-status ]
+    needs: [ cleanup, wait_for_stack, create_deployment, check_build_status ]
     
-    if: ${{ always() && needs.deployment.result == 'success' }}
+    if: ${{ always() && needs.create_deployment.result == 'success' }}
 
     permissions:
       deployments: write
@@ -295,7 +292,7 @@ jobs:
         run: |
           if [[ "${{ needs.wait_for_stack.result }}" != "skipped" ]]; then
             echo "STACK_STATUS=${{ needs.wait_for_stack.result }}" >> $GITHUB_OUTPUT
-          elif [[ "${{ needs.check-build-status.outputs.skip_cloudformation }}" == "true" ]]; then
+          elif [[ "${{ needs.check_build_status.outputs.skip_cloudformation }}" == "true" ]]; then
             echo "STACK_STATUS=success" >> $GITHUB_OUTPUT
           else
             echo "STACK_STATUS=failure" >> $GITHUB_OUTPUT
@@ -304,5 +301,5 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo DEPLOYMENT ID: ${{ needs.deployment.outputs.DEPLOYMENT_ID }}
-          gh api repos/${{ github.repository }}/deployments/${{ needs.deployment.outputs.DEPLOYMENT_ID }}/statuses -f "state=${{ steps.stack_status.outputs.STACK_STATUS }}"
+          echo DEPLOYMENT ID: ${{ needs.create_deployment.outputs.DEPLOYMENT_ID }}
+          gh api repos/${{ github.repository }}/deployments/${{ needs.create_deployment.outputs.DEPLOYMENT_ID }}/statuses -f "state=${{ steps.stack_status.outputs.STACK_STATUS }}"
