@@ -286,9 +286,6 @@ jobs:
           zip -r ${{ github.workspace }}/assets/app_arm64_fail.zip scripts/ appspec.yml
           rm -rf ${{ github.workspace }}/app-src/output
 
-      #- name: Set up docker buildx
-      #  uses: docker/setup-buildx-action@v3
-
       - name: Build arm64 container
         if: steps.should-build.outputs.skip == 'false'
         run: |
