@@ -81,7 +81,6 @@ jobs:
       deployments: write
 
     outputs:
-      BUILD_RUN_ID: ${{ needs.check_build_status.outputs.build_run_id }}
       DEPLOYMENT_ID: ${{ steps.create_deployment.outputs.deployment_id }}
 
     env:
@@ -138,7 +137,7 @@ jobs:
         with:
           name: ContentArtifact
           github-token: ${{ github.token }}
-          run-id: ${{ needs.create_deployment.outputs.BUILD_RUN_ID }}
+          run-id: ${{ needs.check_build_status.outputs.build_run_id }}
 
       - name: Upload to S3
         id: s3
