@@ -103,7 +103,7 @@ jobs:
   deploy_cfn_stack:
     runs-on: ubuntu-latest
     needs: [ create_deployment, check_build_status ]
-    if: ${{ needs.check_build_status.outputs.skip_cloudformation }} == 'false'
+    if: needs.check_build_status.outputs.skip_cloudformation == 'false'
     
     environment: AWS
 
@@ -204,7 +204,7 @@ jobs:
   wait_for_stack:
       runs-on: ubuntu-latest
       needs: [ deploy_cfn_stack ]
-      if: ${{ needs.deploy_cfn_stack.result}} == 'success'
+      if: needs.deploy_cfn_stack.result == 'success'
       
       environment: AWS
       
@@ -253,7 +253,7 @@ jobs:
    
     needs: [ wait_for_stack, deploy_cfn_stack ]
     
-    if: ${{ always() && needs.deploy_cfn_stack.result.outputs.S3_STATUS == 'success' }}
+    if: always() && needs.deploy_cfn_stack.outputs.S3_STATUS == 'success'
     
     env:
       DATE: ${{ needs.deploy_cfn_stack.outputs.DATE }}
@@ -286,7 +286,7 @@ jobs:
     runs-on: ubuntu-latest  
     needs: [ cleanup, wait_for_stack, create_deployment, check_build_status ]
     
-    if: ${{ always() && needs.create_deployment.result == 'success' }}
+    if: always() && needs.create_deployment.result == 'success'
 
     permissions:
       deployments: write
