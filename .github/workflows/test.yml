@@ -27,13 +27,30 @@ jobs:
             const jobsResp = await github.request(`GET ${jobsUrl}`);
             const jobs = jobsResp.data.jobs;
 
+            const filterJob = jobs.find(j => j.name === 'build/filter');
             const buildJob = jobs.find(j => j.name === 'build/build');
-            const finalJob = jobs.find(j => j.name === 'build/final');
 
             let skip_cf = false;
 
-            if (buildJob?.conclusion === 'skipped' && finalJob?.conclusion === 'success') {
-              skip_cf = true;
+            // Check if filter job determined that build should not run
+            // In this case, build job runs but skips all steps
+            if (filterJob?.conclusion === 'success' && buildJob?.conclusion === 'success') {
+              // Look for the filter job's output in its steps
+              const filterSteps = filterJob.steps || [];
+              const checkStep = filterSteps.find(s => s.name === 'Decide if only ignored paths changed');
+              
+              // If we can't determine from steps, check if build job has a "Check if build should run" step
+              const buildSteps = buildJob.steps || [];
+              const shouldBuildStep = buildSteps.find(s => s.name === 'Check if build should run');
+              
+              // If the "Check if build should run" step exists and completed, 
+              // but no subsequent build steps ran, then we should skip CloudFormation
+              if (shouldBuildStep?.conclusion === 'success') {
+                const checkoutStep = buildSteps.find(s => s.name === 'Checkout code');
+                if (checkoutStep?.conclusion === 'skipped') {
+                  skip_cf = true;
+                }
+              }
             }
 
             core.setOutput('skip_cf', skip_cf ? 'true' : 'false');
@@ -90,6 +107,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ deployment, check-build-status ]
     if: ${{ needs.check-build-status.outputs.skip_cloudformation }} == 'false'
+    
+    environment: AWS
 
     permissions:
       actions: read
@@ -100,6 +119,7 @@ jobs:
     outputs:
       CHANGE_SET: ${{ steps.changeset.outputs.CHANGE_SET }}
       STACK_NAME: ${{ steps.changeset.outputs.STACK_NAME }}
+      STACK_EXISTS: ${{ steps.changeset.outputs.STACK_EXISTS }}
       DATE: ${{ steps.s3.outputs.DATE }}
       S3_STATUS: ${{ steps.s3.outcome }}
 
@@ -136,20 +156,47 @@ jobs:
         run: |
           date=${{ steps.s3.outputs.DATE }}
           set +e
-          aws cloudformation describe-stacks --stack-name $PROJECT_NAME --region $AWS_REGION >/dev/null 2>&1; EXITCODE=$?
+          aws cloudformation describe-stacks --stack-name $PROJECT_NAME --region $AWS_REGION >/dev/null 2>&1
+          EXITCODE=$?
           set -e
+          
           if [[ $EXITCODE -eq 0 ]]; then
-            echo STACK EXISTS
-            aws cloudformation create-change-set --change-set-type UPDATE --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --template-url https://$BUCKET.s3.amazonaws.com/$date/$PROJECT_NAME.template --parameters ParameterKey=AssetsBucketName,ParameterValue=$BUCKET ParameterKey=AssetsBucketPrefix,ParameterValue="${date}/" ParameterKey=ParticipantRoleName,ParameterValue=Admin --capabilities CAPABILITY_IAM --region $AWS_REGION
+            echo "Stack exists - creating UPDATE change set"
+            STACK_EXISTS=true
+            CHANGE_SET_TYPE=UPDATE
           else
-            echo STACK DOESNT EXIST
-            aws cloudformation create-change-set --change-set-type CREATE --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --template-url https://$BUCKET.s3.amazonaws.com/$date/$PROJECT_NAME.template --parameters ParameterKey=AssetsBucketName,ParameterValue=$BUCKET ParameterKey=AssetsBucketPrefix,ParameterValue="${date}/" ParameterKey=ParticipantRoleName,ParameterValue=Admin --capabilities CAPABILITY_IAM --region $AWS_REGION
+            echo "Stack does not exist - creating CREATE change set"
+            STACK_EXISTS=false
+            CHANGE_SET_TYPE=CREATE
           fi
-          echo WAITING FOR CHANGE SET
-          aws cloudformation wait change-set-create-complete --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --region $AWS_REGION
-          aws cloudformation execute-change-set --stack-name $PROJECT_NAME --change-set-name $PROJECT_NAME-$date --region $AWS_REGION
+          
+          aws cloudformation create-change-set \
+            --change-set-type $CHANGE_SET_TYPE \
+            --stack-name $PROJECT_NAME \
+            --change-set-name $PROJECT_NAME-$date \
+            --template-url https://$BUCKET.s3.amazonaws.com/$date/$PROJECT_NAME.template \
+            --parameters \
+              ParameterKey=AssetsBucketName,ParameterValue=$BUCKET \
+              ParameterKey=AssetsBucketPrefix,ParameterValue="${date}/" \
+              ParameterKey=ParticipantRoleName,ParameterValue=Admin \
+            --capabilities CAPABILITY_IAM \
+            --region $AWS_REGION
+          
+          echo "Waiting for change set to be created..."
+          aws cloudformation wait change-set-create-complete \
+            --stack-name $PROJECT_NAME \
+            --change-set-name $PROJECT_NAME-$date \
+            --region $AWS_REGION
+          
+          echo "Executing change set..."
+          aws cloudformation execute-change-set \
+            --stack-name $PROJECT_NAME \
+            --change-set-name $PROJECT_NAME-$date \
+            --region $AWS_REGION
+          
           echo "CHANGE_SET=$PROJECT_NAME-$date" >> "$GITHUB_OUTPUT"
           echo "STACK_NAME=$PROJECT_NAME" >> "$GITHUB_OUTPUT"
+          echo "STACK_EXISTS=$STACK_EXISTS" >> "$GITHUB_OUTPUT"
     
     
   wait_for_stack:
@@ -157,12 +204,14 @@ jobs:
       needs: [ test ]
       if: ${{ needs.test.result}} == 'success'
       
+      environment: AWS
+      
       permissions:
         id-token: write
 
       env:
-        CHANGE_SET: ${{ needs.test.outputs.CHANGE_SET }}
         STACK_NAME: ${{ needs.test.outputs.STACK_NAME }}
+        STACK_EXISTS: ${{ needs.test.outputs.STACK_EXISTS }}
         
       steps:
         - name: Configure AWS Credentials
@@ -178,103 +227,24 @@ jobs:
 
         - name: Wait for CloudFormation Stack to complete
           run: |
-            echo "Waiting for CloudFormation stack to complete..."
-            get_change_set_status() {
-              aws cloudformation describe-stacks \
-              --stack-name "$STACK_NAME" \
-              --query "Stacks[0].StackStatus" \
-              --region $AWS_REGION \
-              --output text
-            }
-
-            # Initial status check
-            STATUS=$(get_change_set_status)
-            
-            # Loop to monitor the status of the change set
-            while true; do
-                case "$STATUS" in
-                    "CREATE_COMPLETE")
-                      echo "Creation is complete"
-                      exit 0
-                      ;;
-                    "CREATE_IN_PROGRESS")
-                      echo "Change set is being created, waiting..."
-                      ;;
-                    "CREATE_FAILED")
-                      echo "Change set creation failed!"
-                      exit 1
-                      ;;
-
-                    "DELETE_COMPLETE")
-                      echo "Delete complete"
-                      exit 1
-                      ;;
-                    "DELETE_FAILED")
-                      echo "Delete failed"
-                      exit 1
-                      ;;
-                    "DELETE_IN_PROGRESS")
-                      echo "Delete in progress, waiting..."
-                      ;;
-
-                    "REVIEW_IN_PROGRESS")
-                      echo "Review in progress, waiting"
-                      ;;
-
-                    "ROLLBACK_COMPLETE")
-                      echo "Create failed and rolled back"
-                      exit 1
-                      ;;
-                    "ROLLBACK_FAILED")
-                      echo "Create failed and rollback failed"
-                      exit 1
-                      ;;
-                    "ROLLBACK_IN_PROGRESS")
-                      echo "Rollback in progress, waiting"
-                      exit 1
-                      ;;
-
-                    "UPDATE_COMPLETE")
-                      echo "Update complete"
-                      exit 0
-                      ;;
-                    "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS")
-                      echo "Update finishing, waiting..."
-                      ;;
-                    "UPDATE_IN_PROGRESS")
-                      echo "Update in progress, waiting"
-                      ;;
-
-                    "UPDATE_ROLLBACK_COMPLETE")
-                      echo "Update failed"
-                      exit 1
-                      ;;
-                    "UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRES")
-                      echo "Update rollback cleanup, waiting..."
-                      ;;
-                    "UPDATE_ROLLBACK_FAILED")
-                      echo "Update failed, rollback failed"
-                      exit 1
-                      ;;
-                    "UPDATE_ROLLBACK_IN_PROGRESS")
-                      echo "Update rollback in progress, waiting"
-                      ;;
-                   
-                    *)
-                      echo "Unknown status: $STATUS"
-                      exit 1
-                      ;;
-                esac
-
-                # Wait for 30 seconds before checking the status again
-                sleep 30
-
-                # Get the current status again
-                STATUS=$(get_change_set_status)
-            done
+            if [[ "$STACK_EXISTS" == "true" ]]; then
+              echo "Waiting for stack UPDATE to complete..."
+              aws cloudformation wait stack-update-complete \
+                --stack-name "$STACK_NAME" \
+                --region $AWS_REGION
+              echo "Stack update completed successfully"
+            else
+              echo "Waiting for stack CREATE to complete..."
+              aws cloudformation wait stack-create-complete \
+                --stack-name "$STACK_NAME" \
+                --region $AWS_REGION
+              echo "Stack creation completed successfully"
+            fi
           
   cleanup:
     runs-on: ubuntu-latest
+    
+    environment: AWS
 
     permissions:
       id-token: write
