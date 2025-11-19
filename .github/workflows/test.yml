@@ -134,6 +134,7 @@ jobs:
           mask-aws-account-id: true
 
       - name: Verify identity
+        id: verify
         run: |
           aws sts get-caller-identity 
           
