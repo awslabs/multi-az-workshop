@@ -4,15 +4,82 @@ on:
     types: [opened, synchronize]
     branches:
       - main
-    paths:
-      - '!.github/workflows/**'
-      - '!.aws/**'
         
 permissions: {}
 
 jobs:
+  filter:
+    name: Determine if workflow should run
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+
+    env:
+      IGNORE_PATTERNS: '^\.github/workflows/ ^\.aws/'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: diff
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base_sha="${{ github.event.pull_request.base.sha }}"
+            head_sha="${{ github.event.pull_request.head.sha }}"
+          else
+            # push event
+            base_sha="${{ github.event.before }}"
+            head_sha="${{ github.sha }}"
+          fi
+
+          echo "Comparing $base_sha...$head_sha"
+          git diff --name-only "$base_sha" "$head_sha" > files.txt
+          echo "Changed files:"
+          cat files.txt
+
+      - name: Decide if only ignored paths changed
+        id: check
+        run: |
+          # Split IGNORE_PATTERNS env var into a bash array
+          read -ra PATTERNS <<< "$IGNORE_PATTERNS"
+
+          echo "Ignore patterns:"
+          printf '  %s\n' "${PATTERNS[@]}"
+
+          only_ignored=true
+
+          while read -r file; do
+            [ -z "$file" ] && continue
+
+            matched=false
+            for pattern in "${PATTERNS[@]}"; do
+              if [[ "$file" =~ $pattern ]]; then
+                matched=true
+                break
+              fi
+            done
+
+            if [ "$matched" = false ]; then
+              echo "Non-ignored change detected: $file"
+              only_ignored=false
+              break
+            fi
+          done < files.txt
+
+          if [ "$only_ignored" = true ]; then
+            echo "All changes are in ignored paths. Skipping build jobs."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "There are non-ignored changes. Running full workflow."
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          fi
   
   build:
+    needs: filter
+    if: needs.filter.outputs.should_run == 'true'
+
     permissions:
       contents: read
 
