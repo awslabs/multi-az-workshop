@@ -123,7 +123,7 @@ jobs:
     steps:
       - name: Display should skip
         run: |
-          echo should skip cfn: ${{needs.check_build_status.outputs.skip_cloudformation}}
+          echo should skip cfn template: ${{needs.check_build_status.outputs.skip_cloudformation}}
 
       - name: Configure AWS Credentials
         id: credentials
