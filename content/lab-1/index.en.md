@@ -3,7 +3,7 @@ title : "Lab 1: Review operational metrics dashboards"
 weight : 20
 ---
 
-Welcome to Wild Rydes! Wild Rydes is a web application that allows you to request, monitor, and pay for unicorn rides! 
+Welcome to Wild Rydes! Wild Rydes is a web application that allows you to request, track, and pay for unicorn rides! 
 
 ![wild-rydes](/static/wild-rydes.png)
 
