@@ -16,6 +16,7 @@ jobs:
       pr_sha: ${{ steps.check.outputs.pr_sha }}
     steps:
       - name: Download build data artifact
+        id: download
         uses: actions/download-artifact@v4
         with:
           name: BuildDataArtifact
