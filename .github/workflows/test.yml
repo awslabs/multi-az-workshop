@@ -106,7 +106,7 @@ jobs:
 
     steps:
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v5     
+        uses: aws-actions/configure-aws-credentials@v5.1.0     
         with:
           role-to-assume: ${{ env.DEPLOYMENT_ROLE }}
           aws-region: ${{ env.AWS_REGION }}
@@ -168,7 +168,7 @@ jobs:
         
       steps:
         - name: Configure AWS Credentials
-          uses: aws-actions/configure-aws-credentials@v5     
+          uses: aws-actions/configure-aws-credentials@v5.1.0     
           with:
             role-to-assume: ${{ env.DEPLOYMENT_ROLE }}
             aws-region: ${{ env.AWS_REGION }}
@@ -291,7 +291,7 @@ jobs:
     
     steps:   
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v5  
+        uses: aws-actions/configure-aws-credentials@v5.1.0  
         with:
           role-to-assume: ${{ env.DEPLOYMENT_ROLE }}
           aws-region: ${{ env.AWS_REGION }}
