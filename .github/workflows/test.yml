@@ -96,7 +96,7 @@ jobs:
           echo DEPLOYMENT_ID: $DEPLOYMENT_ID
           echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
   
-  deploy_cfn_stack:
+  deploy_and_cleanup:
     runs-on: ubuntu-latest
     needs: [ create_deployment, check_build_status ]
     if: needs.check_build_status.outputs.skip_cloudformation == 'false'
@@ -116,15 +116,10 @@ jobs:
       AWS_REGION: ${{ secrets.AWS_REGION }}
 
     outputs:
-      CHANGE_SET: ${{ steps.changeset.outputs.CHANGE_SET }}
-      STACK_NAME: ${{ steps.changeset.outputs.STACK_NAME }}
-      STACK_EXISTS: ${{ steps.changeset.outputs.STACK_EXISTS }}
-      DATE: ${{ steps.s3.outputs.DATE }}
-      S3_STATUS: ${{ steps.s3.outcome }}
+      STACK_STATUS: ${{ steps.wait_stack.outcome }}
 
     steps:
       - name: Configure AWS Credentials
-        id: credentials
         uses: aws-actions/configure-aws-credentials@v5.1.0     
         with:
           role-to-assume: ${{ env.DEPLOYMENT_ROLE }}
@@ -132,7 +127,6 @@ jobs:
           mask-aws-account-id: true
 
       - name: Verify identity
-        id: verify
         run: |
           aws sts get-caller-identity 
           
@@ -195,99 +189,44 @@ jobs:
             --change-set-name $PROJECT_NAME-$date \
             --region $AWS_REGION
           
-          echo "CHANGE_SET=$PROJECT_NAME-$date" >> "$GITHUB_OUTPUT"
-          echo "STACK_NAME=$PROJECT_NAME" >> "$GITHUB_OUTPUT"
-          echo "STACK_EXISTS=$STACK_EXISTS" >> "$GITHUB_OUTPUT"
-    
-  wait_for_stack:
-      runs-on: ubuntu-latest
-      needs: [ deploy_cfn_stack ]
-      if: needs.deploy_cfn_stack.result == 'success'
-      
-      environment: AWS
-      
-      permissions:
-        id-token: write
+          echo "STACK_EXISTS=$STACK_EXISTS" >> $GITHUB_OUTPUT
 
-      env:
-        DEPLOYMENT_ROLE: ${{ secrets.DEPLOYMENT_ROLE }}
-        AWS_REGION: ${{ secrets.AWS_REGION }}
-        STACK_NAME: ${{ needs.deploy_cfn_stack.outputs.STACK_NAME }}
-        STACK_EXISTS: ${{ needs.deploy_cfn_stack.outputs.STACK_EXISTS }}
-        
-      steps:
-        - name: Configure AWS Credentials
-          uses: aws-actions/configure-aws-credentials@v5.1.0     
-          with:
-            role-to-assume: ${{ env.DEPLOYMENT_ROLE }}
-            aws-region: ${{ env.AWS_REGION }}
-            mask-aws-account-id: true
-  
-        - name: Additional steps
-          run: |
-            aws sts get-caller-identity 
-
-        - name: Wait for CloudFormation Stack to complete
-          run: |
-            if [[ "$STACK_EXISTS" == "true" ]]; then
-              echo "Waiting for stack UPDATE to complete..."
-              aws cloudformation wait stack-update-complete \
-                --stack-name "$STACK_NAME" \
-                --region $AWS_REGION
-              echo "Stack update completed successfully"
-            else
-              echo "Waiting for stack CREATE to complete..."
-              aws cloudformation wait stack-create-complete \
-                --stack-name "$STACK_NAME" \
-                --region $AWS_REGION
-              echo "Stack creation completed successfully"
-            fi
-          
-  cleanup:
-    runs-on: ubuntu-latest
-    
-    environment: AWS
-
-    permissions:
-      id-token: write
-   
-    needs: [ wait_for_stack, deploy_cfn_stack ]
-    
-    if: always() && needs.deploy_cfn_stack.outputs.S3_STATUS == 'success'
-    
-    env:
-      BUCKET: ${{ secrets.BUCKET }}
-      DEPLOYMENT_ROLE: ${{ secrets.DEPLOYMENT_ROLE }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-      DATE: ${{ needs.deploy_cfn_stack.outputs.DATE }}
-    
-    steps:   
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v5.1.0  
-        with:
-          role-to-assume: ${{ env.DEPLOYMENT_ROLE }}
-          aws-region: ${{ env.AWS_REGION }}
-          mask-aws-account-id: true
-
-      - name: Verify identity
+      - name: Wait for CloudFormation Stack to complete
+        id: wait_stack
         run: |
-          aws sts get-caller-identity 
+          STACK_EXISTS=${{ steps.changeset.outputs.STACK_EXISTS }}
           
+          if [[ "$STACK_EXISTS" == "true" ]]; then
+            echo "Waiting for stack UPDATE to complete..."
+            aws cloudformation wait stack-update-complete \
+              --stack-name "$PROJECT_NAME" \
+              --region $AWS_REGION
+            echo "Stack update completed successfully"
+          else
+            echo "Waiting for stack CREATE to complete..."
+            aws cloudformation wait stack-create-complete \
+              --stack-name "$PROJECT_NAME" \
+              --region $AWS_REGION
+            echo "Stack creation completed successfully"
+          fi
+
       - name: Cleanup Old S3 Content
-        if: ${{ needs.wait_for_stack.result == 'success' }}
+        if: steps.wait_stack.outcome == 'success'
         run: |
-          echo Deleting old S3 content due to deployment success
+          DATE=${{ steps.s3.outputs.DATE }}
+          echo "Deleting old S3 content due to deployment success"
           aws s3 rm s3://$BUCKET/ --recursive --exclude "$DATE/*"
       
       - name: Cleanup New S3 Content
-        if: ${{ needs.wait_for_stack.result != 'success' }}
+        if: always() && steps.s3.outcome == 'success' && steps.wait_stack.outcome != 'success'
         run: |
-          echo Deleting new S3 content because deployment did not succeed
+          DATE=${{ steps.s3.outputs.DATE }}
+          echo "Deleting new S3 content because deployment did not succeed"
           aws s3 rm s3://$BUCKET/ --recursive --exclude "*" --include "$DATE/*"
 
   finish_deployment:
     runs-on: ubuntu-latest  
-    needs: [ cleanup, wait_for_stack, create_deployment, check_build_status ]
+    needs: [ deploy_and_cleanup, create_deployment, check_build_status ]
     
     if: always() && needs.create_deployment.result == 'success'
 
@@ -298,8 +237,8 @@ jobs:
       - name: Set stack status
         id: stack_status
         run: |
-          if [[ "${{ needs.wait_for_stack.result }}" != "skipped" ]]; then
-            echo "STACK_STATUS=${{ needs.wait_for_stack.result }}" >> $GITHUB_OUTPUT
+          if [[ "${{ needs.deploy_and_cleanup.result }}" == "success" ]]; then
+            echo "STACK_STATUS=success" >> $GITHUB_OUTPUT
           elif [[ "${{ needs.check_build_status.outputs.skip_cloudformation }}" == "true" ]]; then
             echo "STACK_STATUS=success" >> $GITHUB_OUTPUT
           else
