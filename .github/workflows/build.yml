@@ -4,10 +4,9 @@ on:
     types: [opened, synchronize]
     branches:
       - main
-    #paths:
-    #  - app-src/**
-    #  - cdk/**
-    #  - .github/workflows/build.yml
+    paths:
+      - '!.github/workflows/**'
+      - '!.aws/**'
         
 permissions: {}
 
