@@ -121,7 +121,12 @@ jobs:
       S3_STATUS: ${{ steps.s3.outcome }}
 
     steps:
+      - name: Display should skip
+        run: |
+          echo should skip cfn: ${{needs.check_build_status.outputs.skip_cloudformation}}
+
       - name: Configure AWS Credentials
+        id: credentials
         uses: aws-actions/configure-aws-credentials@v5.1.0     
         with:
           role-to-assume: ${{ env.DEPLOYMENT_ROLE }}
@@ -247,7 +252,7 @@ jobs:
    
     needs: [ wait_for_stack, deploy_cfn_stack ]
     
-    if: ${{ always() && needs.deploy_cfn_stack.outputs.S3_STATUS == 'success' }}
+    if: ${{ always() && needs.deploy_cfn_stack.result.outputs.S3_STATUS == 'success' }}
     
     env:
       DATE: ${{ needs.deploy_cfn_stack.outputs.DATE }}
@@ -260,7 +265,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           mask-aws-account-id: true
 
-      - name: Additional steps
+      - name: Verify identity
         run: |
           aws sts get-caller-identity 
           
