@@ -46,7 +46,8 @@ BUCKET_PATH=$(aws ssm get-parameter --name BucketPath --query 'Parameter.Value' 
 aws s3 cp ${BUCKET_PATH}kubectl /tmp/kubectl
 chmod +x /tmp/kubectl
 CLUSTER=$(aws ssm get-parameter --name ClusterName --query 'Parameter.Value' | tr -d '"')
-aws eks update-kubeconfig --name $CLUSTER --region <region>
+REGION=$(aws ssm get-parameter --name Region --query 'Parameter.Value' | tr -d '"')
+aws eks update-kubeconfig --name $CLUSTER --region $REGION
 ```
 
 Then, run the following command.

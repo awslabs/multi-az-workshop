@@ -90,9 +90,9 @@ OR
 )
 ```
 
-To consider the AZ to have isolated impact (meaning no other AZ that the operation is using is seeing impact this badly), three things must be true for either availability or latency impact:
+To consider the AZ to have isolated impact (meaning no other AZ that the operation is using is seeing impact as significantly), three things must be true for either availability or latency impact:
 
-1. The impact must be sustained and cross a threshold threshold, like availability drops below 99.9% or latency rises above 200ms for 3 datapoints in 5 minutes. We don't want a single error or single high latency request to make the AZ appear to be an outlier.
+1. The impact must be sustained and cross a threshold, like availability drops below 99.9% or latency rises above 200ms for 3 datapoints in 5 minutes. We don't want a single error or single high latency request to make the AZ appear to be unhealthy.
 2. More than one instance is experiencing the impact, we don't want a single bad host to make the whole AZ appear impaired.
 3. The quantity of errors or high latency responses make this AZ an outlier as compared to the other AZs. 
 
@@ -100,7 +100,7 @@ To consider the AZ to have isolated impact (meaning no other AZ that the operati
 This approach makes one major assumption, that each AZ is processing similar amounts of load. The workshop is designed with 2 EC2 instances and 2 EKS pods in each AZ with cross-zone load balancing disabled. This ensures that each AZ receives 33% of the traffic. With cross-zone load balancing enabled, each target, regardless of its AZ, receives the same amount of traffic. In this configuration, you could have an imbalance like 4 EC2 instances in one zone, and 1 in each of the other zones. If the AZ impairment affects the zone with just 1 instance in it, it may not handle enough load to make the AZ appear to be an outlier. 
 ::::
 
-Outlier detection is typically the most complicated part of this pattern. There are several different statistics tests that can be used to determine this including [chi-squared](https://en.wikipedia.org/wiki/Chi-squared_test), [z-score](https://en.wikipedia.org/wiki/Standard_score), [median absolute deviation (MAD)](https://en.wikipedia.org/wiki/Median_absolute_deviation), and [interquartile range (IQR)](https://en.wikipedia.org/wiki/Interquartile_range), but for the workshop, we're using a static value of 70%, meaning an AZ must account for 70% of the errors or high latency requests to be considered an outlier, which also works very reliably.
+Outlier detection is typically the most complicated part of this pattern. There are several different statistics tests that can be used to find outliers this including [chi-squared](https://en.wikipedia.org/wiki/Chi-squared_test), [z-score](https://en.wikipedia.org/wiki/Standard_score), [median absolute deviation (MAD)](https://en.wikipedia.org/wiki/Median_absolute_deviation), and [interquartile range (IQR)](https://en.wikipedia.org/wiki/Interquartile_range), but for the workshop, we're using a static value of 70%, meaning an AZ must account for 70% of the errors or high latency requests to be considered an outlier, which also works very reliably.
 
 #### Metrics
 The rest of the dashboard contains graph widgets and associated alarms for availability and latency metrics. We will use these to determine if there is zonally isolated impact that we can mitigate using multi-AZ resilience patterns. Feel free to explore the dashboard and the alarms to see how these metrics are generated.
@@ -109,7 +109,7 @@ The rest of the dashboard contains graph widgets and associated alarms for avail
 The following sections provide additional details about the synthetic canaries and how this observability was built through automation with the [Cloud Development Kit (CDK)](https://aws.amazon.com/cdk/).
 
 #### Canaries
-If you'd like to see how the canaries are configured, you can go to the [AWS Lambda console](https://console.aws.amazon.com/lambda/home#/functions). Look for the function with a name similar to *`multi-az-workshop-MultiAZ-CanaryFunctioncanary...`*. The code package is too large to examine in the console, but if you'd like to explore it, you can download it. 
+If you'd like to see how the canaries are configured, you can go to the [AWS Lambda console](https://console.aws.amazon.com/lambda/home#/functions). Look for the function with a name similar to *`multi-az-workshop-multiaz-CanaryFunctioncanary...`*. The code package is too large to examine in the console, but if you'd like to explore it, you can download it. 
 
 ::::expand{header="Instructions for downloading canary source code" variant="container"}
 Go to the [CloudFormation console](https://console.aws.amazon.com/cloudformation/home#/stacks?filteringText=&filteringStatus=active&viewNested=true) and then click on the stack named like *`multi-az-workshop-MultiAZObservabilityStack-MultiAZObservabilityCanaryNestedStackCanar-...`* and click on it. Click the *`Template`* tab at the top to see the CloudFormation template used to deploy the Lambda function. Scroll down until you see the `AWS::Lambda::Function` resource.
@@ -150,7 +150,7 @@ You'll see the input that will look similar to the following:
 }
 ```
 
-The event is scheduled to run every minute. It issues 60 HTTP requests to the url indicated in the event. The rest of the data tells the function how to record its metrics, like which AZ it is testing, what operation is being tested, and what metric namespace the metrics should be produced in. Let's go to the [CloudWatch Logs](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups) being produced by the function. Look for a log group named like *`/aws/lambda/multi-az-workshop-MultiAZ-CanaryFunctioncanary...`* (it may not be on the first page). Click on the log group and then into any one of the available log streams. You should find numerous entries like this:
+The event is scheduled to run every minute. It issues 60 HTTP requests to the url indicated in the event. The rest of the data tells the function how to record its metrics, like which AZ it is testing, what operation is being tested, and what metric namespace the metrics should be produced in. Let's go to the [CloudWatch Logs](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups) being produced by the function. Look for a log group named like *`/aws/lambda/multi-az-workshop-multiaz-CanaryFunctioncanary...`* (it may not be on the first page). Click on the log group and then into any one of the available log streams. You should find numerous entries like this:
 
 ![canary-log](/static/canary-log.png)
 
