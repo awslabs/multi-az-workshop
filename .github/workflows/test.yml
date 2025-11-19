@@ -9,6 +9,7 @@ permissions: {}
 
 jobs:
   check_build_status:
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     outputs:
       skip_cloudformation: ${{ steps.check.outputs.skip_cf }}
