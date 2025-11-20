@@ -308,7 +308,14 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
             {
                 HttpPutResponseHopLimit = 2,
                 HttpTokens = LaunchTemplateHttpTokens.REQUIRED,
-                 
+                BlockDevices = [
+                    new BlockDevice() {
+                        DeviceName = "/dev/xvda",
+                        Volume = BlockDeviceVolume.Ebs(20, new EbsDeviceOptions() {
+                            Encrypted = true
+                        })
+                    }
+                ]
             });
                 
             this.Nodegroup = cluster.AddNodegroupCapacity("ManagedNodeGroup", new NodegroupOptions() {
