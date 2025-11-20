@@ -33,6 +33,7 @@ env:
   EMAIL: ${{ inputs.email }}
   REMOTE_REPO: advanced-multi-az-resilience-patterns
   GH_TOKEN: ${{ github.token }}
+  REQUIRED_ARTIFACTS: AssetsArtifact,WorkshopArtifact
 
 jobs:
   latest_workflow:
@@ -42,19 +43,83 @@ jobs:
     steps:
       - name: get run
         id: get_run
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           REPO=${{ github.repository }}
           WORKFLOW=build.yml
+          REQUIRED_ARTIFACTS="${{ env.REQUIRED_ARTIFACTS }}"
+          PAGE_SIZE=20
 
-          RUN_ID=$(gh run list --workflow "$WORKFLOW" --status success --limit 1 --repo "$REPO" --json "databaseId" -q '.[0].databaseId')
+          echo "Searching for the latest successful build workflow with required artifacts: $REQUIRED_ARTIFACTS"
 
-          if [ -z "$RUN_ID" ]; then
-            echo "No successful workflow runs found!"
+          # Convert comma-separated list to array
+          IFS=',' read -ra ARTIFACT_NAMES <<< "$REQUIRED_ARTIFACTS"
+
+          PAGE=1
+          FOUND=false
+
+          while true; do
+            echo ""
+            echo "Fetching page $PAGE of workflow runs..."
+            
+            # Get workflow runs for this page
+            RUN_IDS=$(gh run list --workflow "$WORKFLOW" --status success --limit $PAGE_SIZE --repo "$REPO" --json "databaseId" -q '.[].databaseId' | tail -n +$(((PAGE - 1) * PAGE_SIZE + 1)) | head -n $PAGE_SIZE)
+
+            if [ -z "$RUN_IDS" ]; then
+              echo "No more workflow runs to check"
+              break
+            fi
+
+            RUN_COUNT=$(echo "$RUN_IDS" | wc -l)
+            echo "Checking $RUN_COUNT runs on page $PAGE"
+
+            # Check each run for the required artifacts
+            for RUN_ID in $RUN_IDS; do
+              echo ""
+              echo "Checking run ID: $RUN_ID"
+              
+              # Get artifacts for this run
+              ARTIFACTS=$(gh api repos/$REPO/actions/runs/$RUN_ID/artifacts --jq '.artifacts[].name')
+              
+              # Check if all required artifacts exist
+              ALL_FOUND=true
+              for ARTIFACT_NAME in "${ARTIFACT_NAMES[@]}"; do
+                COUNT=$(echo "$ARTIFACTS" | grep -c "^${ARTIFACT_NAME}$" || true)
+                if [[ $COUNT -eq 0 ]]; then
+                  echo "  ❌ Missing artifact: $ARTIFACT_NAME"
+                  ALL_FOUND=false
+                else
+                  echo "  ✅ Found artifact: $ARTIFACT_NAME"
+                fi
+              done
+              
+              if [[ "$ALL_FOUND" == "true" ]]; then
+                echo ""
+                echo "🎉 Found run $RUN_ID with all required artifacts"
+                echo "RUN_ID=$RUN_ID" >> $GITHUB_OUTPUT
+                FOUND=true
+                break 2
+              else
+                echo "  ⏭️  Skipping run $RUN_ID - missing required artifacts"
+              fi
+            done
+
+            # If we got fewer runs than PAGE_SIZE, we've reached the end
+            if [[ $RUN_COUNT -lt $PAGE_SIZE ]]; then
+              echo ""
+              echo "Reached the end of workflow runs"
+              break
+            fi
+
+            PAGE=$((PAGE + 1))
+          done
+
+          if [[ "$FOUND" == "false" ]]; then
+            echo ""
+            echo "❌ No successful workflow runs found with all required artifacts: $REQUIRED_ARTIFACTS"
             exit 1
-          fi
-
-          echo "Found the latest successful run ID: $RUN_ID"
-          echo "RUN_ID=$RUN_ID" >> $GITHUB_OUTPUT      
+          fi      
 
   assets:
     runs-on: ubuntu-latest
