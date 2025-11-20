@@ -89,7 +89,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 SecurityGroup = controlPlaneSG,
                 MastersRole = props.AdminRole,
                 ClusterName = props.ClusterName,
-                ClusterLogging = new ClusterLoggingTypes[] { ClusterLoggingTypes.CONTROLLER_MANAGER, ClusterLoggingTypes.AUTHENTICATOR, ClusterLoggingTypes.API, ClusterLoggingTypes.AUDIT, ClusterLoggingTypes.SCHEDULER} 
+                ClusterLogging = [ ClusterLoggingTypes.CONTROLLER_MANAGER, ClusterLoggingTypes.AUTHENTICATOR, ClusterLoggingTypes.API, ClusterLoggingTypes.AUDIT, ClusterLoggingTypes.SCHEDULER ]
             });
 
             cluster.Node.AddDependency(clusterLogGroup);
@@ -302,18 +302,31 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 StringValue = cluster.ClusterName
             });
 
-            IRule rule = CreateMetadataUpdater();
+            //IRule rule = CreateMetadataUpdater();
+
+            LaunchTemplate lt = new LaunchTemplate(this, "NodeGroupLaunchTemplate", new LaunchTemplateProps()
+            {
+                HttpPutResponseHopLimit = 2,
+                HttpTokens = LaunchTemplateHttpTokens.REQUIRED,
+                 
+            });
                 
             this.Nodegroup = cluster.AddNodegroupCapacity("ManagedNodeGroup", new NodegroupOptions() {
                 AmiType = props.CpuArch == InstanceArchitecture.ARM_64 ? NodegroupAmiType.AL2023_ARM_64_STANDARD : NodegroupAmiType.AL2023_X86_64_STANDARD,
                 CapacityType = CapacityType.ON_DEMAND,
+                EnableNodeAutoRepair = true,
                 MinSize = 3,
                 MaxSize = 3,
-                InstanceTypes = new Amazon.CDK.AWS.EC2.InstanceType[] { Amazon.CDK.AWS.EC2.InstanceType.Of(props.CpuArch == InstanceArchitecture.ARM_64 ?  InstanceClass.T4G : InstanceClass.T3, InstanceSize.LARGE) },
-                NodeRole = eksWorkerRole
+                InstanceTypes = [ CDK.AWS.EC2.InstanceType.Of(props.CpuArch == InstanceArchitecture.ARM_64 ?  InstanceClass.T4G : InstanceClass.T3, InstanceSize.LARGE) ],
+                NodeRole = eksWorkerRole,
+                LaunchTemplateSpec = new LaunchTemplateSpec()
+                {
+                    Id = lt.LaunchTemplateId,
+                    Version = lt.LatestVersionNumber
+                }
             });
 
-            this.Nodegroup.Node.AddDependency(rule);
+            //this.Nodegroup.Node.AddDependency(rule);
           
             this.Cluster = cluster;
         }
