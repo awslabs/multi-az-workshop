@@ -382,12 +382,12 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                                             {"image", cwAgentContainer.Repository.RepositoryUri + ":latest" },
                                             {"imagePullPolicy", "IfNotPresent"},
                                             {"name", "cloudwatch-agent" },
-                                            { "env", new Dictionary<string, object>[] {
-                                               new Dictionary<string, object>() {
-                                                   {"name", "RUN_WITH_IRSA"},
-                                                   {"value", "True"}
-                                               }
-                                            }},
+                                            //{ "env", new Dictionary<string, object>[] {
+                                            //   new Dictionary<string, object>() {
+                                            //       {"name", "RUN_WITH_IRSA"},
+                                            //       {"value", "True"}
+                                            //   }
+                                            //}},
                                             {"resources", new Dictionary<string, object>() {
                                                 {"limits", new Dictionary<string, object>() {
                                                     {"cpu", "200m"},
