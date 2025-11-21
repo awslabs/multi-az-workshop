@@ -16,18 +16,11 @@ using Amazon.CDK.AWS.Lambda;
 
 namespace Amazon.AWSLabs.MultiAZWorkshop
 {
-    public enum LoadBalancerType
-    {
-        APPLICATION_LOAD_BALANCER,
-        NETWORK_LOAD_BALANCER
-    }
-
     public class MultiAZWorkshopStack : Stack
     {
         EvacuationMethod evacuationMethod = EvacuationMethod.ZonalShift;
         const string domain = "example.com";
         const string metricsNamespace = "multi-az-workshop/frontend";
-        const string canaryMetricsNamespace = "canaries/frontend";
         const string frontEndLogGroupName = "/multi-az-workshop/frontend";
         const string faultMetricJsonPath = "$.Fault";
         const string successLatencyMetricJsonPath = "$.SuccessLatency";
@@ -184,7 +177,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
 
             this.EC2Stack.Node.AddDependency(this.AZTaggerStack);
             
-            /*this.EKSStack = new EKSStack(this, "eks", new EKSStackProps() {
+            this.EKSStack = new EKSStack(this, "eks", new EKSStackProps() {
                 CpuArch = arch,
                 Vpc = this.NetworkStack.Vpc,
                 Database = this.DatabaseStack.Database,
@@ -194,9 +187,9 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             });
 
             this.EKSStack.Node.AddDependency(this.AZTaggerStack);
-            this.EKSStack.Node.AddDependency(frontEndLogGroup); */  
+            this.EKSStack.Node.AddDependency(frontEndLogGroup);
 
-            IApplicationTargetGroup[] targetGroups = [ this.EC2Stack.TargetGroup ];
+            IApplicationTargetGroup[] targetGroups = [ this.EC2Stack.TargetGroup, this.EKSStack.EKSAppTargetGroup ];
 
             EnhancedApplicationLoadBalancer alb = new EnhancedApplicationLoadBalancer(this, "alb", new ApplicationLoadBalancerProps() {
                 InternetFacing = false,
@@ -323,9 +316,9 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             if (this.EKSStack != null) {
                 ApplicationListenerRule eksRoutes = new ApplicationListenerRule(this, "eks-alb-routes", new ApplicationListenerRuleProps() {
                     Action = ListenerAction.Forward(new IApplicationTargetGroup[] { this.EKSStack.EKSAppTargetGroup }),
-                    Conditions = new ListenerCondition[] {
+                    Conditions = [
                         ListenerCondition.PathPatterns(new string[] {"/home", "/signin" })
-                    },
+                    ],
                     Priority = 1,
                     Listener = listener
                 });
