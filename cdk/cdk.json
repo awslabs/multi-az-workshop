@@ -1,5 +1,5 @@
 {
-  "app": "dotnet run --project MultiAzWorkshop.csproj",
+  "app": "dotnet run --project multi-az-workshop-cdk.csproj",
   "profile": "mhaken",
   "watch": {
     "include": [
