@@ -1,13 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using Amazon.CDK;
 using Amazon.CDK.AWS.EC2;
 using Amazon.CDK.AWS.EKS;
-using Amazon.CDK.AWS.Events;
 using Amazon.CDK.AWS.IAM;
 using Amazon.CDK.AWS.Lambda;
 using Amazon.CDK.AWS.Logs;
@@ -16,7 +12,6 @@ using Amazon.CDK.AWS.SSM;
 using Amazon.CDK.LambdaLayer.KubectlV31;
 //using Amazon.CDK.LambdaLayer.KubectlV32;
 using Constructs;
-using static Amazon.CDK.AWS.EKS.CfnCluster;
 
 namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
 {
@@ -302,8 +297,6 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                 StringValue = cluster.ClusterName
             });
 
-            //IRule rule = CreateMetadataUpdater();
-
             LaunchTemplate lt = new LaunchTemplate(this, "NodeGroupLaunchTemplate", new LaunchTemplateProps()
             {
                 HttpPutResponseHopLimit = 2,
@@ -332,113 +325,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                     Version = lt.LatestVersionNumber
                 }
             });
-
-            //this.Nodegroup.Node.AddDependency(rule);
           
             this.Cluster = cluster;
-        }
-
-        private IRule CreateMetadataUpdater()
-        {
-            ManagedPolicy xrayManagedPolicy = new ManagedPolicy(this, "xrayManagedPolicy", new ManagedPolicyProps() {
-                Path = "/metadataupdater/",
-                Statements = new PolicyStatement[] {
-                    new PolicyStatement(new PolicyStatementProps() { 
-                        Actions = new string[] {
-                            "xray:PutTraceSegments",
-                            "xray:PutTelemetryRecords",
-                            "xray:GetSamplingRules",
-                            "xray:GetSamplingTargets",
-                            "xray:GetSamplingStatisticSummaries"
-                        },
-                        Effect = Effect.ALLOW,
-                        Resources = new string[] { "*" }
-                    })
-                }
-            });
-            ManagedPolicy ec2ManagedPolicy = new ManagedPolicy(this, "ec2ManagedPolicy", new ManagedPolicyProps() {
-                Path = "/metadataupdater/",
-                Statements = new PolicyStatement[] {
-                    new PolicyStatement(new PolicyStatementProps() { 
-                        Actions = new string[] {
-                            "ec2:DescribeTags",
-                            "ec2:DescribeInstances",
-                            "ec2:ModifyInstanceMetadataOptions"
-                        },
-                        Effect = Effect.ALLOW,
-                        Resources = new string[] { "*" }
-                    })
-                }
-            });
-
-            Role executionRole = new Role(this, "executionRole", new RoleProps() {
-                AssumedBy = new ServicePrincipal("lambda.amazonaws.com"),
-                Path = "/metadataupdater/",
-                ManagedPolicies = new ManagedPolicy[] {
-                    xrayManagedPolicy,
-                    ec2ManagedPolicy
-                }
-            }); 
-
-            Function instanceMetadataUpdater = new Function(this, "InstanceMetadataUpdater", new FunctionProps() {
-                Runtime = MultiAZWorkshopStack.pythonRuntime,
-                Code = Code.FromInline(File.ReadAllText("./ec2-metadata-update-src/index.py")),
-                Handler = "index.handler",
-                Role = executionRole,
-                Architecture = Architecture.ARM_64,
-                Tracing = Tracing.ACTIVE,
-                Timeout = Duration.Seconds(60),
-                MemorySize = 512,
-                Environment = new Dictionary<string, string>() {
-                    {"REGION", Fn.Ref("AWS::Region")},
-                    {"PARTITION", Fn.Ref("AWS::Partition")}
-                }
-            });
-
-            instanceMetadataUpdater.AddPermission("invokePermission", new Permission() {
-                Action = "lambda:InvokeFunction",
-                Principal = new ServicePrincipal("events.amazonaws.com"),
-                SourceArn = Fn.Sub("arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/*")
-            });
-
-            LogGroup logs = new LogGroup(this, "logGroup", new LogGroupProps() {
-                LogGroupName = $"/aws/lambda/{instanceMetadataUpdater.FunctionName}",
-                Retention = RetentionDays.ONE_DAY,
-                RemovalPolicy = RemovalPolicy.DESTROY
-            });
-
-            ManagedPolicy cloudWatchManagedPolicy = new ManagedPolicy(this, "cwManagedPolicy", new ManagedPolicyProps() {
-                Statements = new PolicyStatement[] {
-                    new PolicyStatement(new PolicyStatementProps() { 
-                        Actions = new string[] {
-                            "cloudwatch:PutMetricData"
-                        },
-                        Effect = Effect.ALLOW,
-                        Resources = new string[] { "*" }
-                    }),
-                    new PolicyStatement(new PolicyStatementProps() { 
-                        Actions = new string[] {
-                            "logs:CreateLogStream",
-                            "logs:PutLogEvents"
-                        },
-                        Effect = Effect.ALLOW,
-                        Resources = new string[] { logs.LogGroupArn }
-                    })
-                },
-                Roles = new Role[] { executionRole }
-            });             
-
-            Rule ec2Launch = new Rule(this, "ec2Launch", new RuleProps() {
-                EventPattern = new EventPattern() {
-                    Source = new string[] { "aws.ec2" },
-                    DetailType = new string[] { "EC2 Instance State-change Notification" },
-                    Detail = new Dictionary<string, object>() { {"state", new string[] { "running" } } }
-                },
-                Enabled = true,
-                Targets = new IRuleTarget[] { new Amazon.CDK.AWS.Events.Targets.LambdaFunction(instanceMetadataUpdater) }
-            });
-
-            return ec2Launch;
         }
     }
 }

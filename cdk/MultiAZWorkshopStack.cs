@@ -13,8 +13,6 @@ using Amazon.AWSLabs.MultiAZWorkshop.Constructs;
 using Amazon.AWSLabs.MultiAZWorkshop.NestedStacks;
 using Cdklabs.MultiAZObservability;
 using Amazon.CDK.AWS.Lambda;
-using System;
-//using io.bamcis.cdk.MultiAZObservability;
 
 namespace Amazon.AWSLabs.MultiAZWorkshop
 {
