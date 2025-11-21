@@ -4,7 +4,6 @@ using Amazon.CDK;
 using Amazon.CDK.AWS.Logs;
 using Amazon.AWSLabs.MultiAZWorkshop.Constructs;
 using Cdklabs.MultiAZObservability;
-//using io.bamcis.cdk.MultiAZObservability;
 
 namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
 {
