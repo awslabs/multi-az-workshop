@@ -279,7 +279,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                         {"namespace", props.Namespace}
                     }},
                     {"data", new Dictionary<string, object>() {
-                        {"cwagentconfig.json", "{\"agent\":{\"omit_hostname\":true},\"logs\":{\"metrics_collected\":{\"emf\":{}}},\"traces\":{\"traces_collected\":{\"xray\":{},\"otlp\":{}}}}"}
+                        {"cwagentconfig.json", $"{{\"agent\":{{\"omit_hostname\":true,\"region\":\"{Aws.REGION}\"}},\"logs\":{{\"metrics_collected\":{{\"emf\":{{}}}}}},\"traces\":{{\"traces_collected\":{{\"xray\":{{}},\"otlp\":{{}} }} }} }}"}
                     }}
                 }
             });
@@ -300,13 +300,13 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                             }},
                         }},
                         {"spec", new Dictionary<string, object>() {
-                            { "replicas", 6 },
-                            { "selector", new Dictionary<string, object>() {
+                            {"replicas", 6 },
+                            {"selector", new Dictionary<string, object>() {
                                 {"matchLabels", new Dictionary<string, object>() {
                                     {"app", app }
                                 }}
                             }},
-                            { "strategy", new Dictionary<string, object>() {
+                            {"strategy", new Dictionary<string, object>() {
                                     {"type", "RollingUpdate"},
                                     {"rollingUpdate", new Dictionary<string, object>(){
                                         {"maxUnavailable", 0},
@@ -314,7 +314,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                                     }}
                                 }
                             },
-                            { "template", new Dictionary<string, object> {                             
+                            {"template", new Dictionary<string, object> {                             
                                 {"metadata", new Dictionary<string, object>() {
                                     {"labels", new Dictionary<string, object>() {
                                         { "app", app }
@@ -323,7 +323,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                                         {"version", Guid.NewGuid().ToString()} // Using a nonce will cause a redeployment
                                     }}
                                 }},
-                                { "spec", new Dictionary<string, object>() {
+                                {"spec", new Dictionary<string, object>() {
                                     {"topologySpreadConstraints", new Dictionary<string, object>[] {
                                             new Dictionary<string, object>() {
                                                 {"labelSelector", new Dictionary<string, object>() {
@@ -351,8 +351,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                                             }
                                         }
                                     },
-                                    { "terminationGracePeriodSeconds", (int)shutdownDelay.ToSeconds() },
-                                    { "serviceAccountName", sa },
+                                    {"terminationGracePeriodSeconds", (int)shutdownDelay.ToSeconds() },
+                                    {"serviceAccountName", sa },
                                     {"volumes", new Dictionary<string, object>[] {
                                         new Dictionary<string, object>() {
                                             {"name", "cwagentconfig"},
@@ -365,7 +365,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                                         new Dictionary<string, object>() {
                                             {"image", appContainer.Repository.RepositoryUri + ":latest" },
                                             {"imagePullPolicy", "Always"},
-                                            {"name", props.Namespace },
+                                            {"name", app },
                                             {"ports", new Dictionary<string, object>[] {
                                                 new Dictionary<string, object>() {
                                                     {"containerPort", 5000}
@@ -382,12 +382,12 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.Constructs
                                             {"image", cwAgentContainer.Repository.RepositoryUri + ":latest" },
                                             {"imagePullPolicy", "IfNotPresent"},
                                             {"name", "cloudwatch-agent" },
-                                            //{ "env", new Dictionary<string, object>[] {
-                                            //   new Dictionary<string, object>() {
-                                            //       {"name", "RUN_WITH_IRSA"},
-                                            //       {"value", "True"}
-                                            //   }
-                                            //}},
+                                            {"env", new Dictionary<string, object>[] {
+                                               new Dictionary<string, object>() {
+                                                   {"name", "RUN_WITH_IRSA"},
+                                                   {"value", "True"}
+                                               }
+                                            }},
                                             {"resources", new Dictionary<string, object>() {
                                                 {"limits", new Dictionary<string, object>() {
                                                     {"cpu", "200m"},
