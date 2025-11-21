@@ -290,7 +290,8 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                         DeviceName = "/dev/xvda",
                         Volume = new Amazon.CDK.AWS.EC2.BlockDeviceVolume(new Amazon.CDK.AWS.EC2.EbsDeviceProps() {
                             VolumeType = Amazon.CDK.AWS.EC2.EbsDeviceVolumeType.GP3,
-                            VolumeSize = 8
+                            VolumeSize = 8,
+                            Encrypted = true
                          })
                     }
                 },
