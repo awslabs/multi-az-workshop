@@ -186,7 +186,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
 
             this.EC2Stack.Node.AddDependency(this.AZTaggerStack);
             
-            this.EKSStack = new EKSStack(this, "eks", new EKSStackProps() {
+            /*this.EKSStack = new EKSStack(this, "eks", new EKSStackProps() {
                 CpuArch = arch,
                 Vpc = this.NetworkStack.Vpc,
                 Database = this.DatabaseStack.Database,
@@ -196,7 +196,9 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             });
 
             this.EKSStack.Node.AddDependency(this.AZTaggerStack);
-            this.EKSStack.Node.AddDependency(frontEndLogGroup);   
+            this.EKSStack.Node.AddDependency(frontEndLogGroup); */  
+
+            IApplicationTargetGroup[] targetGroups = [ this.EC2Stack.TargetGroup ];
 
             EnhancedApplicationLoadBalancer alb = new EnhancedApplicationLoadBalancer(this, "alb", new ApplicationLoadBalancerProps() {
                 InternetFacing = false,
@@ -274,7 +276,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 }
             }
 
-            IService wildRydesService = CreateService(this.LoadBalancer, this.NetworkStack.Vpc, new ILogGroup[] {frontEndLogGroup}, [this.EC2Stack.TargetGroup, this.EKSStack.EKSAppTargetGroup]);
+            IService wildRydesService = CreateService(this.LoadBalancer, this.NetworkStack.Vpc, new ILogGroup[] {frontEndLogGroup}, [this.EC2Stack.TargetGroup, /*this.EKSStack.EKSAppTargetGroup*/]);
 
             var mazNestedStack = new NestedStackWithSource(this, "multi-az-observability-");
             InstrumentedServiceMultiAZObservability multiAvailabilityZoneObservability = new InstrumentedServiceMultiAZObservability(mazNestedStack, "instrumented-service-", new InstrumentedServiceMultiAZObservabilityProps() {
@@ -290,10 +292,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                     AlbTargetGroupMap = [
                         new AlbTargetGroupMap() {
                             ApplicationLoadBalancer = this.LoadBalancer,
-                            TargetGroups = [
-                                this.EC2Stack.TargetGroup,
-                                this.EKSStack.EKSAppTargetGroup
-                            ]
+                            TargetGroups = targetGroups
                         }
                     ],
                     LatencyStatistic = Stats.Percentile(99),
@@ -323,14 +322,16 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
             // the alarms to finish and nodes start to fail their health checks while it waits
             listener.Node.AddDependency(mazNestedStack);
 
-            ApplicationListenerRule eksRoutes = new ApplicationListenerRule(this, "eks-alb-routes", new ApplicationListenerRuleProps() {
-                Action = ListenerAction.Forward(new IApplicationTargetGroup[] { this.EKSStack.EKSAppTargetGroup }),
-                Conditions = new ListenerCondition[] {
-                    ListenerCondition.PathPatterns(new string[] {"/home", "/signin" })
-                },
-                Priority = 1,
-                Listener = listener
-            });
+            if (this.EKSStack != null) {
+                ApplicationListenerRule eksRoutes = new ApplicationListenerRule(this, "eks-alb-routes", new ApplicationListenerRuleProps() {
+                    Action = ListenerAction.Forward(new IApplicationTargetGroup[] { this.EKSStack.EKSAppTargetGroup }),
+                    Conditions = new ListenerCondition[] {
+                        ListenerCondition.PathPatterns(new string[] {"/home", "/signin" })
+                    },
+                    Priority = 1,
+                    Listener = listener
+                });
+            }
 
             this.FaultInjectionStack = new FaultInjectionStack(this, "fault-injection", new FaultInjectionStackProps() {
                 AZCount = availabilityZoneNames.Length,
