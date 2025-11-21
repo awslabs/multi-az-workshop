@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [x] 1. Set up Git branch and project structure
+- [ ] 1. Set up Git branch and project structure
   - Create feature branch `feature/cdk-typescript-conversion` from main
   - Initialize Projen TypeScript CDK project in a temporary directory
   - Configure Projen with AwsCdkTypeScriptApp project type
@@ -33,14 +33,14 @@
   - Set up custom synthesizer configuration
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 2. Convert type definitions and enums
+- [x] 2. Convert type definitions and enums
   - Create lib/types/evacuation-method.ts with EvacuationMethod enum
   - Convert InstanceArchitecture enum if needed
   - Create lib/types/index.ts to export all types
   - Define interfaces for stack props and construct props
   - _Requirements: 5.1, 5.2, 5.4_
 
-- [ ] 2.1 Create CDK app entry point
+- [x] 2.1 Create CDK app entry point
   - Create bin/multi-az-workshop.ts file
   - Import CDK App class and main stack
   - Instantiate App with proper configuration
@@ -49,7 +49,7 @@
   - Call app.synth()
   - _Requirements: 1.1, 1.4, 4.2, 7.4_
 
-- [ ] 2.2 Create main stack skeleton
+- [x] 2.2 Create main stack skeleton
   - Create lib/multi-az-workshop-stack.ts file
   - Define MultiAZWorkshopStackProps interface
   - Create MultiAZWorkshopStack class extending cdk.Stack
