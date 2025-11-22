@@ -688,45 +688,173 @@ switch (evacuationMethod) {
 
 ## Build Process
 
+### Projen-Managed Build System
+
+All build configuration is managed through Projen in `.projenrc.ts`. This includes:
+
+1. **GitHub Workflows**: Defined programmatically in Projen, not as separate YAML files
+2. **Local Build Tasks**: Projen tasks that mirror the GitHub workflow steps
+3. **NPM Scripts**: Auto-generated from Projen task definitions
+
+### GitHub Workflow Configuration
+
+The GitHub workflow is defined in `.projenrc.ts` and mirrors the existing `build.yml` exactly:
+
+```typescript
+// In .projenrc.ts
+const buildWorkflow = project.github?.addWorkflow("build");
+
+buildWorkflow.on({
+  pullRequest: {
+    types: ["opened", "synchronize"],
+    branches: ["main"],
+  },
+});
+
+// Add filter job to check changed files
+buildWorkflow.addJob("filter", { ... });
+
+// Add main build job with all steps
+buildWorkflow.addJob("build", {
+  env: {
+    CDK_LOCATION: "cdk",
+    PROJECT_NAME: "${{ github.event.repository.name }}",
+    HELM: "3.16.3",
+    KUBECTL: "1.32.0",
+    ISTIO: "1.24.1",
+    // ... other versions from build/versions.json
+  },
+  steps: [
+    // All steps from existing build.yml
+  ]
+});
+
+// Add final outcome job
+buildWorkflow.addJob("final", { ... });
+```
+
+### Local Build Task
+
+A Projen task named `build:local` replicates the GitHub workflow for local development:
+
+```typescript
+// In .projenrc.ts
+const buildLocal = project.addTask("build:local", {
+  description: "Build project locally (mirrors GitHub workflow)",
+});
+
+// Load versions from build/versions.json
+buildLocal.env("HELM", "3.16.3");
+buildLocal.env("KUBECTL", "1.32.0");
+buildLocal.env("ISTIO", "1.24.1");
+// ... other versions
+
+// Add all build steps
+buildLocal.exec("mkdir -p tmp");
+buildLocal.exec("mkdir -p assets");
+buildLocal.exec("mkdir -p cdk/layer/helm");
+
+// Download Helm and create Lambda layer
+buildLocal.exec("curl --location https://get.helm.sh/helm-v$HELM-linux-arm64.tar.gz --output /tmp/helm.tar.gz");
+buildLocal.exec("tar -zxvf /tmp/helm.tar.gz --directory /tmp");
+buildLocal.exec("cp /tmp/linux-arm64/helm cdk/layer/helm/");
+buildLocal.exec("chmod 0755 cdk/layer/helm/helm");
+buildLocal.exec("cd cdk/layer && zip -r ../helm-layer.zip .");
+
+// Copy destination rules
+buildLocal.exec("cp cdk/Configs/destination-rule*.yaml assets/");
+
+// Download kubectl
+buildLocal.exec("curl --location https://dl.k8s.io/release/v$KUBECTL/bin/linux/arm64/kubectl --output assets/kubectl");
+
+// Download Istio Helm charts
+buildLocal.exec("curl --location https://istio-release.storage.googleapis.com/charts/base-$ISTIO.tgz --output assets/base-$ISTIO.tgz");
+// ... other charts
+
+// Download AWS LB controller chart
+buildLocal.exec("curl --location https://aws.github.io/eks-charts/aws-load-balancer-controller-$LB_CONTROLLER_HELM.tgz --output assets/aws-load-balancer-controller-$LB_CONTROLLER_HELM.tgz");
+
+// Pull and save Docker images
+buildLocal.exec("docker pull docker.io/istio/install-cni:$ISTIO");
+buildLocal.exec("docker save istio/install-cni:$ISTIO | gzip > assets/install-cni.tar.gz");
+// ... other images
+
+// Build .NET containers
+buildLocal.exec("cd app-src && dotnet publish --configuration Release --runtime linux-musl-arm64 --output output/src --self-contained");
+buildLocal.exec("cd app-src/output && docker build --tag multi-az-workshop:latest --platform linux/arm64 --file ../../build/dockerfile .");
+buildLocal.exec("docker save multi-az-workshop:latest | gzip > assets/container.tar.gz");
+
+// Create deployment packages
+buildLocal.exec("cd assets && zip -r ../content.zip .");
+buildLocal.exec("cdk synth --quiet");
+buildLocal.exec("chmod +x build/package.py");
+buildLocal.exec("./build/package.py multi-az-workshop . cdk");
+buildLocal.exec("zip content.zip multi-az-workshop.template");
+buildLocal.exec("cp content.zip assets/");
+```
+
 ### Local Development Workflow
 
-1. **Install dependencies**: `npm install`
+1. **Install dependencies**: `npm install` (in cdk/ directory)
 2. **Build TypeScript**: `npm run build`
-3. **Run tests**: `npm test`
-4. **Lint code**: `npm run lint`
-5. **Synthesize CDK**: `npm run synth`
-6. **Deploy**: `npm run deploy`
+3. **Build all assets locally**: `npm run build:local`
+4. **Run tests**: `npm test`
+5. **Lint code**: `npm run lint`
+6. **Synthesize CDK**: `npm run synth`
+7. **Deploy**: `npm run deploy`
 
 ### Asset Build Process
 
-The build process must replicate the GitHub workflow steps:
+The build process (both GitHub and local) follows these steps:
 
-1. **Download Helm binary** and create Lambda layer
-2. **Download kubectl binary**
-3. **Download Istio Helm charts**
-4. **Download AWS Load Balancer Controller Helm chart**
-5. **Pull and save Docker images** (Istio, LB controller, CloudWatch agent)
-6. **Build .NET application** for ARM64
-7. **Build Docker containers**
-8. **Package everything** into deployment artifacts
+1. **Create directories**: tmp/, assets/, cdk/layer/helm/
+2. **Download Helm binary** and create Lambda layer (helm-layer.zip)
+3. **Copy destination rules** from cdk/Configs/ to assets/
+4. **Download kubectl binary** to assets/
+5. **Download Istio Helm charts** (base, istiod, gateway, cni) to assets/
+6. **Download AWS Load Balancer Controller Helm chart** to assets/
+7. **Pull and save Docker images**:
+   - Istio: install-cni, proxyv2, pilot
+   - AWS Load Balancer Controller
+   - CloudWatch Agent
+8. **Download docker-compose binary** to assets/
+9. **Build .NET application** for ARM64 (if BUILD_APP=true)
+10. **Build Docker containers** with .NET app
+11. **Create deployment packages**:
+    - app_deploy.zip (container + cloudwatch agent + docker configs)
+    - app_deploy_fail.zip (failing version for testing)
+12. **Synthesize CDK** and run package.py script
+13. **Create content.zip** with all assets and CloudFormation template
 
-### NPX Scripts Implementation
+### Generated Artifacts (Ignored in Git)
+
+All build artifacts are ignored in `.gitignore`:
+
+```
+assets/**/*
+cdk/helm-layer.zip
+cdk/layer/
+tmp/
+app-src/output/
+content.zip
+*.tar.gz
+```
+
+### NPX Scripts
+
+Scripts are auto-generated by Projen from task definitions:
 
 ```json
 {
   "scripts": {
-    "build:helm-layer": "scripts/build-helm-layer.sh",
-    "build:kubectl": "scripts/download-kubectl.sh",
-    "build:helm-charts": "scripts/download-helm-charts.sh",
-    "build:docker-images": "scripts/pull-docker-images.sh",
-    "build:dotnet-app": "scripts/build-dotnet-app.sh",
-    "build:containers": "scripts/build-containers.sh",
-    "build:assets": "npm-run-all build:helm-layer build:kubectl build:helm-charts build:docker-images build:dotnet-app build:containers",
-    "synth:local": "cdk synth",
-    "deploy:local": "cdk deploy",
-    "test:unit": "jest",
-    "lint": "eslint . --ext .ts",
-    "lint:fix": "eslint . --ext .ts --fix"
+    "build": "npx projen build",
+    "build:local": "npx projen build:local",
+    "synth:local": "npx projen synth:local",
+    "deploy:local": "npx projen deploy:local",
+    "test:unit": "npx projen test:unit",
+    "test:coverage": "npx projen test:coverage",
+    "lint": "npx projen eslint",
+    "lint:fix": "npx projen lint:fix"
   }
 }
 ```

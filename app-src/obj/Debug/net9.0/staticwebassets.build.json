@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "Vw5Vk0EeQXSbXsneRVVOagbrGehVJZBR9hqoRfFddxc=",
+  "Source": "multi-az-workshop-application",
+  "BasePath": "_content/multi-az-workshop-application",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}

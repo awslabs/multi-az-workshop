@@ -1,0 +1,108 @@
+{
+  "format": 1,
+  "restore": {
+    "/Users/mhaken/source/multi-az-workshop/app-src/multi-az-workshop-application.csproj": {}
+  },
+  "projects": {
+    "/Users/mhaken/source/multi-az-workshop/app-src/multi-az-workshop-application.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/mhaken/source/multi-az-workshop/app-src/multi-az-workshop-application.csproj",
+        "projectName": "multi-az-workshop-application",
+        "projectPath": "/Users/mhaken/source/multi-az-workshop/app-src/multi-az-workshop-application.csproj",
+        "packagesPath": "/Users/mhaken/.nuget/packages/",
+        "outputPath": "/Users/mhaken/source/multi-az-workshop/app-src/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/mhaken/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "all"
+        },
+        "SdkAnalysisLevel": "9.0.100"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "AWSSDK.SecretsManager": {
+              "target": "Package",
+              "version": "[3.7.400.59, )"
+            },
+            "AWSXRayRecorder": {
+              "target": "Package",
+              "version": "[2.15.0, )"
+            },
+            "Amazon.CloudWatch.EMF": {
+              "target": "Package",
+              "version": "[2.2.0, )"
+            },
+            "Microsoft.AspNetCore.OpenApi": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Microsoft.Extensions.Caching.Memory": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Newtonsoft.Json": {
+              "target": "Package",
+              "version": "[13.0.3, )"
+            },
+            "Npgsql": {
+              "target": "Package",
+              "version": "[9.0.2, )"
+            },
+            "Serilog.AspNetCore": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Serilog.Sinks.File": {
+              "target": "Package",
+              "version": "[6.0.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.AspNetCore.App": {
+              "privateAssets": "none"
+            },
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.100/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,3 @@
+﻿<Project>
+  <Import Project="../buildMultiTargeting/multi-az-workshop-application.props" />
+</Project>
