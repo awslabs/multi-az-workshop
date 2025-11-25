@@ -267,7 +267,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop
                 }
             }
 
-            IService wildRydesService = CreateService(this.LoadBalancer, this.NetworkStack.Vpc, new ILogGroup[] {frontEndLogGroup}, [this.EC2Stack.TargetGroup, /*this.EKSStack.EKSAppTargetGroup*/]);
+            IService wildRydesService = CreateService(this.LoadBalancer, this.NetworkStack.Vpc, [ frontEndLogGroup ], targetGroups);
 
             var mazNestedStack = new NestedStackWithSource(this, "multi-az-observability-");
             InstrumentedServiceMultiAZObservability multiAvailabilityZoneObservability = new InstrumentedServiceMultiAZObservability(mazNestedStack, "instrumented-service-", new InstrumentedServiceMultiAZObservabilityProps() {
