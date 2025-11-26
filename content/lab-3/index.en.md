@@ -58,7 +58,7 @@ Next, review the structure of the composite alarm that indicates we have isolate
 
 ![alarm-details](/static/alarm-details.png)
 
-We can see that both the server-side and canary alarms are in the `ALARM` state, confirming that both perspectives see the impact of the failure. If you recall from Lab 1, one of the requirements for the server-side zonal impact alarm is for more than one server was being impacted. Said another way, we want to ensure that the failure impact is seen broadly in that AZ. Otherwise, replacing a single bad instance is a more efficient mitigation strategy. The next section will explore that specific requirement.
+We can see that both the server-side and canary alarms are in the `ALARM` state, confirming that both perspectives see the impact of the failure. If you recall from Lab 1, one of the requirements for the server-side zonal impact alarm is for more than one server being impacted. Said another way, we want to ensure that the failure impact is seen broadly in that AZ. Otherwise, replacing a single bad instance is a more efficient mitigation strategy. The next section will explore that specific requirement.
 
 #### Look at Contributor Insights Data
 
@@ -74,7 +74,7 @@ The first parameter of the `INSIGHT_RULE_METRIC` CloudWatch metric math function
 Depending on how much time has passed since you simulated the failure, you may want to decrease the displayed time range to 5 or 15 minutes to see more detail in the graph.
 ::::
 
-This graph shows us that two instances started to return responses that exceed the defined latency threshold. This helps us know that the impact is more than a single instance. In fact, for this workshop, the impact is seen by every instance in the AZ. We are able to use Contributor Insights because the application is writing CloudWatch Logs using the [Embedded Metric Format](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Embedded_Metric_Format_Specification.html) (EMF), just like the canary is. 
+This graph shows us that two instances started to return responses that exceed the defined latency threshold. This helps us know that the impact is more than a single instance. In fact, for this workshop, the impact is seen by every instance in the AZ supporting the `Ride` operation. We are able to use Contributor Insights because the application is writing CloudWatch Logs using the [Embedded Metric Format](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Embedded_Metric_Format_Specification.html) (EMF), just like the canary is. 
 
 Contributor Insights lets us visualize the Top-N contributors to high cardinality metrics. In this case, we want to look at instance contributors to high latency. This is the Contributor Insights rule:
 
@@ -98,7 +98,7 @@ Contributor Insights lets us visualize the Top-N contributors to high cardinalit
 }
 ```
 
-It filters our log files against the rules and then counts the number of matches per instance id. Navigate to the server-side log group [here](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups/log-group/$252Fmulti-az-workshop$252Ffrontend). Then select one of the log streams and review the format of the log files. Because we have log data and metric data combined into one solution, we can query and filter this metric data using log analysis tools like Contributor Insights or Log Insights. Contributor Insights rules are only evaluated against log data as it is ingested, it isn't applied retroactively to existing logs. If you haven't pre-materialized those types of rules, you can run ad-hoc Log Insights queries. Navigate to the [Log Insights console](https://console.aws.amazon.com/cloudwatch/home#logsV2:logs-insights). See if you can write a Log Insights QL or OpenSearch SQL statement to identify the top contributors to Latency in the Ride operation.
+Contributor Insights filters our log files against the rules and then counts the number of matches per instance id. Navigate to the server-side log group [here](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups/log-group/$252Fmulti-az-workshop$252Ffrontend). Then select one of the log streams and review the format of the log files. Because we have log data and metric data combined into one solution, we can query and filter this metric data using log analysis tools like Contributor Insights or Log Insights. Contributor Insights rules are only evaluated against log data as it is ingested, it isn't applied retroactively to existing logs. If you haven't pre-materialized those types of rules, you can run ad-hoc Log Insights queries. Navigate to the [Log Insights console](https://console.aws.amazon.com/cloudwatch/home#logsV2:logs-insights). See if you can write a Log Insights QL or OpenSearch SQL statement to identify the top contributors to Latency in the Ride operation.
 
 ::::expand{header="Solution"}
 
@@ -125,6 +125,8 @@ Optional OpenSearch SQL statement with AZ-ID of each instance:
 ```sql
 SELECT InstanceId, `AZ-ID`, count(*) FROM `/multi-az-workshop/frontend` WHERE SuccessLatency>350 AND Operation="Ride" GROUP BY InstanceId, `AZ-ID`
 ```
+
+You may see a few requests from instances in the other AZs as contributors in these queries. That's to be expected, but you should be able to identify which AZ is an outlier by comparing the quantity of high latency requests per AZ.
 ::::
 
 # Conclusion

@@ -3,7 +3,7 @@ title : "Lab 6: Use automatic target weights"
 weight : 70
 ---
 
-Application Load Balancers (ALB) offer several routing algorithms. The default is `Round robin`, which distributes traffic evenly to targets. Another option is `Least outstanding requests`, which routes requests to the target with the lowest number of in progress tasks. ALB also offers a routing algorithm that can help automatically detect and mitigate gray failures, called [`Automatic target weights` (ATW)](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-target-group-attributes.html#modify-routing-algorithm). 
+Application Load Balancers (ALB) offer several routing algorithms. The default is `Round robin`, which distributes traffic evenly to targets. Another option is `Least outstanding requests`, which routes requests to the target with the lowest number of in progress requests. ALB also offers a routing algorithm that can help automatically detect and mitigate gray failures, called [`Weighted random`](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-target-group-attributes.html#modify-routing-algorithm) that enables Automatic Target Weights (ATW).
 
 A gray failure occurs when an ALB target passes active load balancer health checks, making it look healthy, but still returns errors to clients. This scenario could be caused by many things, including application bugs, a dependency failure, intermittent network packet loss, a cold cache on a newly launched target, CPU overload, and more. ATW’s anomaly detection analyzes the HTTP return status codes and TCP/TLS errors to identify targets with a disproportionate ratio of errors compared to other targets in the same target group. 
 
@@ -27,11 +27,11 @@ Now that we've enabled ATW and cross-zone load balancing for our two target grou
 ## Simulate single-AZ impairment
 Because ATW operates on anomaly detection of HTTP status codes, we need to introduce a failure scenario that causes `5xx` response codes, not just high latency. To do this, we're going to use packet loss that causes requests to the database to timeout which are surfaced by the application as a 500 response. The application's database client is set with a timeout of 2 seconds. The canary's http client timeout is set to 3 seconds, so we should see 500 status codes being returned back to the canary. The Lambda running the canary tests has a timeout of 240 seconds. For 60 requests, each with a timeout of 3 seconds, the Lambda function will have time to finish all requests (180 seconds), but this will cause the requests to this specific operation to be reduced each minute. In order to ensure we see an anomalous volume of failed requests, we're going to update one of the packet loss experiments to drop 100% of the traffic to the database.  
 
-Go to the [AWS FIS Experiment Templates console page](https://console.aws.amazon.com/fis/home#ExperimentTemplates). Choose one of the *Add Packet Loss* experiments. In my case, I've chosen packet loss for us-east-2c.
+Go to the [AWS FIS Experiment Templates console page](https://console.aws.amazon.com/fis/home#ExperimentTemplates). Choose one of the *Add Packet Loss* experiments by selecting the check box (not clicking the experiment id). In my case, I've chosen packet loss for us-east-2c.
 
 !["packet-loss"](/static/packet-loss.png)
 
-Click *Actions* and choose *Update experiment template*. From here, click *Edit* on *Step 2: Specify actions and targets*.
+Click *Actions* in the top right corner and choose *Update experiment template*. From here, click *Edit* on *Step 2: Specify actions and targets*.
 
 !["edit-fis-template"](/static/edit-fis-template.png)
 
@@ -45,10 +45,10 @@ In this screen, find the *Document parameters* field.
 
 This contains JSON configuration data used by the experiment run on the hosts. We want to change the *LossPercent* parameter from `30` to `100` to ensure every request from the instances to the database fails. Make this update and click *Save*. Click *Next*, *Next*, *Next*, and then *Update experiment template*. Confirm the update.
 
-Now, click *Start Experiment* on the top right.
+Now, click *Start Experiment* on the top right, then *Start experiment*, then confirm you want to start the experiment.
 
 ## Observe the impact and recovery
-Go back to the service level operational metrics dashboard and review your load balancer metrics. What you should see is a brief spike in faults and then a very quick, automated response that reduces that error rate. The graph on the left shows that traffic is automatically rebalanced to the other AZs where success rate increases. On the right-hand side, you will see the error rate spike and then quickly reduce as the traffic is weighted away from that AZ.
+Go back to the service level operational metrics dashboard and review your load balancer metrics. What you should see is a brief spike in faults and then a very quick, automated response that reduces that error rate. The graph on the left shows that traffic is automatically rebalanced to the other AZs, improving the success rate. On the right-hand side, you see the error rate spike and then quickly reduce as the traffic is weighted away from that AZ.
 
 ![atw-recovery](/static/atw-recovery.png)
 
@@ -56,14 +56,20 @@ You should also see is a drop in the number of requests being handled by the ins
 
 ![mitigated-targets](/static/mitigated-targets.png)
 
-If we look at the fault rate being recorded by our load balancer metrics, in this example, it hits a high of a little over 20% and then quickly drops to around 5-7%. Without needing to take any action, the ALB has automatically mitigated a significant portion of the impact. While it doesn't reduce the fault rate to 0, it does very quickly minimize the impact being seen in a single AZ. Because we are using cross-zone load balancing, the impact from the instances in the selected AZ is observed by all customers, as shown by the canary metrics.
+If we look at the fault rate being recorded by our load balancer metrics, in this example, it hits a high of close to 20% and then quickly drops to around 5-7%. Each AZ receives approximately 320 requests per minute. One quarter of those requests are impacted by the failure (there are 4 operations in the AZ, each one receives 80 requests per minute). This makes the expected failure rate in that AZ approximately 25%. ATW prevents the error rate from ever getting that high and then reduces it by ~80%. Without needing to take any action, the ALB has automatically mitigated a significant portion of the impact. While it doesn't reduce the fault rate to 0, it does very quickly minimize the impact being seen in a single AZ. 
+
+![atw-quick-mitigation](/static/atw-quick-mitigation.png)
+
+Because we are using cross-zone load balancing, the impact from the instances in the selected AZ is observed by all customers, as shown by the canary metrics below. But the impact for all customers has been significantly reduced.
 
 ![atw-canary-impact](/static/atw-canary-impact.png)
 
-This is a great first start to quick impact mitigation, but we'd like to fully mitigate the impact our customers are experiencing in Wild Rydes.
+This is a great first start to quickly reduce the impact, but we'd like to fully mitigate the impact our customers are experiencing in Wild Rydes.
 
 ## Perform a zonal shift.
-Because we can see our anamolous hosts are all contained in a single AZ, we can use a zonal shift to mitigate the rest of the impact. Zonal shift supports both ALBs and NLBs with cross-zone load balancing enabled and disabled. When you perform a zonal shift on a load balancer with cross-zone enabled, the IP address for the shifted AZ is withdrawn from DNS and load balancers are instructed not to send traffic to the impaired AZ. Using the same procedure from [Lab 4](/content/lab-4), start a zonal shift on the AZ where you injected the failure. Then, go back to your service level operational dashboard. You'll be able to see results similar to this.
+Because we can see that the anamolous hosts are all contained in a single AZ, we can use a zonal shift to mitigate the rest of the impact. In this lab, we'll see how zonal shift works with a load balancer with cross-zone load balancing enabled. In addition to removing the node's IP address from DNS in the shifted AZ, zonal shift also instructs the other load balancer nodes not to send traffic to targets in the shifted AZ.
+
+Using the same procedure from [Lab 4](/content/lab-4), start a zonal shift on the AZ where you injected the failure. Then, go back to your service level operational dashboard. You'll be able to see results similar to this.
 
 ![atw-and-zonal-shift](/static/atw-and-zonal-shift.png)
 
@@ -117,7 +123,7 @@ Update the composite alarm to use `AND`.
 ALARM("use2-az1-anomalous-hosts-outlier") AND ALARM("use2-az1-multiple-anomalous-hosts")
 ```
 
-Click *Next*, remove the notification, give the alarm a name like `use2-az1-anomalous-host-isolated-impact` and complete creating the alarm. Now you have a simple composite alarm that you can use with ATW and cross-zone enabled load balancing to detect single-AZ impact. This allows ATW to quickly mitigate a majority of the impact and then provides you a signal for initiating a zonal shift to fully mitigate the impact.
+Click *Next*, remove the notification, give the alarm a name like `use2-az1-anomalous-host-isolated-impact` and complete creating the alarm. Now you have a simple composite alarm that you can use with ATW and cross-zone enabled load balancing to detect single-AZ impact. This allows ATW to quickly mitigate a majority of the impact and then provides you a signal for initiating a zonal shift to fully mitigate the remaining impact.
 ::::
 
 ## Reset the environment
