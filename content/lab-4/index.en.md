@@ -33,7 +33,7 @@ Select the Availability Zone ID that you want to move traffic away from in the d
 
 ![zonal-shift-selection](/static/zonal-shift-selection.png)
 
-For "Set zonal shift expiration", choose an expiration for the zonal shift. A zonal shift can be set to expire initially for 1 minute or up to three days (72 hours). Then, enter a comment. You can update the zonal shift later to edit the comment, if you like. Finally, select the check box to acknowledge that starting a zonal shift will reduce available capacity for your application by shifting traffic away from the selected Availability Zone. Choose *`Start`*.
+For "Set zonal shift expiration", choose an expiration for the zonal shift. A zonal shift can be set to expire initially for 1 minute or up to three days (72 hours), for this lab choose 6 hours. Then, enter a comment. Finally, select the check box to acknowledge that starting a zonal shift will reduce available capacity for your application by shifting traffic away from the selected Availability Zone. Choose *`Start`*.
 
 ![zonal-shift-start](/static/zonal-shift-start.png)
 
@@ -63,7 +63,7 @@ Try connecting to one of your EC2 instances (choose one with a name matching `mu
 
 How many IP addresses are returned? Is that what you expected? You should only see 2 IP addresses at this point because you've already initiated the zonal shift, meaning customers of the Wild Rydes service will only access load balancer endpoints in the remaining AZs.
  
-When you start a zonal shift for a load balancer, Amazon Application Recovery Controller (ARC) causes the load balancer health check for the Availability Zone to be set to unhealthy so that it fails its health check. An unhealthy health check, in turn, results in Amazon Route 53 withdrawing the corresponding IP addresses for the resource from DNS. When clients query DNS for your application, only the remaining, healthy IP addresses are returned. New connections are now routed to other Availability Zones in the AWS Region instead. Clients that have existing connections will still continue to use the withdrawn IP address, but upon resolving DNS, they'll target the unimpacted AZs.
+When you start a zonal shift for a load balancer, Amazon Application Recovery Controller (ARC) causes the load balancer health check for the Availability Zone to be set to unhealthy so that it fails its health check. An unhealthy health check, in turn, results in Amazon Route 53 withdrawing the corresponding IP addresses for the resource from DNS. When clients query DNS for your application, only the remaining, healthy IP addresses are returned. New connections are now routed to other Availability Zones in the AWS Region instead. Clients that have existing connections will still continue to use the withdrawn IP address, but upon re-resolving the load balancer's DNS name, they'll target the unimpacted AZs.
 
 Finally, when a zonal shift expires or you cancel it, Amazon ARC reverses the process, requesting the Route 53 health checks to be set to healthy again, so the original zonal IP addresses are restored and the Availability Zone is included in the load balancer's routing again.
 
@@ -90,7 +90,7 @@ After the zonal shift, the latency of the regional endpoint returned to normal l
 We can see that `use2-az1` has a lower request count and lower processed bytes metrics than the other AZs. This is because it's no longer processing the regional requests from the canary, which is what's also causing the higher request rate and increased processed bytes in the other AZs. There is a canary still testing the zonal endpoint where the impact is occuring, so you'll always see some traffic being sent to the AZ. This can help us determine when the impact ends.
 
 ## Recover the environment
-Navigate back to the FIS console and find the experiment you started. Click *`Stop experiment`* to end the experiment.
+Navigate back to the [FIS console](https://console.aws.amazon.com/fis/home#Experiments) and find the experiment you started. Click *`Stop experiment`* to end the experiment.
 
 ![stop-experiment](/static/stop-experiment.png)
 
@@ -98,7 +98,7 @@ By stopping the experiment, we've simulated the infrastructure event ending. Aft
 
 ![latency-impact-ends](/static/latency-impact-ends.png)
  
-This is how we know when it's safe to end the zonal shift and return to normal operation. Navigate back to the Amazon ARC zonal shift console tab and find the active zonal shift, then cancel it.
+This is how we know when it's safe to end the zonal shift and return to normal operation. Navigate back to the [Amazon ARC zonal shift console](https://console.aws.amazon.com/route53recovery/zonalshift/home) tab and find the active zonal shift, then cancel it.
 
 ![cancel-zonal-shift](/static/cancel-zonal-shift.png)
 
@@ -108,6 +108,6 @@ And we can see through our ALB metrics that `use2-az1` is once again processing 
 
 ## Conclusion
 
-In this lab we initiated a zonal shift to mitigate the impact from a single-AZ impairment. We verified that the latency metrics returned to normal when being accessed through load balancer's regional DNS record. You also saw that the canary testing the zonal endpoint continued to verify impact in that AZ. For a zonal shift to be effective, it's important to be pre-scaled to handle the shifting load, otherwise, this could lead to overwhelming your remaining resources. Alternatively, you may need to temporarily load shed or rate limit traffic to the remaining AZs to protect your service while you add capacity in those locations to handle the additional load. See the [documentation](https://docs.aws.amazon.com/r53recovery/latest/dg/route53-arc-best-practices.zonal-shifts.html) for more best practices for using zonal shift.
+In this lab we initiated a zonal shift to mitigate the impact from a single-AZ impairment. We verified that the latency metrics returned to normal when being accessed through load balancer's regional DNS record. You also saw that the canary testing the zonal endpoint continued to verify impact in that AZ. For a zonal shift to be effective, it's important to be pre-scaled to handle the shifting load, otherwise, this could lead to overwhelming your remaining resources. Alternatively, you may need to temporarily load shed or rate limit traffic to the remaining AZs to protect your service while you add capacity to handle the additional load. See the [documentation](https://docs.aws.amazon.com/r53recovery/latest/dg/route53-arc-best-practices.zonal-shifts.html) for more best practices for using zonal shift.
 
 In the next lab, we're going to enable zonal autoshift to automatically respond to single AZ impairments.

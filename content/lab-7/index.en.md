@@ -3,7 +3,7 @@ title : "Lab 7: Simulate a deployment failure"
 weight : 80
 ---
 
-Up to now we've been injecting failures by adding latency and packet loss to simulate infrastructure failures. However, building AZI architectures and using zonal shift can be beneficial for other types of failures as well. In this lab, we'll create a new version of the application and deploy it one AZ at a time. The deployment will fail and we can leverage zonal shift to recover the same way we did in the previous lab.
+Up to now we've been injecting failures by adding latency and packet loss to simulate infrastructure failures. However, building AZI architectures and using zonal shift can be beneficial for other types of failures as well. In this lab, we'll create a new version of the application and deploy it one AZ at a time. The deployment will fail and we can leverage zonal shift to recover the same way we did in the previous labs.
 
 ::::alert{type="warning" header="Clean up previous lab"} 
 If you did not end the zonal shift or the FIS experiment or reset the load balancer target groups' configurations in the previous lab, please do so now.
@@ -34,7 +34,9 @@ In the *`Additional deployment behavior settings`* select the *`Overwrite the co
 
 Then finally click *`Create deployment`* at the bottom of the screen.
 
-The application will begin deploying to one server in the first AZ. This deployment is using a feature of AWS CodeDeploy called [zonal deployments](https://docs.aws.amazon.com/codedeploy/latest/userguide/deployment-configurations-create.html). It allows you to deploy your applications one AZ at a time. This enables you to respond to failed deployments in the same way you respond to single-AZ infrastructure events. While rollbacks are an essential part of a CI/CD system, they can take awhile to finish, and not every change can be rolled back. Shifting away from an AZ can be a simpler and faster solution. It also means you don't have to spend precious time during an event trying to figure out if a failure is deployment-related or due to an infrastructure event. For more details see [Fault-isolated, zonal deployments with AWS CodeDeploy](https://aws.amazon.com/blogs/devops/fault-isolated-zonal-deployments-with-aws-codedeploy/).
+The application will begin deploying to one server in the first AZ. This deployment is using a feature of AWS CodeDeploy called [zonal deployments](https://docs.aws.amazon.com/codedeploy/latest/userguide/deployment-configurations-create.html). It allows you to deploy your applications one AZ at a time. This enables you to respond to failed deployments in the same way you respond to single-AZ infrastructure events. 
+
+While rollbacks are an essential part of a CI/CD system, they can take awhile to finish, and not every change can be rolled back. Shifting away from an AZ can be a simpler and faster solution to mitigate impact. It also means you don't have to spend precious time during an event trying to figure out if a failure is deployment-related or due to an infrastructure event. For more details see [Fault-isolated, zonal deployments with AWS CodeDeploy](https://aws.amazon.com/blogs/devops/fault-isolated-zonal-deployments-with-aws-codedeploy/).
 
 The deployment will take a few minutes (typically about 3.5 to 4 minutes) and you can see the progress on the bottom of the page.
 

@@ -21,7 +21,7 @@ Select the *`Owned by me`* tab.
 
 ![owned-by-me](/static/owned-by-me.png)
 
-From here, select the document with a name like *`multi-az-workshop-*-addLatency`* by clicking the link of the document's name. Next, click the *`Execute automation`* button at the top of the screen. 
+From here, select the document with a name like *`multi-az-workshop-*-addLatency-*`* by clicking the link of the document's name. Next, click the *`Execute automation`* button at the top of the screen. 
 
 ![execute-automation-page](/static/execute-automation-page.png)
 
@@ -133,11 +133,11 @@ spec:
 
 This relies on the Kubernetes topology labels that are automatically applied by the EKS service to identify source and destination localities.
 
-Let's log in to one of our EKS worker nodes to make the update by navigating to the [EC2 console](https://console.aws.amazon.com/ec2/home#Instances). Right click on one of the nodes that **doesn't** have a name (those are our EKS worker nodes) and select *`Connect`*.
+Let's log in to one of our EKS worker nodes to make the update by navigating to the [EC2 console](https://console.aws.amazon.com/ec2/home#Instances). Right click on one of the nodes that whose name is `multi-az-workshop/eks/Cluster/NodeGroupLaunchTemplate` and select *`Connect`*.
 
 ![ec2-ssm-connect](/static/ec2-ssm-connect.png)
 
-If not directed to the *`Session Manager`* tab on the *`Connect to instance`* tab, select it, then press the *`Connect`* button on the bottom right. This will start an interactive CLI on the EC2 instance. The first thing we need to do is download the `kubectl` command line utility and configure it. Copy and paste the whole block of commands and execute them.
+If not directed to the *`Session Manager`* tab on the *`Connect to instance`* tab, select it, then press the *`Connect`* button on the bottom right. This will start an interactive CLI on the EC2 instance. The first thing we need to do is download the `kubectl` command line utility and configure it. Use the copy icon and then paste the whole block of commands in the session manager CLI and execute them.
 
 ```bash
 BUCKET_PATH=$(aws ssm get-parameter --name BucketPath --query 'Parameter.Value' | tr -d '"')
@@ -228,4 +228,4 @@ The `maxSkew` describes the degree to which Pods may be unevenly distributed. In
 
 ## Conclusion
 
-In this lab you saw the regional impact from not using AZI when the failure was contained within a single AZ. Then, you updated your ALB target groups to disable cross-zone load balancing. After that, you created an Istio `DestinationRule` to enforce AZI traffic routing for the Kubernetes pods in our service. In the next lab we're going to verify the new configuration by injecting a single-AZ failure and observe how this improved architecture responds.
+In this lab you saw the regional impact from not using AZI when the failure occured within a single AZ. Then, you updated your ALB target groups to disable cross-zone load balancing. After that, you created an Istio `DestinationRule` to enforce AZI traffic routing for the Kubernetes pods in our service. In the next lab we're going to verify the new configuration by injecting a single-AZ failure and observe how this improved architecture responds.
