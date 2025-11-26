@@ -22,7 +22,7 @@ Next, navigate to our [EKS cluster](https://console.aws.amazon.com/eks/clusters/
 
 Select *Enabled* and *Save changes*. Now that all of our supported resources have zonal shift enabled, we can turn on autoshift.
 
-## Configure zonal authoshift
+## Configure zonal autoshift
 First, we need to get an alarm ARN that is used by zonal autoshift to stop practice runs in case there is impact. We'll use the *`wildrydes-server-side-regional-impact`* since it is an aggregate alarm for any impact to the application, but won't be affected by transient latency that the canary may experience. You can get its ARN from the console [here](https://console.aws.amazon.com/cloudwatch/home#alarmsV2:alarm/wildrydes-server-side-regional-impact).
 
 Next, navigate to the [ARC zonal autoshift console](https://console.aws.amazon.com/route53recovery/zonalshift/home#/autoshift) and click *Configure zonal autoshift*.
