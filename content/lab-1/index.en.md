@@ -92,9 +92,9 @@ OR
 
 To consider the AZ to have isolated impact (meaning no other AZ that the operation is using is seeing impact as significantly), three things must be true for either availability or latency impact:
 
-1. The impact must be sustained and cross a threshold, like availability drops below 99.9% or latency rises above 200ms for 3 datapoints in 5 minutes. We don't want a single error or single high latency request to make the AZ appear to be unhealthy.
+1. The impact must be sustained and cross a threshold, like availability drops below 99.9% or p99 latency rises above 200ms for 3 datapoints in 5 minutes. We don't want a single error or single high latency request to make the AZ appear to be unhealthy.
 2. More than one instance is experiencing the impact, we don't want a single bad host to make the whole AZ appear impaired.
-3. The quantity of errors or high latency responses make this AZ an outlier as compared to the other AZs. 
+3. The quantity of errors or high latency responses make this AZ an outlier compared to the other AZs. 
 
 ::::alert{type="warning" header="Ensuring even distribution"}
 This approach makes one major assumption, that each AZ is processing similar amounts of load. The workshop is designed with 2 EC2 instances and 2 EKS pods in each AZ with cross-zone load balancing disabled. This ensures that each AZ receives 33% of the traffic. With cross-zone load balancing enabled, each target, regardless of its AZ, receives the same amount of traffic. In this configuration, you could have an imbalance like 4 EC2 instances in one zone, and 1 in each of the other zones. If the AZ impairment affects the zone with just 1 instance in it, it may not handle enough load to make the AZ appear to be an outlier. 
@@ -302,9 +302,9 @@ InstrumentedServiceMultiAZObservability multiAvailabilityZoneObservability = new
     OutlierDetectionAlgorithm = OutlierDetectionAlgorithm.STATIC
 });
 ```
-This creates the metrics, alarms, canary functions, and dashboards used in this workshop. You define the characteristics of service, default values for metrics and alarms, and then add operations as well as any overrides for default values that you need. The construct can also automatically create synthetic canaries that test each operation with a very simple HTTP check, or you can configure your own synthetics and just tell the construct about the metric details and optionally log files. 
+This creates the metrics, alarms, canary functions, and dashboards used in this workshop. You define the characteristics of the service, default values for metrics and alarms, and then add operations as well as any overrides for default values that you need. The construct can also automatically create synthetic canaries that test each operation with a very simple HTTP check, or you can configure your own synthetics and just tell the construct about the metric details and optionally log files. 
 
-If you don't have service specific logs and custom metrics with per-AZ dimensions, you can still use the construct to evaluate ALB and NAT Gateway metrics to find single AZ impairments.
+If you don't have service specific logs and custom metrics with per-AZ dimensions, you can still use the construct to evaluate ALB and/or NAT Gateway metrics to find single AZ impairments.
 
 ```csharp
 BasicServiceMultiAZObservability multiAvailabilityZoneObservability = new BasicServiceMultiAZObservability(this, "MultiAZObservability", new BasicServiceMultiAZObservabilityProps() {
@@ -342,4 +342,4 @@ BasicServiceMultiAZObservability multiAvailabilityZoneObservability = new BasicS
 Both options support running workloads on EC2, ECS, Lambda, and EKS. To learn more about using the construct visit the [CDK Multi-AZ Observability github repo](https://github.com/cdklabs/cdk-multi-az-observability).
 
 ## Conclusion
-We've examined the observability available to us in the Wild Rydes application to detect single-AZ impairments. In the next lab we're going to update Wild Rydes's architecture so that we can effectively use AZs as fault boundaries that limit impact to a single AZ when it occurs.
+We've examined the observability available to us in the Wild Rydes application to detect single-AZ impairments. In the next lab we're going to update the Wild Rydes's architecture so that we can effectively use AZs as fault boundaries that limit impact to a single AZ when it occurs.
