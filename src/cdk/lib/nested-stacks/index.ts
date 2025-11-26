@@ -5,6 +5,7 @@ export * from './ipv6-network-stack';
 export * from './database-stack';
 export * from './az-tagger-stack';
 export * from './ec2-fleet-stack';
+export * from './ecr-uploader-stack';
 export * from './eks-stack';
 export * from './code-deploy-application-stack';
 export * from './log-query-stack';

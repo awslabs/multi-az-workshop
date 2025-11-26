@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import { KubectlV31Layer } from '@aws-cdk/lambda-layer-kubectl-v31';
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as eks from 'aws-cdk-lib/aws-eks';
@@ -8,7 +9,6 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
-import { KubectlV31Layer } from '@aws-cdk/lambda-layer-kubectl-v31';
 import { Construct } from 'constructs';
 
 /**
@@ -125,19 +125,19 @@ export class EKSCluster extends Construct {
     // Add ingress rules to cluster security group
     cluster.clusterSecurityGroup.addIngressRule(
       ec2.Peer.securityGroupId(props.loadBalancerSecurityGroup.securityGroupId),
-      ec2.Port.tcp(80)
+      ec2.Port.tcp(80),
     );
     cluster.clusterSecurityGroup.addIngressRule(
       ec2.Peer.securityGroupId(props.loadBalancerSecurityGroup.securityGroupId),
-      ec2.Port.tcp(5000)
+      ec2.Port.tcp(5000),
     );
     cluster.clusterSecurityGroup.addIngressRule(
       ec2.Peer.securityGroupId(cluster.clusterSecurityGroup.securityGroupId),
-      ec2.Port.tcp(80)
+      ec2.Port.tcp(80),
     );
     cluster.clusterSecurityGroup.addIngressRule(
       ec2.Peer.securityGroupId(cluster.clusterSecurityGroup.securityGroupId),
-      ec2.Port.tcp(5000)
+      ec2.Port.tcp(5000),
     );
 
     // Add EKS Pod Identity Agent addon
@@ -171,7 +171,7 @@ export class EKSCluster extends Construct {
 
     (logRoleManifest.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
       'ServiceTimeout',
-      '300'
+      '300',
     );
 
     const podDeleterManifest = cluster.addManifest('PodDeleterRole', [
@@ -193,7 +193,7 @@ export class EKSCluster extends Construct {
 
     (podDeleterManifest.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
       'ServiceTimeout',
-      '300'
+      '300',
     );
 
     const networkingRoleManifest = cluster.addManifest('NetworkingRole', [
@@ -215,7 +215,7 @@ export class EKSCluster extends Construct {
 
     (networkingRoleManifest.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
       'ServiceTimeout',
-      '300'
+      '300',
     );
 
     const logRoleBindingManifest = cluster.addManifest('LogsRoleBinding', [
@@ -244,7 +244,7 @@ export class EKSCluster extends Construct {
     logRoleBindingManifest.node.addDependency(logRoleManifest);
     (logRoleBindingManifest.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
       'ServiceTimeout',
-      '300'
+      '300',
     );
 
     const networkingRoleBindingManifest = cluster.addManifest('NetworkingRoleBinding', [
@@ -273,7 +273,7 @@ export class EKSCluster extends Construct {
     networkingRoleBindingManifest.node.addDependency(networkingRoleManifest);
     (networkingRoleBindingManifest.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
       'ServiceTimeout',
-      '300'
+      '300',
     );
 
     const podDeleterRoleBindingManifest = cluster.addManifest('PodDeleterRoleBinding', [
@@ -302,7 +302,7 @@ export class EKSCluster extends Construct {
     podDeleterRoleBindingManifest.node.addDependency(networkingRoleManifest);
     (podDeleterRoleBindingManifest.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
       'ServiceTimeout',
-      '300'
+      '300',
     );
 
     // Create IAM role for EKS worker nodes
@@ -326,7 +326,7 @@ export class EKSCluster extends Construct {
             resources: ['*'],
           }),
         ],
-      })
+      }),
     );
 
     eksWorkerRole.addManagedPolicy(
@@ -338,7 +338,7 @@ export class EKSCluster extends Construct {
             resources: ['*'],
           }),
         ],
-      })
+      }),
     );
 
     eksWorkerRole.addManagedPolicy(
@@ -350,7 +350,7 @@ export class EKSCluster extends Construct {
             resources: ['*'],
           }),
         ],
-      })
+      }),
     );
 
     // Add role mapping for worker nodes
@@ -392,7 +392,7 @@ export class EKSCluster extends Construct {
       instanceTypes: [
         ec2.InstanceType.of(
           props.cpuArch === InstanceArchitecture.ARM_64 ? ec2.InstanceClass.T4G : ec2.InstanceClass.T3,
-          ec2.InstanceSize.LARGE
+          ec2.InstanceSize.LARGE,
         ),
       ],
       nodeRole: eksWorkerRole,

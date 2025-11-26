@@ -34,11 +34,10 @@
     }
   },
   "ignorePatterns": [
-    "*.js",
     "*.d.ts",
+    "*.js",
     "node_modules/",
-    "*.generated.ts",
-    "coverage",
+    "lib/",
     "!.projenrc.ts",
     "!projenrc/**/*.ts"
   ],
@@ -146,8 +145,11 @@
       "error",
       {
         "devDependencies": [
+          "**/src/cdk/**",
           "**/test/**",
           "**/build-tools/**",
+          "**/.projenrc.ts/**",
+          "**/projenrc/**",
           ".projenrc.ts",
           "projenrc/**/*.ts"
         ],

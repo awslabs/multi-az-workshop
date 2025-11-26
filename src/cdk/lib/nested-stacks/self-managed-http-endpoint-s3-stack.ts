@@ -41,7 +41,7 @@ export class SelfManagedHttpEndpointS3Stack extends cdk.NestedStack {
             's3:ExistingObjectTag/public': 'true',
           },
         },
-      })
+      }),
     );
 
     this.bucketUrl = 'https://' + this.bucket.bucketRegionalDomainName + '/';

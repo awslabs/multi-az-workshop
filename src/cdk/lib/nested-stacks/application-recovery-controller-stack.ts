@@ -27,7 +27,7 @@ export class ApplicationRecoveryControllerStack extends cdk.NestedStack {
     this.routingControlsPerAvailabilityZoneId = {};
 
     for (let i = 0; i < props.availabilityZoneIds.length; i++) {
-      this.routingControlsPerAvailabilityZoneId[props.availabilityZoneIds[i]] = 
+      this.routingControlsPerAvailabilityZoneId[props.availabilityZoneIds[i]] =
         new route53recoverycontrol.CfnRoutingControl(this, `AZ${i + 1}`, {
           clusterArn: cluster.attrClusterArn,
           controlPanelArn: cp.attrControlPanelArn,

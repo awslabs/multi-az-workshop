@@ -7,9 +7,7 @@ import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as logs from 'aws-cdk-lib/aws-logs';
-import * as fs from 'fs';
 import { NestedStackWithSource } from '../constructs/nested-stack-with-source';
-import { MultiAZWorkshopStack } from '../multi-az-workshop-stack';
 
 /**
  * Props for Application Stack
@@ -24,6 +22,11 @@ export interface ApplicationStackProps extends cdk.NestedStackProps {
    * S3 object key for the container image with fault injection
    */
   readonly containerImageWithFaultObjectKey: string;
+
+  /**
+   * Shared ECR uploader Lambda function
+   */
+  readonly uploaderFunction: lambda.IFunction;
 }
 
 /**
@@ -58,8 +61,8 @@ export class ApplicationStack extends NestedStackWithSource {
   constructor(scope: cdk.Stack, id: string, props: ApplicationStackProps) {
     super(scope, id, props);
 
-    // Set up the uploader Lambda function
-    this.uploaderFunction = this.setupUploader();
+    // Use the shared uploader Lambda function
+    this.uploaderFunction = props.uploaderFunction;
 
     // Set up the container build project
     this.containerBuildProject = this.setupContainerBuildProject();
@@ -146,7 +149,7 @@ export class ApplicationStack extends NestedStackWithSource {
               'echo $file',
               'aws s3 cp s3://$BUCKET/$KEY $file',
               `aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT.dkr.ecr.$AWS_REGION.${cdk.Fn.ref(
-                'AWS::URLSuffix'
+                'AWS::URLSuffix',
               )}`,
               'output=$(docker load --input $file)',
               'echo $output',
@@ -155,7 +158,7 @@ export class ApplicationStack extends NestedStackWithSource {
               'VER=$(echo $output | cut -d\':\' -f3 | xargs)',
               'echo $VER',
               `docker tag \${IMAGE}:\${VER} $ACCOUNT.dkr.ecr.$AWS_REGION.${cdk.Fn.ref(
-                'AWS::URLSuffix'
+                'AWS::URLSuffix',
               )}/\${REPO}:\${VER}`,
               `docker push $ACCOUNT.dkr.ecr.$AWS_REGION.${cdk.Fn.ref('AWS::URLSuffix')}/\${REPO}:\${VER}`,
             ],
@@ -220,95 +223,4 @@ export class ApplicationStack extends NestedStackWithSource {
     return containerBuild;
   }
 
-  /**
-   * Sets up the Lambda function for uploading container images to ECR
-   */
-  private setupUploader(): lambda.IFunction {
-    // Create managed policy for the uploader
-    const uploaderPolicy = new iam.ManagedPolicy(this, 'UploaderPolicy', {
-      statements: [
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: ['s3:GetObject'],
-          resources: ['*'],
-        }),
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: ['kms:Decrypt'],
-          resources: ['*'],
-        }),
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: [
-            'ecr:CompleteLayerUpload',
-            'ecr:UploadLayerPart',
-            'ecr:InitiateLayerUpload',
-            'ecr:BatchCheckLayerAvailability',
-            'ecr:PutImage',
-            'ecr:DescribeImages',
-            'ecr:DescribeRepositories',
-            'ecr:GetAuthorizationToken',
-            'ecr:BatchGetImage',
-          ],
-          resources: ['*'],
-        }),
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: ['codebuild:StartBuild', 'codebuild:ListBuildsForProject', 'codebuild:BatchGetBuilds'],
-          resources: ['*'],
-        }),
-      ],
-    });
-
-    // Create IAM role for the uploader
-    const uploaderRole = new iam.Role(this, 'UploaderRole', {
-      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
-      managedPolicies: [uploaderPolicy],
-    });
-
-    // Create the Lambda function
-    const uploader = new lambda.Function(this, 'EcrUploader', {
-      architecture: lambda.Architecture.ARM_64,
-      handler: 'index.handler',
-      memorySize: 512,
-      timeout: cdk.Duration.seconds(300),
-      runtime: MultiAZWorkshopStack.pythonRuntime,
-      role: uploaderRole,
-      environment: {
-        AWS_ACCOUNT_ID: cdk.Fn.ref('AWS::AccountId'),
-      },
-      layers: [
-        new lambda.LayerVersion(this, 'HelmLayer', {
-          code: lambda.Code.fromAsset('helm-layer.zip'),
-        }),
-      ],
-      code: lambda.Code.fromInline(fs.readFileSync('./uploader-src/index.py', 'utf-8')),
-    });
-
-    // Create log group for the Lambda function
-    const logGroup = new logs.LogGroup(this, 'logGroup', {
-      logGroupName: `/aws/lambda/${uploader.functionName}`,
-      retention: logs.RetentionDays.ONE_DAY,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    // Add CloudWatch logging permissions
-    new iam.ManagedPolicy(this, 'CloudWatchManagedPolicy', {
-      statements: [
-        new iam.PolicyStatement({
-          actions: ['logs:CreateLogStream', 'logs:PutLogEvents'],
-          effect: iam.Effect.ALLOW,
-          resources: [logGroup.logGroupArn],
-        }),
-        new iam.PolicyStatement({
-          actions: ['logs:CreateLogGroup'],
-          effect: iam.Effect.ALLOW,
-          resources: ['*'],
-        }),
-      ],
-      roles: [uploaderRole],
-    });
-
-    return uploader;
-  }
 }

@@ -3,13 +3,19 @@ import { Template } from 'aws-cdk-lib/assertions';
 import { MultiAZWorkshopStack } from '../../src/cdk/lib/multi-az-workshop-stack';
 
 describe('CloudFormation Template Snapshot', () => {
-  test('stack matches snapshot', () => {
-    const app = new App();
-    const stack = new MultiAZWorkshopStack(app, 'SnapshotTestStack', {
+  let sharedApp: App;
+  let sharedStack: MultiAZWorkshopStack;
+  let sharedTemplate: Template;
+
+  beforeAll(() => {
+    sharedApp = new App();
+    sharedStack = new MultiAZWorkshopStack(sharedApp, 'SnapshotTestStack', {
       env: { region: 'us-east-1' },
     });
+    sharedTemplate = Template.fromStack(sharedStack);
+  });
 
-    const template = Template.fromStack(stack);
-    expect(template.toJSON()).toMatchSnapshot();
+  test('stack matches snapshot', () => {
+    expect(sharedTemplate.toJSON()).toMatchSnapshot();
   });
 });

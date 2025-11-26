@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as cdk from 'aws-cdk-lib';
+import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as codedeploy from 'aws-cdk-lib/aws-codedeploy';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
-import { NestedStackWithSource } from '../constructs/nested-stack-with-source';
 import { EC2FleetStack } from './ec2-fleet-stack';
+import { NestedStackWithSource } from '../constructs/nested-stack-with-source';
 
 /**
  * Props for CodeDeploy Application Stack
@@ -99,17 +99,17 @@ export class CodeDeployApplicationStack extends NestedStackWithSource {
         iam.ManagedPolicy.fromManagedPolicyArn(
           this,
           'ServiceRolePolicy',
-          'arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole'
+          'arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole',
         ),
         iam.ManagedPolicy.fromManagedPolicyArn(
           this,
           'ECSPolicy',
-          'arn:aws:iam::aws:policy/AWSCodeDeployRoleForECS'
+          'arn:aws:iam::aws:policy/AWSCodeDeployRoleForECS',
         ),
         iam.ManagedPolicy.fromManagedPolicyArn(
           this,
           'LambdaPolicy',
-          'arn:aws:iam::aws:policy/service-role/AWSCodeDeployRoleForLambda'
+          'arn:aws:iam::aws:policy/service-role/AWSCodeDeployRoleForLambda',
         ),
         codedeployManagedPolicy,
       ],
@@ -165,11 +165,11 @@ export class CodeDeployApplicationStack extends NestedStackWithSource {
       alarmConfiguration:
         props.alarms && props.alarms.length > 0
           ? {
-              alarms: props.alarms.map((alarm) => ({
-                name: alarm.alarmName,
-              })),
-              enabled: true,
-            }
+            alarms: props.alarms.map((alarm) => ({
+              name: alarm.alarmName,
+            })),
+            enabled: true,
+          }
           : undefined,
     });
 

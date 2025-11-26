@@ -137,7 +137,7 @@ export class EKSApplication extends Construct {
           kind: 'Namespace',
           metadata: {
             labels: {
-              name: props.namespace,
+              'name': props.namespace,
               'istio-injection': 'enabled',
             },
             name: props.namespace,
@@ -148,7 +148,7 @@ export class EKSApplication extends Construct {
 
     (appNamespace.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
       'ServiceTimeout',
-      '300'
+      '300',
     );
 
     // Create service account
@@ -168,7 +168,7 @@ export class EKSApplication extends Construct {
 
     (appServiceAccount.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
       'ServiceTimeout',
-      '300'
+      '300',
     );
 
     appServiceAccount.node.addDependency(appNamespace);
@@ -221,7 +221,7 @@ export class EKSApplication extends Construct {
     appService.node.addDependency(appNamespace);
     (appService.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
       'ServiceTimeout',
-      '300'
+      '300',
     );
 
     // Create Istio virtual service
@@ -266,7 +266,7 @@ export class EKSApplication extends Construct {
     istioVirtualService.node.addDependency(appService);
     (istioVirtualService.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
       'ServiceTimeout',
-      '300'
+      '300',
     );
 
     // Create CloudWatch agent config map
@@ -286,7 +286,7 @@ export class EKSApplication extends Construct {
     agentConfigMap.node.addDependency(appNamespace);
     (agentConfigMap.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
       'ServiceTimeout',
-      '300'
+      '300',
     );
 
     // Create deployment
@@ -437,7 +437,7 @@ export class EKSApplication extends Construct {
     appDeployment.node.addDependency(cwAgentContainer.dependable);
     (appDeployment.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
       'ServiceTimeout',
-      '300'
+      '300',
     );
 
     // Create target group
@@ -490,7 +490,7 @@ export class EKSApplication extends Construct {
     targetGroupBinding.node.addDependency(appService);
     (targetGroupBinding.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
       'ServiceTimeout',
-      '300'
+      '300',
     );
   }
 }

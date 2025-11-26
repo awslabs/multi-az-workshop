@@ -1,6 +1,12 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import {
+  AvailabilityZoneMapper,
+  IService,
+  InstrumentedServiceMultiAZObservability,
+  BasicServiceMultiAZObservability,
+} from '@cdklabs/multi-az-observability';
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
@@ -8,31 +14,26 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
-import { EvacuationMethod } from './types';
+import { InstanceArchitecture } from './constructs/eks-cluster';
 import { EnhancedApplicationLoadBalancer } from './constructs/enhanced-load-balancer';
 import { NestedStackWithSource } from './constructs/nested-stack-with-source';
+import { ApplicationRecoveryControllerStack } from './nested-stacks/application-recovery-controller-stack';
 import { AZTaggerStack } from './nested-stacks/az-tagger-stack';
-import { IpV6NetworkStack } from './nested-stacks/ipv6-network-stack';
+import { CodeDeployApplicationStack } from './nested-stacks/code-deploy-application-stack';
 import { DatabaseStack } from './nested-stacks/database-stack';
 import { EC2FleetStack } from './nested-stacks/ec2-fleet-stack';
+import { EcrUploaderStack } from './nested-stacks/ecr-uploader-stack';
 import { EKSStack } from './nested-stacks/eks-stack';
-import { InstanceArchitecture } from './constructs/eks-cluster';
-import { Route53ZonalDnsStack } from './nested-stacks/route53-zonal-dns-stack';
+import { FaultInjectionStack } from './nested-stacks/fault-injection-stack';
+import { IpV6NetworkStack } from './nested-stacks/ipv6-network-stack';
+import { LogQueryStack } from './nested-stacks/log-query-stack';
 import { Route53HealthChecksStack } from './nested-stacks/route53-health-checks-stack';
-import { ApplicationRecoveryControllerStack } from './nested-stacks/application-recovery-controller-stack';
+import { Route53ZonalDnsStack } from './nested-stacks/route53-zonal-dns-stack';
 import { SelfManagedHttpEndpointApigStack } from './nested-stacks/self-managed-http-endpoint-apig-stack';
 import { SelfManagedHttpEndpointS3Stack } from './nested-stacks/self-managed-http-endpoint-s3-stack';
-import { FaultInjectionStack } from './nested-stacks/fault-injection-stack';
 import { SSMRandomFaultStack } from './nested-stacks/ssm-random-fault-stack';
-import { LogQueryStack } from './nested-stacks/log-query-stack';
-import { CodeDeployApplicationStack } from './nested-stacks/code-deploy-application-stack';
+import { EvacuationMethod } from './types';
 import { createService } from './utils/service-factory';
-import {
-  AvailabilityZoneMapper,
-  IService,
-  InstrumentedServiceMultiAZObservability,
-  BasicServiceMultiAZObservability,
-} from '@cdklabs/multi-az-observability';
 
 /**
  * Properties for the MultiAZWorkshopStack
@@ -45,16 +46,11 @@ export interface MultiAZWorkshopStackProps extends cdk.StackProps {
  * Main stack for the Multi-AZ Workshop
  */
 export class MultiAZWorkshopStack extends cdk.Stack {
+  
   // Configuration constants
-  private readonly evacuationMethod: EvacuationMethod = EvacuationMethod.ZonalShift;
+  private readonly evacuationMethod: EvacuationMethod;
   private readonly domain: string = 'example.com';
-  // private readonly metricsNamespace: string = 'multi-az-workshop/frontend';
   private readonly frontEndLogGroupName: string = '/multi-az-workshop/frontend';
-  // private readonly faultMetricJsonPath: string = '$.Fault';
-  // private readonly successLatencyMetricJsonPath: string = '$.SuccessLatency';
-  // private readonly azIdJsonPath: string = '$.AZ-ID';
-  // private readonly operationNameJsonPath: string = '$.Operation';
-  // private readonly instanceIdJsonPath: string = '$.InstanceId';
   private readonly arch: InstanceArchitecture = InstanceArchitecture.ARM_64;
   private readonly ec2Arch: ec2.InstanceArchitecture = ec2.InstanceArchitecture.ARM_64;
 
@@ -65,20 +61,18 @@ export class MultiAZWorkshopStack extends cdk.Stack {
   private networkStack: IpV6NetworkStack;
   private databaseStack: DatabaseStack;
   private ec2Stack: EC2FleetStack;
+  private ecrUploaderStack: EcrUploaderStack;
   private eksStack: EKSStack;
   private codeDeployStack: CodeDeployApplicationStack;
-  // private route53Stack?: Route53ZonalDnsStack;
   private azTaggerStack: AZTaggerStack;
-  // private healthCheckStack?: Route53HealthChecksStack;
   private faultInjectionStack: FaultInjectionStack;
-  // @ts-ignore - Stack state, not directly referenced
-  private logQueryStack: LogQueryStack;
-  // @ts-ignore - Stack state, not directly referenced
-  private ssmRandomFaultStack: SSMRandomFaultStack;
   private loadBalancer: EnhancedApplicationLoadBalancer;
 
   constructor(scope: Construct, id: string, props: MultiAZWorkshopStackProps) {
     super(scope, id, props);
+
+    // Read evacuation method from context, default to ZonalShift
+    this.evacuationMethod = this.node.tryGetContext('evacuationMethod') || EvacuationMethod.ZonalShift;
 
     // CloudFormation Parameters
     const assetsBucketName = new cdk.CfnParameter(this, 'AssetsBucketName', {
@@ -148,6 +142,11 @@ export class MultiAZWorkshopStack extends cdk.Stack {
       vpc: this.networkStack.vpc,
     });
 
+    // Create ECR Uploader Stack (shared Lambda function)
+    this.ecrUploaderStack = new EcrUploaderStack(this, 'ecr-uploader', {
+      pythonRuntime: MultiAZWorkshopStack.pythonRuntime,
+    });
+
     // Create log group for front-end
     const frontEndLogGroup = new logs.LogGroup(this, 'front-end-log-group', {
       logGroupName: this.frontEndLogGroupName,
@@ -165,13 +164,13 @@ export class MultiAZWorkshopStack extends cdk.Stack {
     // Allow inbound port 80 connections from the VPC for Lambda canary tests
     albSecurityGroup.addIngressRule(
       ec2.Peer.ipv4(this.networkStack.vpc.vpcCidrBlock),
-      ec2.Port.tcp(80)
+      ec2.Port.tcp(80),
     );
 
     if (this.networkStack.vpc.ipV6Enabled) {
       albSecurityGroup.addIngressRule(
         ec2.Peer.ipv6(cdk.Fn.select(0, this.networkStack.vpc.vpcIpv6CidrBlocks)),
-        ec2.Port.tcp(80)
+        ec2.Port.tcp(80),
       );
     }
 
@@ -200,6 +199,7 @@ export class MultiAZWorkshopStack extends cdk.Stack {
       loadBalancerSecurityGroup: albSecurityGroup,
       adminRoleName: participantRoleName.valueAsString,
       iamResourcePath: '/front-end/eks-fleet/',
+      uploaderFunction: this.ecrUploaderStack.uploaderFunction,
     });
 
     this.eksStack.node.addDependency(this.azTaggerStack);
@@ -251,7 +251,7 @@ export class MultiAZWorkshopStack extends cdk.Stack {
           resourcePath: apigStack.resourcePath,
           evacuationMethod: this.evacuationMethod,
           availabilityZoneIdToRoutingControlArns: Object.fromEntries(
-            availabilityZoneIds.map((x) => [x, undefined as any])
+            availabilityZoneIds.map((x) => [x, undefined as any]),
           ),
         });
         break;
@@ -280,7 +280,7 @@ export class MultiAZWorkshopStack extends cdk.Stack {
           evacuationMethod: this.evacuationMethod,
           inverted: true,
           availabilityZoneIdToRoutingControlArns: Object.fromEntries(
-            availabilityZoneIds.map((x) => [x, undefined as any])
+            availabilityZoneIds.map((x) => [x, undefined as any]),
           ),
         });
         break;
@@ -311,7 +311,7 @@ export class MultiAZWorkshopStack extends cdk.Stack {
         interval: cdk.Duration.minutes(60),
         assetsBucketParameterName: 'AssetsBucketName',
         assetsBucketPrefixParameterName: 'AssetsBucketPrefix',
-      }
+      },
     );
 
     // Create basic service multi-AZ observability
@@ -368,13 +368,13 @@ export class MultiAZWorkshopStack extends cdk.Stack {
     });
 
     // Create SSM Random Fault Stack
-    this.ssmRandomFaultStack = new SSMRandomFaultStack(this, 'ssm-random-fault', {
+    new SSMRandomFaultStack(this, 'ssm-random-fault', {
       latencyExperiments: this.faultInjectionStack.latencyExperiments,
       packetLossExperiments: this.faultInjectionStack.packetLossExperiments,
     });
 
     // Create Log Query Stack
-    this.logQueryStack = new LogQueryStack(this, 'log-query-', {
+    new LogQueryStack(this, 'log-query-', {
       canaryLogGroup: multiAvailabilityZoneObservability.canaryLogGroup,
       serverSideLogGroup: frontEndLogGroup,
       service: wildRydesService,
@@ -390,13 +390,13 @@ export class MultiAZWorkshopStack extends cdk.Stack {
       applicationName: 'multi-az-workshop',
       minimumHealthyHostsPerZone: 1,
       alarms: [
-        multiAvailabilityZoneObservability.perOperationAlarmsAndRules['Ride']?.canaryRegionalAlarmsAndRules
+        multiAvailabilityZoneObservability.perOperationAlarmsAndRules.Ride?.canaryRegionalAlarmsAndRules
           ?.availabilityOrLatencyAlarm,
-        multiAvailabilityZoneObservability.perOperationAlarmsAndRules['Pay']?.canaryRegionalAlarmsAndRules
+        multiAvailabilityZoneObservability.perOperationAlarmsAndRules.Pay?.canaryRegionalAlarmsAndRules
           ?.availabilityOrLatencyAlarm,
-        multiAvailabilityZoneObservability.perOperationAlarmsAndRules['Signin']?.canaryRegionalAlarmsAndRules
+        multiAvailabilityZoneObservability.perOperationAlarmsAndRules.Signin?.canaryRegionalAlarmsAndRules
           ?.availabilityOrLatencyAlarm,
-        multiAvailabilityZoneObservability.perOperationAlarmsAndRules['Home']?.canaryRegionalAlarmsAndRules
+        multiAvailabilityZoneObservability.perOperationAlarmsAndRules.Home?.canaryRegionalAlarmsAndRules
           ?.availabilityOrLatencyAlarm,
       ].filter((alarm): alarm is cdk.aws_cloudwatch.IAlarm => alarm !== undefined),
     });

@@ -100,12 +100,21 @@ export class CidrBlock {
   }
 
   public static isValidIp(ipAddress: string): boolean {
+    if (typeof ipAddress !== 'string' || !ipAddress) {
+      return false;
+    }
+
     const octets = ipAddress.split('.');
     if (octets.length !== 4) {
       return false;
     }
 
     for (const octet of octets) {
+      // Check for spaces or non-numeric characters
+      if (octet.trim() !== octet || !/^\d+$/.test(octet)) {
+        return false;
+      }
+
       const tmp = parseInt(octet, 10);
       if (tmp > 255 || tmp < 0 || isNaN(tmp)) {
         return false;

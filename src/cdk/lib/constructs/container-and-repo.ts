@@ -10,8 +10,6 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
-import * as fs from 'fs';
-import * as path from 'path';
 
 /**
  * Props for adding a container and repository
@@ -64,16 +62,26 @@ export interface WaitableResponse {
 }
 
 /**
+ * Props for ContainerAndRepo construct
+ */
+export interface ContainerAndRepoProps {
+  /**
+   * Shared ECR uploader Lambda function
+   */
+  readonly uploaderFunction: lambda.IFunction;
+}
+
+/**
  * Construct for managing container images and ECR repositories
  */
 export class ContainerAndRepo extends Construct {
   public readonly uploaderFunction: lambda.IFunction;
   public readonly containerBuildProject: codebuild.IProject;
 
-  constructor(scope: Construct, id: string, pythonRuntime: lambda.Runtime) {
+  constructor(scope: Construct, id: string, props: ContainerAndRepoProps) {
     super(scope, id);
 
-    this.uploaderFunction = this.setupUploader(pythonRuntime);
+    this.uploaderFunction = props.uploaderFunction;
     this.containerBuildProject = this.setupContainerBuildProject();
   }
 
@@ -100,7 +108,7 @@ export class ContainerAndRepo extends Construct {
           Repository: applicationRepo.repositoryName,
           Nonce: Math.floor(Math.random() * Number.MAX_SAFE_INTEGER),
         },
-      }
+      },
     );
 
     appContainerImage.node.addDependency(this.uploaderFunction);
@@ -140,93 +148,6 @@ export class ContainerAndRepo extends Construct {
     };
   }
 
-  private setupUploader(pythonRuntime: lambda.Runtime): lambda.IFunction {
-    const uploaderPolicy = new iam.ManagedPolicy(this, 'UploaderPolicy', {
-      statements: [
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: ['s3:GetObject'],
-          resources: ['*'],
-        }),
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: ['kms:Decrypt'],
-          resources: ['*'],
-        }),
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: [
-            'ecr:CompleteLayerUpload',
-            'ecr:UploadLayerPart',
-            'ecr:InitiateLayerUpload',
-            'ecr:BatchCheckLayerAvailability',
-            'ecr:PutImage',
-            'ecr:DescribeImages',
-            'ecr:DescribeRepositories',
-            'ecr:GetAuthorizationToken',
-            'ecr:BatchGetImage',
-          ],
-          resources: ['*'],
-        }),
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: ['codebuild:StartBuild', 'codebuild:ListBuildsForProject', 'codebuild:BatchGetBuilds'],
-          resources: ['*'],
-        }),
-      ],
-    });
-
-    const uploaderRole = new iam.Role(this, 'UploaderRole', {
-      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
-      managedPolicies: [uploaderPolicy],
-    });
-
-    const helmLayerPath = path.join(process.cwd(), 'helm-layer.zip');
-    const uploaderSrcPath = path.join(process.cwd(), 'src', 'cdk', 'uploader-src', 'index.py');
-
-    const uploader = new lambda.Function(this, 'EcrUploader', {
-      architecture: lambda.Architecture.ARM_64,
-      handler: 'index.handler',
-      memorySize: 512,
-      timeout: cdk.Duration.seconds(300),
-      runtime: pythonRuntime,
-      role: uploaderRole,
-      environment: {
-        AWS_ACCOUNT_ID: cdk.Fn.ref('AWS::AccountId'),
-      },
-      layers: [
-        new lambda.LayerVersion(this, 'HelmLayer', {
-          code: lambda.Code.fromAsset(helmLayerPath),
-        }),
-      ],
-      code: lambda.Code.fromInline(fs.readFileSync(uploaderSrcPath, 'utf-8')),
-    });
-
-    const logGroup = new logs.LogGroup(this, 'logGroup', {
-      logGroupName: `/aws/lambda/${uploader.functionName}`,
-      retention: logs.RetentionDays.ONE_DAY,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    new iam.ManagedPolicy(this, 'CloudWatchManagedPolicy', {
-      statements: [
-        new iam.PolicyStatement({
-          actions: ['logs:CreateLogStream', 'logs:PutLogEvents'],
-          effect: iam.Effect.ALLOW,
-          resources: [logGroup.logGroupArn],
-        }),
-        new iam.PolicyStatement({
-          actions: ['logs:CreateLogGroup'],
-          effect: iam.Effect.ALLOW,
-          resources: ['*'],
-        }),
-      ],
-      roles: [uploaderRole],
-    });
-
-    return uploader;
-  }
-
   private setupContainerBuildProject(): codebuild.IProject {
     const containerBuild = new codebuild.Project(this, 'AppBuild', {
       environment: {
@@ -246,7 +167,7 @@ export class ContainerAndRepo extends Construct {
               'echo $file',
               'aws s3 cp s3://$BUCKET/$KEY $file',
               `aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT.dkr.ecr.$AWS_REGION.${cdk.Fn.ref(
-                'AWS::URLSuffix'
+                'AWS::URLSuffix',
               )}`,
               'output=$(docker load --input $file)',
               'echo $output',
@@ -255,7 +176,7 @@ export class ContainerAndRepo extends Construct {
               'VER=$(echo $output | cut -d\':\' -f3 | xargs)',
               'echo $VER',
               `docker tag \${IMAGE}:\${VER} $ACCOUNT.dkr.ecr.$AWS_REGION.${cdk.Fn.ref(
-                'AWS::URLSuffix'
+                'AWS::URLSuffix',
               )}/\${REPO}:\${VER}`,
               `docker push $ACCOUNT.dkr.ecr.$AWS_REGION.${cdk.Fn.ref('AWS::URLSuffix')}/\${REPO}:\${VER}`,
             ],

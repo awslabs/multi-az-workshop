@@ -91,7 +91,7 @@ export class Istio extends HelmRepoAndChartConstruct {
     baseChart.node.addDependency(istioBaseHelmChartRepo.dependable);
     (baseChart.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
       'ServiceTimeout',
-      '300'
+      '300',
     );
 
     // Install Istiod (uses the pilot container image)
@@ -115,7 +115,7 @@ export class Istio extends HelmRepoAndChartConstruct {
     istiod.node.addDependency(istiodHelmChartRepo.dependable);
     (istiod.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
       'ServiceTimeout',
-      '300'
+      '300',
     );
 
     // Install Istio CNI (uses the install-cni image)

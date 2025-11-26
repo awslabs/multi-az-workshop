@@ -103,7 +103,7 @@ export class SelfManagedHttpEndpointApigStack extends cdk.NestedStack {
               '{"TableName": "${Table}", "Key": {"AZ-ID": {"S" : "$input.params(\'az-id\')" } }, "ConsistentRead": true}',
               {
                 Table: table.tableName,
-              }
+              },
             ),
           },
         },

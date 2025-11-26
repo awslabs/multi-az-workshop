@@ -1,16 +1,16 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import * as fs from 'fs';
+import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
-import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as autoscaling from 'aws-cdk-lib/aws-autoscaling';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
-import * as fs from 'fs';
-import * as path from 'path';
 import { IVpcIpV6 } from '../constructs/vpc-ipv6-construct';
 
 /**
@@ -290,11 +290,6 @@ export class EC2FleetStack extends cdk.NestedStack {
       ],
     });
 
-    const instanceProfile = new iam.CfnInstanceProfile(this, 'InstanceProfile', {
-      roles: [role.roleName],
-      path: iamResourcePath,
-    });
-
     // Create security group
     const sg = new ec2.SecurityGroup(this, 'frontendSecurityGroup', {
       description: 'Allow inbound access from the load balancer and public clients',
@@ -306,7 +301,7 @@ export class EC2FleetStack extends cdk.NestedStack {
     // Create user data
     const userData = ec2.UserData.forLinux({ shebang: '#!/bin/bash' });
 
-    // Create launch template
+    // Create launch template with role using high-level properties
     this.launchTemplate = new ec2.LaunchTemplate(this, 'front-end-launch-template', {
       userData,
       machineImage: ec2.MachineImage.latestAmazonLinux2023({
@@ -314,7 +309,7 @@ export class EC2FleetStack extends cdk.NestedStack {
       }),
       instanceType: ec2.InstanceType.of(
         cpuArch === ec2.InstanceArchitecture.ARM_64 ? ec2.InstanceClass.T4G : ec2.InstanceClass.T3A,
-        ec2.InstanceSize.MICRO
+        ec2.InstanceSize.MICRO,
       ),
       ebsOptimized: true,
       securityGroup: sg,
@@ -329,23 +324,15 @@ export class EC2FleetStack extends cdk.NestedStack {
       ],
       requireImdsv2: true,
       httpTokens: ec2.LaunchTemplateHttpTokens.REQUIRED,
+      role: role
     });
 
-    // Add instance profile and tags to launch template
+    // Add tags to instances launched from this template
     const cfnLaunchTemplate = this.launchTemplate.node.defaultChild as ec2.CfnLaunchTemplate;
     const launchTemplateData = cfnLaunchTemplate.launchTemplateData as ec2.CfnLaunchTemplate.LaunchTemplateDataProperty;
-    
+
     cfnLaunchTemplate.launchTemplateData = {
       ...launchTemplateData,
-      iamInstanceProfile: {
-        arn: cdk.Fn.sub(
-          'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile${Path}${Name}',
-          {
-            Path: iamResourcePath,
-            Name: instanceProfile.ref,
-          }
-        ),
-      },
       tagSpecifications: [
         {
           resourceType: 'instance',
@@ -390,8 +377,9 @@ export class EC2FleetStack extends cdk.NestedStack {
       maxCapacity: props.fleetSize,
       vpc: props.vpc,
       vpcSubnets: props.subnets,
-      healthCheck: autoscaling.HealthCheck.elb({
-        grace: cdk.Duration.seconds(240),
+      healthChecks: autoscaling.HealthChecks.withAdditionalChecks({
+        additionalTypes: [autoscaling.AdditionalHealthCheckType.ELB],
+        gracePeriod: cdk.Duration.seconds(240),
       }),
       defaultInstanceWarmup: cdk.Duration.seconds(120),
       updatePolicy: autoscaling.UpdatePolicy.rollingUpdate({

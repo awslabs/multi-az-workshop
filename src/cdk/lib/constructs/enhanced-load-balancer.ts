@@ -56,8 +56,7 @@ export class EnhancedNetworkLoadBalancer extends elbv2.NetworkLoadBalancer imple
  */
 export class EnhancedApplicationLoadBalancer
   extends elbv2.ApplicationLoadBalancer
-  implements IEnhancedLoadBalancerV2, elbv2.IApplicationLoadBalancer
-{
+  implements IEnhancedLoadBalancerV2, elbv2.IApplicationLoadBalancer {
   public readonly subnets: ec2.ISubnet[];
   public readonly availabilityZones: string[];
 

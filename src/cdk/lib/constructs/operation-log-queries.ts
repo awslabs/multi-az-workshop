@@ -1,9 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import { IOperation } from '@cdklabs/multi-az-observability';
 import * as cdk from 'aws-cdk-lib';
 import * as logs from 'aws-cdk-lib/aws-logs';
-import { IOperation } from '@cdklabs/multi-az-observability';
 import { Construct } from 'constructs';
 
 /**

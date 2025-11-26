@@ -5,16 +5,13 @@ import json
 import shutil
 import sys
 
-stack_name = sys.argv[1]
-src_dir = sys.argv[2]
-cdk_relative_path = sys.argv[3]
+stack_name = sys.argv[1] # The name of the stack
+src_dir = sys.argv[2] # The root directory of the project
 
 assets_bucket_variable_name = "AssetsBucketName"
 assets_bucket_prefix_variable_name = "AssetsBucketPrefix"
-
-cdk_location = os.path.join(src_dir, cdk_relative_path)
 assets_folder = os.path.join(src_dir, "assets")
-cdk_out = os.path.join(cdk_location, "cdk.out")
+cdk_out = os.path.join(src_dir, "cdk.out")
 manifest = os.path.join(cdk_out, f"{stack_name}.assets.json")
 static = os.path.join(src_dir, "static")
 

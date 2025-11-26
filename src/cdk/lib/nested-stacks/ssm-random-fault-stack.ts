@@ -1,12 +1,12 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import * as fs from 'fs';
+import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import * as fis from 'aws-cdk-lib/aws-fis';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
-import * as fs from 'fs';
-import * as path from 'path';
 import { NestedStackWithSource } from '../constructs/nested-stack-with-source';
 
 /**
@@ -43,12 +43,12 @@ export class SSMRandomFaultStack extends NestedStackWithSource {
             ...props.latencyExperiments.map((exp) =>
               cdk.Fn.sub('arn:${AWS::Partition}:fis:${AWS::Region}:${AWS::AccountId}:experiment-template/${id}', {
                 id: exp.ref,
-              })
+              }),
             ),
             ...props.packetLossExperiments.map((exp) =>
               cdk.Fn.sub('arn:${AWS::Partition}:fis:${AWS::Region}:${AWS::AccountId}:experiment-template/${id}', {
                 id: exp.ref,
-              })
+              }),
             ),
             cdk.Fn.sub('arn:${AWS::Partition}:fis:${AWS::Region}:${AWS::AccountId}:experiment/*'),
           ],

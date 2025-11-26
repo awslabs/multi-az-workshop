@@ -92,7 +92,7 @@ export class VpcIpV6 extends ec2.Vpc implements IVpcIpV6 {
       const iPv6SubnetCidrBlocks = cdk.Fn.cidr(
         cdk.Fn.select(0, this.vpcIpv6CidrBlocks),
         256,
-        '64'
+        '64',
       );
 
       let ipv6Counter = 0;
@@ -136,7 +136,7 @@ export class VpcIpV6 extends ec2.Vpc implements IVpcIpV6 {
           (subnet as ec2.Subnet).addRoute('IPv6DefaultRoute', {
             destinationIpv6CidrBlock: '::/0',
             enablesInternetConnectivity: true,
-            routerType: ec2.RouterType.GATEWAY,
+            routerType: ec2.RouterType.EGRESS_ONLY_INTERNET_GATEWAY,
             routerId: egw.attrId,
           });
 

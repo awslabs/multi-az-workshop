@@ -3,9 +3,9 @@
 
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import { IPAddressType } from '../constructs/ip-address-type';
 import { NestedStackWithSource } from '../constructs/nested-stack-with-source';
 import { VpcIpV6, IVpcIpV6 } from '../constructs/vpc-ipv6-construct';
-import { IPAddressType } from '../constructs/ip-address-type';
 
 /**
  * Props for IPv6 Network Stack
@@ -36,6 +36,12 @@ export class IpV6NetworkStack extends NestedStackWithSource {
 
     this.availabilityZoneNames = props.availabilityZoneNames;
 
+    // Check if IPv6 is enabled via context
+    const ipV6Enabled = scope.node.tryGetContext('ipV6Enabled') === true;
+
+    // Determine IP address type based on context
+    const subnetIpConfiguration = ipV6Enabled ? IPAddressType.DualStack : IPAddressType.IPv4;
+
     // Create VPC with IPv6 support
     this.vpc = new VpcIpV6(this, 'vpc', {
       ipAddresses: ec2.IpAddresses.cidr('192.168.0.0/16'),
@@ -47,7 +53,7 @@ export class IpV6NetworkStack extends NestedStackWithSource {
         {
           cidrMask: 24,
           name: 'isolated-subnet',
-          subnetIpConfiguration: IPAddressType.IPv4,
+          subnetIpConfiguration,
           subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
         },
       ],

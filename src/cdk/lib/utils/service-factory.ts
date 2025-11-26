@@ -1,10 +1,6 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import * as cdk from 'aws-cdk-lib';
-import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
-import * as logs from 'aws-cdk-lib/aws-logs';
 import {
   AddCanaryTestProps,
   CanaryTestLatencyMetricsOverride,
@@ -28,6 +24,10 @@ import {
   ServiceLatencyMetricDetailsProps,
   ServiceProps,
 } from '@cdklabs/multi-az-observability';
+import * as cdk from 'aws-cdk-lib';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import * as logs from 'aws-cdk-lib/aws-logs';
 
 /**
  * Options for creating a service with multi-AZ observability
@@ -64,16 +64,16 @@ const INSTANCE_ID_JSON_PATH = '$.InstanceId';
 
 /**
  * Creates a service with multi-AZ observability configuration
- * 
+ *
  * This function creates a WildRydes service with four operations:
  * - Signin: User authentication endpoint
  * - Pay: Payment processing endpoint
  * - Ride: Ride booking endpoint
  * - Home: Home page endpoint
- * 
+ *
  * Each operation is configured with availability and latency metrics,
  * contributor insight rules, and canary tests.
- * 
+ *
  * @param options - Configuration options for the service
  * @returns The configured service instance
  */
@@ -154,10 +154,10 @@ export function createService(options: CreateServiceOptions): IService {
           metricDimensions: new MetricDimensions(
             { Operation: 'Signin' },
             'AZ-ID',
-            'Region'
+            'Region',
           ),
         } as OperationAvailabilityMetricDetailsProps,
-        newService.defaultAvailabilityMetricDetails
+        newService.defaultAvailabilityMetricDetails,
       ),
       serverSideLatencyMetricDetails: new OperationLatencyMetricDetails(
         {
@@ -166,15 +166,15 @@ export function createService(options: CreateServiceOptions): IService {
           metricDimensions: new MetricDimensions(
             { Operation: 'Signin' },
             'AZ-ID',
-            'Region'
+            'Region',
           ),
         } as OperationLatencyMetricDetailsProps,
-        newService.defaultLatencyMetricDetails
+        newService.defaultLatencyMetricDetails,
       ),
       canaryTestLatencyMetricsOverride: new CanaryTestLatencyMetricsOverride({
         successAlarmThreshold: cdk.Duration.millis(500),
       } as CanaryTestLatencyMetricsOverrideProps),
-    } as OperationProps)
+    } as OperationProps),
   );
 
   // Add Pay operation
@@ -191,10 +191,10 @@ export function createService(options: CreateServiceOptions): IService {
           metricDimensions: new MetricDimensions(
             { Operation: 'Pay' },
             'AZ-ID',
-            'Region'
+            'Region',
           ),
         } as OperationAvailabilityMetricDetailsProps,
-        newService.defaultAvailabilityMetricDetails
+        newService.defaultAvailabilityMetricDetails,
       ),
       serverSideLatencyMetricDetails: new OperationLatencyMetricDetails(
         {
@@ -203,15 +203,15 @@ export function createService(options: CreateServiceOptions): IService {
           metricDimensions: new MetricDimensions(
             { Operation: 'Pay' },
             'AZ-ID',
-            'Region'
+            'Region',
           ),
         } as OperationLatencyMetricDetailsProps,
-        newService.defaultLatencyMetricDetails
+        newService.defaultLatencyMetricDetails,
       ),
       canaryTestLatencyMetricsOverride: new CanaryTestLatencyMetricsOverride({
         successAlarmThreshold: cdk.Duration.millis(500),
       } as CanaryTestLatencyMetricsOverrideProps),
-    } as OperationProps)
+    } as OperationProps),
   );
 
   // Add Ride operation
@@ -228,10 +228,10 @@ export function createService(options: CreateServiceOptions): IService {
           metricDimensions: new MetricDimensions(
             { Operation: 'Ride' },
             'AZ-ID',
-            'Region'
+            'Region',
           ),
         } as OperationAvailabilityMetricDetailsProps,
-        newService.defaultAvailabilityMetricDetails
+        newService.defaultAvailabilityMetricDetails,
       ),
       serverSideLatencyMetricDetails: new OperationLatencyMetricDetails(
         {
@@ -240,15 +240,15 @@ export function createService(options: CreateServiceOptions): IService {
           metricDimensions: new MetricDimensions(
             { Operation: 'Ride' },
             'AZ-ID',
-            'Region'
+            'Region',
           ),
         } as OperationLatencyMetricDetailsProps,
-        newService.defaultLatencyMetricDetails
+        newService.defaultLatencyMetricDetails,
       ),
       canaryTestLatencyMetricsOverride: new CanaryTestLatencyMetricsOverride({
         successAlarmThreshold: cdk.Duration.millis(650),
       } as CanaryTestLatencyMetricsOverrideProps),
-    } as OperationProps)
+    } as OperationProps),
   );
 
   // Add Home operation
@@ -265,10 +265,10 @@ export function createService(options: CreateServiceOptions): IService {
           metricDimensions: new MetricDimensions(
             { Operation: 'Home' },
             'AZ-ID',
-            'Region'
+            'Region',
           ),
         } as OperationAvailabilityMetricDetailsProps,
-        newService.defaultAvailabilityMetricDetails
+        newService.defaultAvailabilityMetricDetails,
       ),
       serverSideLatencyMetricDetails: new OperationLatencyMetricDetails(
         {
@@ -277,15 +277,15 @@ export function createService(options: CreateServiceOptions): IService {
           metricDimensions: new MetricDimensions(
             { Operation: 'Home' },
             'AZ-ID',
-            'Region'
+            'Region',
           ),
         } as OperationLatencyMetricDetailsProps,
-        newService.defaultLatencyMetricDetails
+        newService.defaultLatencyMetricDetails,
       ),
       canaryTestLatencyMetricsOverride: new CanaryTestLatencyMetricsOverride({
         successAlarmThreshold: cdk.Duration.millis(500),
       } as CanaryTestLatencyMetricsOverrideProps),
-    } as OperationProps)
+    } as OperationProps),
   );
 
   return newService;

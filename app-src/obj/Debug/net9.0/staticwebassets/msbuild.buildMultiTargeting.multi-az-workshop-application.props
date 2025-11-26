@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="../build/multi-az-workshop-application.props" />
-</Project>

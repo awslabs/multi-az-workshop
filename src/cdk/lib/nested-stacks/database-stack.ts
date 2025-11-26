@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as cdk from 'aws-cdk-lib';
-import * as rds from 'aws-cdk-lib/aws-rds';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as rds from 'aws-cdk-lib/aws-rds';
 import { IVpcIpV6 } from '../constructs/vpc-ipv6-construct';
 
 /**
@@ -48,7 +48,7 @@ export class DatabaseStack extends cdk.NestedStack {
       new ec2.Connections({
         peer: ec2.Peer.ipv4(props.vpc.vpcCidrBlock),
       }),
-      ec2.Port.tcp(5432)
+      ec2.Port.tcp(5432),
     );
   }
 }

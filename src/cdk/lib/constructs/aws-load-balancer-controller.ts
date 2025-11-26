@@ -77,7 +77,7 @@ export class AwsLoadBalancerController extends HelmRepoAndChartConstruct {
 
     (loadBalancerServiceAccount.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
       'ServiceTimeout',
-      '300'
+      '300',
     );
 
     // Create pod identity association
@@ -89,7 +89,7 @@ export class AwsLoadBalancerController extends HelmRepoAndChartConstruct {
         namespace: 'kube-system',
         serviceAccount: 'aws-load-balancer-controller',
         roleArn: lbControllerRole.roleArn,
-      }
+      },
     );
 
     loadBalancerControllerPodIdentityAssociation.node.addDependency(loadBalancerServiceAccount);
@@ -135,7 +135,7 @@ export class AwsLoadBalancerController extends HelmRepoAndChartConstruct {
     loadBalancerController.node.addDependency(loadBalancerControllerHelmChartRepo.dependable);
     (loadBalancerController.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
       'ServiceTimeout',
-      '300'
+      '300',
     );
 
     this.waitableNode = loadBalancerController;
@@ -150,7 +150,7 @@ export class AwsLoadBalancerController extends HelmRepoAndChartConstruct {
     // In TypeScript, we'll use a custom resource to fetch it, but for now we'll
     // create a placeholder that should be replaced with the actual policy.
     // The policy URL is: https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/${_version}/docs/install/iam_policy.json
-    
+
     // For CDK synthesis to work, we need to provide the policy inline
     // This is the standard AWS Load Balancer Controller policy
     const policyDocument = iam.PolicyDocument.fromJson({

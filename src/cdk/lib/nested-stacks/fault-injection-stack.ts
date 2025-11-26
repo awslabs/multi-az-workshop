@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as cdk from 'aws-cdk-lib';
-import * as rds from 'aws-cdk-lib/aws-rds';
+import * as autoscaling from 'aws-cdk-lib/aws-autoscaling';
 import * as fis from 'aws-cdk-lib/aws-fis';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
-import * as autoscaling from 'aws-cdk-lib/aws-autoscaling';
+import * as rds from 'aws-cdk-lib/aws-rds';
 
 /**
  * Props for Fault Injection Stack

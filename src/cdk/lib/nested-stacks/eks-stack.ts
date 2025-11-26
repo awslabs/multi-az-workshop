@@ -1,20 +1,20 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import * as fs from 'fs';
+import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as rds from 'aws-cdk-lib/aws-rds';
-import * as fs from 'fs';
-import * as path from 'path';
-import { NestedStackWithSource } from '../constructs/nested-stack-with-source';
+import { AwsLoadBalancerController } from '../constructs/aws-load-balancer-controller';
+import { ContainerAndRepo } from '../constructs/container-and-repo';
+import { EKSApplication } from '../constructs/eks-application';
 import { EKSCluster, InstanceArchitecture } from '../constructs/eks-cluster';
 import { Istio } from '../constructs/istio';
-import { AwsLoadBalancerController } from '../constructs/aws-load-balancer-controller';
-import { EKSApplication } from '../constructs/eks-application';
-import { ContainerAndRepo } from '../constructs/container-and-repo';
+import { NestedStackWithSource } from '../constructs/nested-stack-with-source';
 
 /**
  * Props for EKS Stack
@@ -51,6 +51,11 @@ export interface EKSStackProps extends cdk.NestedStackProps {
    * Admin role name for EKS cluster access
    */
   readonly adminRoleName: string;
+
+  /**
+   * Shared ECR uploader Lambda function
+   */
+  readonly uploaderFunction: lambda.IFunction;
 }
 
 /**
@@ -68,15 +73,18 @@ export class EKSStack extends NestedStackWithSource {
     const cpuArch = props.cpuArch ?? InstanceArchitecture.ARM_64;
 
     // Read versions from build configuration
-    const versionsPath = path.join(__dirname, '..', '..', '..', 'build', 'versions.json');
+    // When running with ts-node, __dirname is src/cdk/lib/nested-stacks, so we need to go up 4 levels
+    const versionsPath = path.join(__dirname, '..', '..', '..', '..', 'build', 'versions.json');
     const versions = JSON.parse(fs.readFileSync(versionsPath, 'utf-8'));
 
     // Create container and repository builder
-    const repoHelmContainerCreator = new ContainerAndRepo(this, 'container-and-repo-builder', lambda.Runtime.PYTHON_3_13);
+    const repoHelmContainerCreator = new ContainerAndRepo(this, 'container-and-repo-builder', {
+      uploaderFunction: props.uploaderFunction,
+    });
 
     // Create EKS cluster
     const adminRole = iam.Role.fromRoleName(this, 'AdminRole', props.adminRoleName);
-    
+
     const cluster = new EKSCluster(this, 'Cluster', {
       adminRole,
       cpuArch,
