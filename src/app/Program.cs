@@ -12,3 +12,6 @@ builder
     .Build()
     .SetupMiddleware()
     .Run();
+
+// Make Program class accessible to integration tests
+public partial class Program { }

@@ -240,8 +240,23 @@
         }
       ]
     },
-    "build-assets": {
-      "name": "build-assets",
+    "build:app": {
+      "name": "build:app",
+      "description": "Build .NET application",
+      "steps": [
+        {
+          "exec": "rm -rf src/app/output"
+        },
+        {
+          "exec": "mkdir -p src/app/output/src"
+        },
+        {
+          "exec": "dotnet publish src/app/multi-az-workshop-application.csproj --configuration Release --runtime linux-musl-arm64 --output src/app/output/src -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained"
+        }
+      ]
+    },
+    "build:assets": {
+      "name": "build:assets",
       "description": "Build all workshop assets",
       "env": {
         "DOCKER_DEFAULT_PLATFORM": "linux/arm64"
@@ -285,21 +300,6 @@
         }
       ]
     },
-    "build:app": {
-      "name": "build:app",
-      "description": "Build .NET application",
-      "steps": [
-        {
-          "exec": "rm -rf src/app/output"
-        },
-        {
-          "exec": "mkdir -p src/app/output/src"
-        },
-        {
-          "exec": "dotnet publish src/app/multi-az-workshop-application.csproj --configuration Release --runtime linux-musl-arm64 --output src/app/output/src -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained"
-        }
-      ]
-    },
     "bundle": {
       "name": "bundle",
       "description": "Prepare assets"
@@ -309,25 +309,25 @@
       "description": "Bundle and deploy workshop to AWS",
       "steps": [
         {
-          "spawn": "bundle-workshop"
+          "spawn": "bundle:workshop"
         },
         {
-          "spawn": "deploy-workshop"
+          "spawn": "deploy:workshop"
         }
       ]
     },
-    "bundle-workshop": {
-      "name": "bundle-workshop",
+    "bundle:workshop": {
+      "name": "bundle:workshop",
       "description": "Bundle all workshop content for deployment",
       "steps": [
         {
           "say": "Building workshop assets..."
         },
         {
-          "spawn": "build-assets"
+          "spawn": "build:assets"
         },
         {
-          "say": "Synthesizing CDK application..."
+          "say": "Synthesizing CDK stacks..."
         },
         {
           "spawn": "synth:silent"
@@ -406,48 +406,48 @@
         }
       ]
     },
-    "deploy-workshop": {
-      "name": "deploy-workshop",
+    "deploy:workshop": {
+      "name": "deploy:workshop",
       "description": "Deploy workshop to AWS using CloudFormation",
       "steps": [
         {
           "say": "Preparing deployment..."
         },
         {
-          "exec": "rm -rf tmp/deploy && mkdir -p tmp/deploy"
+          "exec": "rm -rf tmp && mkdir -p tmp"
         },
         {
-          "exec": "unzip -q assets/content.zip -d tmp/deploy"
+          "exec": "unzip -q assets/content.zip -d tmp"
         },
         {
           "say": "Setting deployment timestamp..."
         },
         {
-          "exec": "export ASSETS_PREFIX=$(date --utc +\"%Y-%m-%dT%H-%M-%SZ\")"
+          "exec": "date --utc +\"%Y-%m-%dT%H-%M-%SZ\" > tmp/assets_prefix.txt"
         },
         {
           "say": "Uploading assets to S3..."
         },
         {
-          "exec": "aws s3 cp tmp/deploy s3://${BUCKET}/${ASSETS_PREFIX}/ --recursive"
+          "exec": "aws s3 cp tmp s3://${BUCKET}/$(cat tmp/assets_prefix.txt)/ --recursive"
         },
         {
           "say": "Determining stack status..."
         },
         {
-          "exec": "set +e\naws cloudformation describe-stacks --stack-name ${PROJECT_NAME} --region ${AWS_REGION} >/dev/null 2>&1\nEXITCODE=$?\nset -e\nif [[ $EXITCODE -eq 0 ]]; then\n  export CHANGE_SET_TYPE=UPDATE\n  export WAIT_CONDITION=update\n  echo \"Stack exists - will UPDATE\"\nelse\n  export CHANGE_SET_TYPE=CREATE\n  export WAIT_CONDITION=create\n  echo \"Stack does not exist - will CREATE\"\nfi"
+          "exec": "set +e\n        aws cloudformation describe-stacks --stack-name $PROJECT_NAME --region $AWS_REGION >/dev/null 2>&1\n        EXITCODE=$?\n        set -e\n\n        if [[ $EXITCODE -eq 0 ]]; then\n          echo \"UPDATE\" > tmp/change_set_type.txt\n          echo \"update\" > tmp/wait_condition.txt\n          echo \"Stack exists - will UPDATE\"\n        else\n          echo \"CREATE\" > tmp/change_set_type.txt\n          echo \"create\" > tmp/wait_condition.txt\n          echo \"Stack does not exist - will CREATE\"\n        fi"
         },
         {
           "say": "Deploying CloudFormation stack..."
         },
         {
-          "exec": "# Trap to handle cleanup on failure\ncleanup_on_failure() {\n  echo \"Deployment failed - cleaning up new S3 content\"\n  aws s3 rm s3://${BUCKET}/ --recursive --exclude \"*\" --include \"${ASSETS_PREFIX}/*\"\n  exit 1\n}\ntrap cleanup_on_failure ERR\n\n# Create changeset\naws cloudformation create-change-set \\\n  --change-set-type ${CHANGE_SET_TYPE} \\\n  --stack-name ${PROJECT_NAME} \\\n  --change-set-name ${PROJECT_NAME}-${ASSETS_PREFIX} \\\n  --template-url https://${BUCKET}.s3.amazonaws.com/${ASSETS_PREFIX}/${PROJECT_NAME}.json \\\n  --parameters \\\n    ParameterKey=AssetsBucketName,ParameterValue=${BUCKET} \\\n    ParameterKey=AssetsBucketPrefix,ParameterValue=\"${ASSETS_PREFIX}/\" \\\n  --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \\\n  --region ${AWS_REGION}\n\n# Wait for changeset creation\naws cloudformation wait change-set-create-complete \\\n  --stack-name ${PROJECT_NAME} \\\n  --change-set-name ${PROJECT_NAME}-${ASSETS_PREFIX} \\\n  --region ${AWS_REGION}\n\n# Execute changeset\naws cloudformation execute-change-set \\\n  --stack-name ${PROJECT_NAME} \\\n  --change-set-name ${PROJECT_NAME}-${ASSETS_PREFIX} \\\n  --region ${AWS_REGION}\n\n# Wait for stack completion\naws cloudformation wait stack-${WAIT_CONDITION}-complete \\\n  --stack-name ${PROJECT_NAME} \\\n  --region ${AWS_REGION}\n\n# Remove trap after successful deployment\ntrap - ERR"
+          "exec": "# Load variables from files\n        ASSETS_PREFIX=$(cat tmp/assets_prefix.txt)\n        CHANGE_SET_TYPE=$(cat tmp/change_set_type.txt)\n        WAIT_CONDITION=$(cat tmp/wait_condition.txt)\n\n        # Trap to handle cleanup on failure\n        cleanup_on_failure() {\n          echo \"Deployment failed - cleaning up new S3 content\"\n          aws s3 rm s3://$BUCKET/ --recursive --exclude \"*\" --include \"$ASSETS_PREFIX/*\"\n          exit 1\n        }\n        trap cleanup_on_failure ERR\n\n        # Create changeset\n        aws cloudformation create-change-set \\\n          --change-set-type $CHANGE_SET_TYPE \\\n          --stack-name $PROJECT_NAME \\\n          --change-set-name $PROJECT_NAME-$ASSETS_PREFIX \\\n          --template-url https://$BUCKET.s3.$AWS_REGION.amazonaws.com/$ASSETS_PREFIX/$PROJECT_NAME.json \\\n          --parameters \\\n            ParameterKey=AssetsBucketName,ParameterValue=$BUCKET \\\n            ParameterKey=AssetsBucketPrefix,ParameterValue=\"$ASSETS_PREFIX/\" \\\n          --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \\\n          --region $AWS_REGION\n\n        # Wait for changeset creation\n        aws cloudformation wait change-set-create-complete \\\n          --stack-name $PROJECT_NAME \\\n          --change-set-name $PROJECT_NAME-$ASSETS_PREFIX \\\n          --region $AWS_REGION\n\n        # Execute changeset\n        aws cloudformation execute-change-set \\\n          --stack-name $PROJECT_NAME \\\n          --change-set-name $PROJECT_NAME-$ASSETS_PREFIX \\\n          --region $AWS_REGION\n\n        # Wait for stack completion\n        aws cloudformation wait stack-$WAIT_CONDITION-complete \\\n          --stack-name $PROJECT_NAME \\\n          --region $AWS_REGION\n\n        # Remove trap after successful deployment\n        trap - ERR"
         },
         {
           "say": "Deployment succeeded!"
         },
         {
-          "exec": "echo \"Cleaning up old S3 content due to successful deployment\"\naws s3 rm s3://${BUCKET}/ --recursive --exclude \"${ASSETS_PREFIX}/*\""
+          "exec": "ASSETS_PREFIX=$(cat tmp/assets_prefix.txt)\n        echo \"Cleaning up old S3 content due to successful deployment\"\n        aws s3 rm s3://$BUCKET/ --recursive --exclude \"$ASSETS_PREFIX/*\""
         },
         {
           "say": "Deployment complete!"
@@ -534,6 +534,27 @@
       "name": "pre-compile",
       "description": "Prepare the project for compilation"
     },
+    "release:determine-version": {
+      "name": "release:determine-version",
+      "description": "Determine the next version for release",
+      "steps": [
+        {
+          "exec": "# Get latest release tag\n        latest_tag=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')\n        \n        if [ -z \"$latest_tag\" ]; then\n          echo \"No release found. Starting with v0.0.0.\"\n          latest_tag=\"v0.0.0\"\n        else\n          echo \"Latest release tag: $latest_tag\"\n        fi\n        \n        # Determine bump type (always patch for now)\n        bump_type=\"patch\"\n        echo \"Detected bump type: $bump_type\"\n        \n        # Extract version numbers\n        tag=\"${latest_tag//v/}\"\n        regex='^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-((0|[1-9A-Za-z-][0-9A-Za-z-]*)(\\.(0|[1-9A-Za-z-][0-9A-Za-z-]*))*))?(\\+([0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*))?$'\n        \n        if [[ \"$tag\" =~ $regex ]]; then\n          major=\"${BASH_REMATCH[1]}\"\n          minor=\"${BASH_REMATCH[2]}\"\n          patch=\"${BASH_REMATCH[3]}\"\n          prerelease=\"${BASH_REMATCH[5]}\"\n          \n          echo \"MAJOR: $major\"\n          echo \"MINOR: $minor\"\n          echo \"PATCH: $patch\"\n          echo \"PRE-RELEASE: $prerelease\"\n          \n          # Bump version based on bump type\n          case \"$bump_type\" in\n            major)\n              major=$((major + 1))\n              minor=0\n              patch=0\n              if [ -n \"$PRERELEASE_INPUT\" ]; then\n                prerelease=\"${PRERELEASE_INPUT}.1\"\n              else\n                prerelease=\"\"\n              fi\n              ;;\n            minor)\n              minor=$((minor + 1))\n              patch=0\n              if [ -n \"$PRERELEASE_INPUT\" ]; then\n                prerelease=\"${PRERELEASE_INPUT}.1\"\n              else\n                prerelease=\"\"\n              fi\n              ;;\n            patch)\n              if [ -n \"$PRERELEASE_INPUT\" ]; then\n                prerelease_parts=(${prerelease//./ })\n                prerelease_label_in_tag=\"${prerelease_parts[0]}\"\n                prerelease_version_number=\"${prerelease_parts[1]}\"\n                \n                if [[ \"$PRERELEASE_INPUT\" != \"$prerelease_label_in_tag\" ]]; then\n                  echo \"Pre-release label mismatch. Resetting pre-release version.\"\n                  prerelease=\"${PRERELEASE_INPUT}.1\"\n                else\n                  echo \"Pre-release labels match, incrementing patch version.\"\n                  prerelease_version_number=$((prerelease_version_number + 1))\n                  prerelease=\"${PRERELEASE_INPUT}.${prerelease_version_number}\"\n                fi\n              else\n                if [ -z \"$prerelease\" ]; then\n                  patch=$((patch + 1))\n                else\n                  prerelease=\"\"\n                fi\n              fi\n              ;;\n          esac\n          \n          # Create new version tag\n          if [ -n \"$prerelease\" ]; then\n            bumped_version=\"v$major.$minor.$patch-$prerelease\"\n          else\n            bumped_version=\"v$major.$minor.$patch\"\n          fi\n          \n          echo \"Bumped version to: $bumped_version\"\n          echo \"BUMPED_VERSION=$bumped_version\" >> $GITHUB_ENV\n        else\n          echo \"Tag $tag is invalid, resetting version to v0.0.1\"\n          bumped_version=\"v0.0.1\"\n          echo \"BUMPED_VERSION=$bumped_version\" >> $GITHUB_ENV\n        fi"
+        }
+      ]
+    },
+    "release:extract-assets": {
+      "name": "release:extract-assets",
+      "description": "Extract assets from content.zip for release",
+      "steps": [
+        {
+          "exec": "rm -rf tmp/assets && mkdir -p tmp/assets"
+        },
+        {
+          "exec": "unzip -q assets/content.zip -d tmp/assets"
+        }
+      ]
+    },
     "synth": {
       "name": "synth",
       "description": "Synthesizes your cdk app into cdk.out",
@@ -562,6 +583,30 @@
         },
         {
           "spawn": "eslint"
+        },
+        {
+          "spawn": "test:app:unit"
+        },
+        {
+          "spawn": "test:app:integration"
+        }
+      ]
+    },
+    "test:app:integration": {
+      "name": "test:app:integration",
+      "description": "Run .NET integration tests",
+      "steps": [
+        {
+          "exec": "dotnet test test/app/Integration --configuration Release --logger \"console;verbosity=detailed\""
+        }
+      ]
+    },
+    "test:app:unit": {
+      "name": "test:app:unit",
+      "description": "Run .NET unit tests",
+      "steps": [
+        {
+          "exec": "dotnet test test/app/Unit --configuration Release --logger \"console;verbosity=detailed\""
         }
       ]
     },

@@ -46,6 +46,9 @@ src/app/obj
 src/app/output/
 assets/**/*
 tmp/
+test/app/bin
+test/app/TestResults
+test/app/obj
 /test-reports/
 junit.xml
 /coverage/
@@ -66,4 +69,6 @@ junit.xml
 .cdk.staging/
 .parcel-cache/
 !/.github/workflows/deploy.yml
+!/.github/workflows/auto-approve.yml
+!/.github/workflows/release.yml
 !/.projenrc.ts
