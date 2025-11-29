@@ -12,7 +12,7 @@ const project = new AwsCdkTypeScriptApp({
   description: 'The multi-AZ resilience patterns workshop',
   defaultReleaseBranch: 'main',
   projenrcTs: true,
-  cdkVersion: '2.222.1',
+  cdkVersion: '2.227.0',
   appEntrypoint: 'cdk/multi-az-workshop.ts',
   srcdir: 'src',
 
@@ -63,7 +63,7 @@ const project = new AwsCdkTypeScriptApp({
   // Minimal dependencies for root project
   devDeps: [
     '@types/node',
-    'aws-cdk-lib',
+    'aws-cdk-lib@2.227.0',
     '@cdklabs/multi-az-observability@0.0.1-alpha.60',
     '@aws-cdk/lambda-layer-kubectl-v31@^2.0.0',
   ],
