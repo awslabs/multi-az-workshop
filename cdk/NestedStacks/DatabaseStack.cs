@@ -27,7 +27,7 @@ namespace Amazon.AWSLabs.MultiAZWorkshop.NestedStacks
                 Vpc = props.Vpc,
                 VpcSubnets = new SubnetSelection() { SubnetType = SubnetType.PRIVATE_ISOLATED },
                 Engine = DatabaseClusterEngine.AuroraPostgres(new AuroraPostgresClusterEngineProps() {
-                    Version = AuroraPostgresEngineVersion.VER_16_1
+                    Version = AuroraPostgresEngineVersion.VER_16_8
                 }),
                 Writer = ClusterInstance.Provisioned("writer", new ProvisionedClusterInstanceProps() {
                     InstanceType = Amazon.CDK.AWS.EC2.InstanceType.Of(InstanceClass.BURSTABLE4_GRAVITON, InstanceSize.MEDIUM),
