@@ -57,7 +57,6 @@ const project = new AwsCdkTypeScriptApp({
   // Minimal dependencies for root project
   devDeps: [
     '@types/node',
-    'aws-cdk-lib@2.227.0',
     '@cdklabs/multi-az-observability@0.0.1-alpha.60',
     '@aws-cdk/lambda-layer-kubectl-v31@^2.0.0',
     'fast-check@^3.15.0',
