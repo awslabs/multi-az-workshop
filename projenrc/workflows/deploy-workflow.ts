@@ -4,8 +4,8 @@
  */
 
 import { GithubWorkflow } from 'projen/lib/github';
-import { JobPermission } from 'projen/lib/github/workflows-model';
 import type { GitHub } from 'projen/lib/github';
+import { JobPermission } from 'projen/lib/github/workflows-model';
 
 /**
  * Creates the deploy workflow
@@ -13,7 +13,7 @@ import type { GitHub } from 'projen/lib/github';
  */
 export function createDeployWorkflow(github: GitHub): void {
   const deployWorkflow = new GithubWorkflow(github, 'deploy');
-  
+
   deployWorkflow.on({
     push: {
       branches: ['main'],

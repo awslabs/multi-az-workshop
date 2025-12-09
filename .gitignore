@@ -31,7 +31,7 @@ jspm_packages/
 .cache
 *.d.ts
 node_modules/
-lib/
+/lib/
 coverage/
 test-reports/
 .DS_Store
@@ -48,7 +48,7 @@ dist/
 test/app/bin
 test/app/TestResults
 test/app/obj
-test/cdk/__snapshots__
+test/cdk/__snapshots__/
 /test-reports/
 junit.xml
 /coverage/

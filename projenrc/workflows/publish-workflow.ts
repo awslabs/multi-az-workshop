@@ -4,10 +4,10 @@
  */
 
 import { GithubWorkflow } from 'projen/lib/github';
-import { JobPermission } from 'projen/lib/github/workflows-model';
 import type { GitHub } from 'projen/lib/github';
+import { JobPermission } from 'projen/lib/github/workflows-model';
 
-const workshopId = "e9383b42-6c6f-416b-b50a-9313e476e372"
+const workshopId = 'e9383b42-6c6f-416b-b50a-9313e476e372';
 
 /**
  * Creates the publish workflow
@@ -15,7 +15,7 @@ const workshopId = "e9383b42-6c6f-416b-b50a-9313e476e372"
  */
 export function createPublishWorkflow(github: GitHub): void {
   const publishWorkflow = new GithubWorkflow(github, 'publish');
-  
+
   publishWorkflow.on({
     workflowDispatch: {
       inputs: {

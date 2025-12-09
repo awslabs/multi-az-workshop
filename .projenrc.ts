@@ -21,7 +21,7 @@ const project = new AwsCdkTypeScriptApp({
   license: 'Apache-2.0',
 
   // Enable default build workflow with custom configuration
-  workflowRunsOn: ["ubuntu-24.04-arm"],
+  workflowRunsOn: ['ubuntu-24.04-arm'],
   buildWorkflow: true,
   buildWorkflowOptions: {
     preBuildSteps: [
@@ -73,7 +73,7 @@ const project = new AwsCdkTypeScriptApp({
   gitignore: [
     '*.d.ts',
     'node_modules/',
-    'lib/',
+    '/lib/',
     'coverage/',
     'test-reports/',
     '.DS_Store',
@@ -99,7 +99,7 @@ const project = new AwsCdkTypeScriptApp({
     'test/app/bin',
     'test/app/TestResults',
     'test/app/obj',
-    'test/cdk/__snapshots__'
+    'test/cdk/__snapshots__/',
   ],
 });
 

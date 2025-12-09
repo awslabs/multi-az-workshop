@@ -13,7 +13,7 @@ import type { AwsCdkTypeScriptApp } from 'projen/lib/awscdk';
 export function customizeReleaseWorkflow(project: AwsCdkTypeScriptApp): void {
   // Get the release workflow from GitHub workflows
   const releaseWorkflow = project.github?.tryFindWorkflow('release');
-  
+
   if (!releaseWorkflow) {
     console.warn('Release workflow not found. Make sure release is enabled in project configuration.');
     return;
@@ -47,8 +47,8 @@ export function customizeReleaseWorkflow(project: AwsCdkTypeScriptApp): void {
         },
       },
       {
-        name: 'Restore build artifact permissions',
-        run: 'cd dist && setfacl --restore=permissions-backup.acl',
+        'name': 'Restore build artifact permissions',
+        'run': 'cd dist && setfacl --restore=permissions-backup.acl',
         'continue-on-error': true,
       },
       {
