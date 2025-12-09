@@ -6,6 +6,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
 
@@ -198,4 +199,20 @@ export function createMockSubnets(
   }
 
   return subnets;
+}
+
+/**
+ * Creates a mock Lambda function for ECR uploader
+ */
+export function createMockUploaderFunction(
+  scope: Construct,
+  name: string = 'MockUploaderFunction',
+): lambda.Function {
+  return new lambda.Function(scope, name, {
+    runtime: lambda.Runtime.PYTHON_3_12,
+    handler: 'index.handler',
+    code: lambda.Code.fromInline('def handler(event, context): return {"statusCode": 200}'),
+    timeout: cdk.Duration.seconds(300),
+    memorySize: 512,
+  });
 }

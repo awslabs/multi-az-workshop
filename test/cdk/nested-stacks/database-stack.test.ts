@@ -65,7 +65,7 @@ describe('DatabaseStack', () => {
 
       template.hasResourceProperties('AWS::RDS::DBCluster', {
         Engine: 'aurora-postgresql',
-        EngineVersion: Match.stringLikeRegexp('16\\.1'),
+        EngineVersion: Match.stringLikeRegexp('16\\.8'),
       });
     });
 

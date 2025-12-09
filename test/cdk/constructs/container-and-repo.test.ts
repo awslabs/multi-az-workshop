@@ -3,10 +3,9 @@
 
 import * as cdk from 'aws-cdk-lib';
 import { Match } from 'aws-cdk-lib/assertions';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { ContainerAndRepo } from '../../../src/cdk/lib/constructs/container-and-repo';
+import { createTestApp, createMockUploaderFunction } from '../../helpers';
 import { synthesizeStack, getResourceCount, findResourcesByType } from '../../helpers/stack-helpers';
-import { createTestApp } from '../../helpers/test-fixtures';
 
 describe('ContainerAndRepo', () => {
   let app: cdk.App;
@@ -29,7 +28,8 @@ describe('ContainerAndRepo', () => {
       default: 'test-prefix/',
     });
 
-    containerAndRepo = new ContainerAndRepo(stack, 'ContainerAndRepo', lambda.Runtime.PYTHON_3_12);
+    const uploaderFunction = createMockUploaderFunction(stack);
+    containerAndRepo = new ContainerAndRepo(stack, 'ContainerAndRepo', { uploaderFunction });
   });
 
   describe('constructor', () => {
@@ -39,15 +39,9 @@ describe('ContainerAndRepo', () => {
       expect(containerAndRepo.containerBuildProject).toBeDefined();
     });
 
-    test('creates uploader Lambda function', () => {
-      const template = synthesizeStack(stack);
-      const lambdaFunctions = findResourcesByType(template, 'AWS::Lambda::Function');
-
-      expect(lambdaFunctions.length).toBeGreaterThan(0);
-      const uploaderFunction = lambdaFunctions.find(fn =>
-        fn.Properties?.Handler === 'index.handler',
-      );
-      expect(uploaderFunction).toBeDefined();
+    test('uses provided uploader Lambda function', () => {
+      // The uploader function is now passed in via props, not created in this construct
+      expect(containerAndRepo.uploaderFunction).toBeDefined();
     });
 
     test('creates CodeBuild project', () => {
@@ -57,65 +51,21 @@ describe('ContainerAndRepo', () => {
     });
   });
 
-  describe('uploader function configuration', () => {
-    test('configures Lambda with correct runtime', () => {
-      const template = synthesizeStack(stack);
-      template.hasResourceProperties('AWS::Lambda::Function', {
-        Runtime: 'python3.12',
-        Handler: 'index.handler',
-      });
-    });
-
-    test('configures Lambda with ARM64 architecture', () => {
-      const template = synthesizeStack(stack);
-      template.hasResourceProperties('AWS::Lambda::Function', {
-        Architectures: ['arm64'],
-      });
-    });
-
-    test('configures Lambda with appropriate timeout', () => {
-      const template = synthesizeStack(stack);
-      template.hasResourceProperties('AWS::Lambda::Function', {
-        Timeout: 300,
-      });
-    });
-
-    test('configures Lambda with appropriate memory', () => {
-      const template = synthesizeStack(stack);
-      template.hasResourceProperties('AWS::Lambda::Function', {
-        MemorySize: 512,
-      });
-    });
-
-    test('configures Lambda with Helm layer', () => {
-      const template = synthesizeStack(stack);
-      template.hasResourceProperties('AWS::Lambda::Function', {
-        Layers: Match.arrayWith([Match.objectLike({ Ref: Match.stringLikeRegexp('.*HelmLayer.*') })]),
-      });
-    });
-
-    test('creates Helm layer version', () => {
-      const template = synthesizeStack(stack);
-      const count = getResourceCount(template, 'AWS::Lambda::LayerVersion');
-      expect(count).toBe(1);
-    });
-  });
-
-  describe('uploader IAM permissions', () => {
-    test('creates IAM role for uploader', () => {
+  describe('CodeBuild IAM permissions', () => {
+    test('creates IAM role for CodeBuild', () => {
       const template = synthesizeStack(stack);
       template.hasResourceProperties('AWS::IAM::Role', {
         AssumeRolePolicyDocument: Match.objectLike({
           Statement: Match.arrayWith([
             Match.objectLike({
-              Principal: { Service: 'lambda.amazonaws.com' },
+              Principal: { Service: 'codebuild.amazonaws.com' },
             }),
           ]),
         }),
       });
     });
 
-    test('grants S3 GetObject permissions', () => {
+    test('grants S3 GetObject permissions to CodeBuild', () => {
       const template = synthesizeStack(stack);
       const policies = findResourcesByType(template, 'AWS::IAM::ManagedPolicy');
       const hasS3Permission = policies.some(policy =>
@@ -127,7 +77,7 @@ describe('ContainerAndRepo', () => {
       expect(hasS3Permission).toBe(true);
     });
 
-    test('grants KMS Decrypt permissions', () => {
+    test('grants KMS Decrypt permissions to CodeBuild', () => {
       const template = synthesizeStack(stack);
       const policies = findResourcesByType(template, 'AWS::IAM::ManagedPolicy');
       const hasKMSPermission = policies.some(policy =>
@@ -139,12 +89,12 @@ describe('ContainerAndRepo', () => {
       expect(hasKMSPermission).toBe(true);
     });
 
-    test('grants ECR permissions', () => {
+    test('grants ECR permissions to CodeBuild', () => {
       const template = synthesizeStack(stack);
       const policies = findResourcesByType(template, 'AWS::IAM::ManagedPolicy');
       const hasECRPermission = policies.some(policy =>
         policy.Properties?.PolicyDocument?.Statement?.some((stmt: any) => {
-          const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
+          const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.parameter];
           return actions.includes('ecr:PutImage') &&
                  actions.includes('ecr:CompleteLayerUpload') &&
                  stmt.Effect === 'Allow';
@@ -153,21 +103,7 @@ describe('ContainerAndRepo', () => {
       expect(hasECRPermission).toBe(true);
     });
 
-    test('grants CodeBuild permissions', () => {
-      const template = synthesizeStack(stack);
-      const policies = findResourcesByType(template, 'AWS::IAM::ManagedPolicy');
-      const hasCodeBuildPermission = policies.some(policy =>
-        policy.Properties?.PolicyDocument?.Statement?.some((stmt: any) => {
-          const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
-          return actions.includes('codebuild:StartBuild') &&
-                 actions.includes('codebuild:BatchGetBuilds') &&
-                 stmt.Effect === 'Allow';
-        }),
-      );
-      expect(hasCodeBuildPermission).toBe(true);
-    });
-
-    test('grants CloudWatch Logs permissions', () => {
+    test('grants CloudWatch Logs permissions to CodeBuild', () => {
       const template = synthesizeStack(stack);
       const policies = findResourcesByType(template, 'AWS::IAM::ManagedPolicy');
       const hasLogsPermission = policies.some(policy =>
@@ -228,17 +164,6 @@ describe('ContainerAndRepo', () => {
   });
 
   describe('CloudWatch Logs configuration', () => {
-    test('creates log group for Lambda function', () => {
-      const template = synthesizeStack(stack);
-      const logGroups = findResourcesByType(template, 'AWS::Logs::LogGroup');
-      const lambdaLogGroup = logGroups.find(lg =>
-        lg.Properties?.LogGroupName?.['Fn::Join']?.[1]?.some((part: any) =>
-          typeof part === 'object' && part.Ref && part.Ref.includes('EcrUploader'),
-        ),
-      );
-      expect(lambdaLogGroup).toBeDefined();
-    });
-
     test('creates log group for CodeBuild project', () => {
       const template = synthesizeStack(stack);
       const logGroups = findResourcesByType(template, 'AWS::Logs::LogGroup');
@@ -250,7 +175,7 @@ describe('ContainerAndRepo', () => {
       expect(buildLogGroup).toBeDefined();
     });
 
-    test('configures log retention', () => {
+    test('configures log retention for CodeBuild', () => {
       const template = synthesizeStack(stack);
       template.hasResourceProperties('AWS::Logs::LogGroup', {
         RetentionInDays: Match.anyValue(),
@@ -279,7 +204,8 @@ describe('ContainerAndRepo', () => {
         default: 'test-prefix/',
       });
 
-      methodContainerAndRepo = new ContainerAndRepo(methodStack, 'ContainerAndRepo', lambda.Runtime.PYTHON_3_12);
+      const uploaderFunction = createMockUploaderFunction(methodStack);
+      methodContainerAndRepo = new ContainerAndRepo(methodStack, 'ContainerAndRepo', { uploaderFunction });
       methodContainerAndRepo.addContainerAndRepo({
         repositoryName: 'test-app',
         containerImageS3ObjectKey: 'app.tar',
@@ -347,7 +273,8 @@ describe('ContainerAndRepo', () => {
         default: 'test-prefix/',
       });
 
-      const slashContainerAndRepo = new ContainerAndRepo(slashStack, 'ContainerAndRepo', lambda.Runtime.PYTHON_3_12);
+      const uploaderFunction = createMockUploaderFunction(slashStack);
+      const slashContainerAndRepo = new ContainerAndRepo(slashStack, 'ContainerAndRepo', { uploaderFunction });
       const result = slashContainerAndRepo.addContainerAndRepo({
         repositoryName: 'org/test-app',
         containerImageS3ObjectKey: 'app.tar',
@@ -385,7 +312,8 @@ describe('ContainerAndRepo', () => {
         default: 'test-prefix/',
       });
 
-      helmContainerAndRepo = new ContainerAndRepo(helmStack, 'ContainerAndRepo', lambda.Runtime.PYTHON_3_12);
+      const uploaderFunction = createMockUploaderFunction(helmStack);
+      helmContainerAndRepo = new ContainerAndRepo(helmStack, 'ContainerAndRepo', { uploaderFunction });
       helmContainerAndRepo.createRepoAndHelmChart({
         repositoryName: 'helm-repo',
         helmChartName: 'my-chart',
@@ -455,7 +383,8 @@ describe('ContainerAndRepo', () => {
         default: 'test-prefix/',
       });
 
-      depsContainerAndRepo = new ContainerAndRepo(depsStack, 'ContainerAndRepo', lambda.Runtime.PYTHON_3_12);
+      const uploaderFunction = createMockUploaderFunction(depsStack);
+      depsContainerAndRepo = new ContainerAndRepo(depsStack, 'ContainerAndRepo', { uploaderFunction });
       depsContainerAndRepo.addContainerAndRepo({
         repositoryName: 'test-app',
         containerImageS3ObjectKey: 'app.tar',

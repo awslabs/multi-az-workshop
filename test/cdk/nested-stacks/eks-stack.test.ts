@@ -7,6 +7,7 @@ import * as rds from 'aws-cdk-lib/aws-rds';
 import { IPAddressType } from '../../../src/cdk/lib/constructs/ip-address-type';
 import { VpcIpV6, IVpcIpV6 } from '../../../src/cdk/lib/constructs/vpc-ipv6-construct';
 import { EKSStack } from '../../../src/cdk/lib/nested-stacks/eks-stack';
+import { createMockUploaderFunction } from '../../helpers';
 import { synthesizeStack, findResourcesByType } from '../../helpers/stack-helpers';
 
 // Mock the EKSStack module to avoid file system dependencies
@@ -111,11 +112,13 @@ describe('EKSStack', () => {
     adminRoleName = adminRole.roleName;
 
     // Create shared EKS stack and template
+    const uploaderFunction = createMockUploaderFunction(parentStack);
     sharedEksStack = new EKSStack(parentStack, 'EKSStack', {
       vpc,
       database,
       loadBalancerSecurityGroup,
       adminRoleName,
+      uploaderFunction,
     });
     sharedTemplate = Template.fromStack(sharedEksStack);
     sharedParentTemplate = Template.fromStack(parentStack);

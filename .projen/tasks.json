@@ -105,6 +105,9 @@
       "steps": [
         {
           "exec": "rm -rf assets && mkdir -p assets"
+        },
+        {
+          "exec": "rm -rf dist && mkdir -p dist"
         }
       ]
     },
@@ -137,16 +140,19 @@
           "exec": "eval \"$(node build/load-versions.js)\" && curl --location https://get.helm.sh/helm-v$HELM-linux-arm64.tar.gz --output assets/helm.tar.gz"
         },
         {
-          "exec": "tar -zxvf assets/helm.tar.gz --strip-components=1 --directory assets linux-arm64/helm"
+          "exec": "mkdir -p assets/helm"
         },
         {
-          "exec": "chmod 0755 assets/helm"
+          "exec": "tar -zxvf assets/helm.tar.gz --strip-components=1 --directory assets/helm linux-arm64/helm"
         },
         {
-          "exec": "cd assets && zip helm-layer.zip helm"
+          "exec": "chmod 0755 assets/helm/helm"
         },
         {
-          "exec": "rm -f assets/helm.tar.gz assets/helm"
+          "exec": "cd assets && zip -r helm-layer.zip helm/"
+        },
+        {
+          "exec": "rm -rf assets/helm.tar.gz assets/helm"
         }
       ]
     },
@@ -206,13 +212,10 @@
           "exec": "cp static/$PROJECT_NAME.json assets/$PROJECT_NAME.json"
         },
         {
-          "exec": "cd assets && zip -r ../content.zip ."
+          "exec": "cd assets && zip -r ../dist/content.zip ."
         },
         {
-          "exec": "mv content.zip assets/content.zip"
-        },
-        {
-          "exec": "find assets -type f ! -name \"content.zip\" -delete"
+          "exec": "rm -rf assets"
         }
       ]
     },
@@ -237,6 +240,18 @@
         },
         {
           "spawn": "package"
+        }
+      ]
+    },
+    "build-and-deploy": {
+      "name": "build-and-deploy",
+      "description": "Build and deploy workshop to AWS (requires BUCKET and AWS_REGION environment variables)",
+      "steps": [
+        {
+          "spawn": "build"
+        },
+        {
+          "spawn": "deploy"
         }
       ]
     },
@@ -300,51 +315,27 @@
         }
       ]
     },
+    "bump": {
+      "name": "bump",
+      "description": "Bumps version based on latest git tag and generates a changelog entry",
+      "env": {
+        "OUTFILE": "package.json",
+        "CHANGELOG": "dist/changelog.md",
+        "BUMPFILE": "dist/version.txt",
+        "RELEASETAG": "dist/releasetag.txt",
+        "RELEASE_TAG_PREFIX": "",
+        "BUMP_PACKAGE": "commit-and-tag-version@^12"
+      },
+      "steps": [
+        {
+          "builtin": "release/bump-version"
+        }
+      ],
+      "condition": "git log --oneline -1 | grep -qv \"chore(release):\""
+    },
     "bundle": {
       "name": "bundle",
       "description": "Prepare assets"
-    },
-    "bundle-and-deploy": {
-      "name": "bundle-and-deploy",
-      "description": "Bundle and deploy workshop to AWS",
-      "steps": [
-        {
-          "spawn": "bundle:workshop"
-        },
-        {
-          "spawn": "deploy:workshop"
-        }
-      ]
-    },
-    "bundle:workshop": {
-      "name": "bundle:workshop",
-      "description": "Bundle all workshop content for deployment",
-      "steps": [
-        {
-          "say": "Building workshop assets..."
-        },
-        {
-          "spawn": "build:assets"
-        },
-        {
-          "say": "Synthesizing CDK stacks..."
-        },
-        {
-          "spawn": "synth:silent"
-        },
-        {
-          "say": "Processing CDK assets..."
-        },
-        {
-          "spawn": "assets:cdk-process"
-        },
-        {
-          "say": "Packaging assets..."
-        },
-        {
-          "spawn": "assets:package"
-        }
-      ]
     },
     "clobber": {
       "name": "clobber",
@@ -384,6 +375,9 @@
       "steps": [
         {
           "spawn": "build:app"
+        },
+        {
+          "spawn": "build:assets"
         }
       ]
     },
@@ -398,17 +392,16 @@
     },
     "deploy": {
       "name": "deploy",
-      "description": "Deploys your CDK app to the AWS cloud",
+      "description": "Deploy workshop to AWS (requires BUCKET and AWS_REGION environment variables)",
       "steps": [
         {
-          "exec": "cdk deploy",
-          "receiveArgs": true
+          "spawn": "deploy:workshop"
         }
       ]
     },
     "deploy:workshop": {
       "name": "deploy:workshop",
-      "description": "Deploy workshop to AWS using CloudFormation",
+      "description": "Deploy workshop to AWS using CloudFormation (requires BUCKET and AWS_REGION env vars)",
       "steps": [
         {
           "say": "Preparing deployment..."
@@ -417,7 +410,7 @@
           "exec": "rm -rf tmp && mkdir -p tmp"
         },
         {
-          "exec": "unzip -q assets/content.zip -d tmp"
+          "exec": "unzip -q dist/content.zip -d tmp"
         },
         {
           "say": "Setting deployment timestamp..."
@@ -515,7 +508,24 @@
     },
     "package": {
       "name": "package",
-      "description": "Creates the distribution package"
+      "description": "Creates the distribution package",
+      "steps": [
+        {
+          "exec": "mkdir -p dist"
+        },
+        {
+          "say": "Processing CDK assets..."
+        },
+        {
+          "spawn": "assets:cdk-process"
+        },
+        {
+          "say": "Packaging assets..."
+        },
+        {
+          "spawn": "assets:package"
+        }
+      ]
     },
     "post-compile": {
       "name": "post-compile",
@@ -534,24 +544,111 @@
       "name": "pre-compile",
       "description": "Prepare the project for compilation"
     },
-    "release:determine-version": {
-      "name": "release:determine-version",
-      "description": "Determine the next version for release",
+    "publish": {
+      "name": "publish",
+      "description": "Publish workshop content to S3 and Workshop Studio (requires WORKSHOP_ID, REMOTE_REPO, EMAIL, USER_NAME, AWS credentials)",
       "steps": [
         {
-          "exec": "# Get latest release tag\n        latest_tag=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')\n        \n        if [ -z \"$latest_tag\" ]; then\n          echo \"No release found. Starting with v0.0.0.\"\n          latest_tag=\"v0.0.0\"\n        else\n          echo \"Latest release tag: $latest_tag\"\n        fi\n        \n        # Determine bump type (always patch for now)\n        bump_type=\"patch\"\n        echo \"Detected bump type: $bump_type\"\n        \n        # Extract version numbers\n        tag=\"${latest_tag//v/}\"\n        regex='^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-((0|[1-9A-Za-z-][0-9A-Za-z-]*)(\\.(0|[1-9A-Za-z-][0-9A-Za-z-]*))*))?(\\+([0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*))?$'\n        \n        if [[ \"$tag\" =~ $regex ]]; then\n          major=\"${BASH_REMATCH[1]}\"\n          minor=\"${BASH_REMATCH[2]}\"\n          patch=\"${BASH_REMATCH[3]}\"\n          prerelease=\"${BASH_REMATCH[5]}\"\n          \n          echo \"MAJOR: $major\"\n          echo \"MINOR: $minor\"\n          echo \"PATCH: $patch\"\n          echo \"PRE-RELEASE: $prerelease\"\n          \n          # Bump version based on bump type\n          case \"$bump_type\" in\n            major)\n              major=$((major + 1))\n              minor=0\n              patch=0\n              if [ -n \"$PRERELEASE_INPUT\" ]; then\n                prerelease=\"${PRERELEASE_INPUT}.1\"\n              else\n                prerelease=\"\"\n              fi\n              ;;\n            minor)\n              minor=$((minor + 1))\n              patch=0\n              if [ -n \"$PRERELEASE_INPUT\" ]; then\n                prerelease=\"${PRERELEASE_INPUT}.1\"\n              else\n                prerelease=\"\"\n              fi\n              ;;\n            patch)\n              if [ -n \"$PRERELEASE_INPUT\" ]; then\n                prerelease_parts=(${prerelease//./ })\n                prerelease_label_in_tag=\"${prerelease_parts[0]}\"\n                prerelease_version_number=\"${prerelease_parts[1]}\"\n                \n                if [[ \"$PRERELEASE_INPUT\" != \"$prerelease_label_in_tag\" ]]; then\n                  echo \"Pre-release label mismatch. Resetting pre-release version.\"\n                  prerelease=\"${PRERELEASE_INPUT}.1\"\n                else\n                  echo \"Pre-release labels match, incrementing patch version.\"\n                  prerelease_version_number=$((prerelease_version_number + 1))\n                  prerelease=\"${PRERELEASE_INPUT}.${prerelease_version_number}\"\n                fi\n              else\n                if [ -z \"$prerelease\" ]; then\n                  patch=$((patch + 1))\n                else\n                  prerelease=\"\"\n                fi\n              fi\n              ;;\n          esac\n          \n          # Create new version tag\n          if [ -n \"$prerelease\" ]; then\n            bumped_version=\"v$major.$minor.$patch-$prerelease\"\n          else\n            bumped_version=\"v$major.$minor.$patch\"\n          fi\n          \n          echo \"Bumped version to: $bumped_version\"\n          echo \"BUMPED_VERSION=$bumped_version\" >> $GITHUB_ENV\n        else\n          echo \"Tag $tag is invalid, resetting version to v0.0.1\"\n          bumped_version=\"v0.0.1\"\n          echo \"BUMPED_VERSION=$bumped_version\" >> $GITHUB_ENV\n        fi"
+          "spawn": "publish:upload-assets"
+        },
+        {
+          "spawn": "publish:push-workshop"
         }
       ]
     },
-    "release:extract-assets": {
-      "name": "release:extract-assets",
-      "description": "Extract assets from content.zip for release",
+    "publish:push-workshop": {
+      "name": "publish:push-workshop",
+      "description": "Push workshop content to Workshop Studio repository (requires REMOTE_REPO, EMAIL, USER_NAME env vars)",
       "steps": [
         {
-          "exec": "rm -rf tmp/assets && mkdir -p tmp/assets"
+          "say": "Preparing to push to Workshop Studio..."
         },
         {
-          "exec": "unzip -q assets/content.zip -d tmp/assets"
+          "exec": "rm -rf tmp && mkdir -p tmp"
+        },
+        {
+          "say": "Cloning Workshop Studio repository..."
+        },
+        {
+          "exec": "git clone $REMOTE_REPO tmp/workshop-studio"
+        },
+        {
+          "say": "Copying workshop content..."
+        },
+        {
+          "exec": "rm -rf tmp/workshop-studio/content tmp/workshop-studio/static"
+        },
+        {
+          "exec": "cp -r content tmp/workshop-studio/"
+        },
+        {
+          "exec": "cp -r static tmp/workshop-studio/"
+        },
+        {
+          "exec": "cp contentspec.yaml tmp/workshop-studio/"
+        },
+        {
+          "say": "Checking for changes..."
+        },
+        {
+          "exec": "cd tmp/workshop-studio\n        git config user.email \"$EMAIL\"\n        git config user.name \"$USER_NAME\"\n        git add .\n        \n        # Check if there are any changes to commit\n        if git diff --staged --quiet; then\n          echo \"No changes to commit - skipping push\"\n        else\n          echo \"Changes detected - committing and pushing\"\n          COMMIT_SHA=$(git rev-parse HEAD)\n          git commit -m \"Update workshop content from commit $COMMIT_SHA\"\n          git push\n          echo \"Successfully pushed changes to Workshop Studio\"\n        fi"
+        },
+        {
+          "say": "Workshop Studio push complete!"
+        },
+        {
+          "exec": "rm -rf tmp"
+        }
+      ]
+    },
+    "publish:upload-assets": {
+      "name": "publish:upload-assets",
+      "description": "Upload workshop assets to Workshop Studio S3 bucket (requires AWS credentials)",
+      "steps": [
+        {
+          "say": "Preparing assets for upload..."
+        },
+        {
+          "exec": "rm -rf tmp && mkdir -p tmp"
+        },
+        {
+          "exec": "unzip -q dist/content.zip -d tmp"
+        },
+        {
+          "say": "Uploading assets to S3..."
+        },
+        {
+          "exec": "aws s3 cp tmp s3://ws-assets-prod-iad-r-iad-ed304a55c2ca1aee.s3.us-east-1.amazonaws.com/public/$WORKSHOP_ID/ --recursive"
+        },
+        {
+          "say": "Asset upload complete!"
+        },
+        {
+          "exec": "rm -rf tmp"
+        }
+      ]
+    },
+    "release": {
+      "name": "release",
+      "description": "Prepare a release from \"main\" branch",
+      "env": {
+        "RELEASE": "true"
+      },
+      "steps": [
+        {
+          "exec": "rm -fr dist"
+        },
+        {
+          "spawn": "bump"
+        },
+        {
+          "spawn": "build"
+        },
+        {
+          "spawn": "unbump"
+        },
+        {
+          "exec": "git diff --ignore-space-at-eol --exit-code"
         }
       ]
     },
@@ -597,7 +694,7 @@
       "description": "Run .NET integration tests",
       "steps": [
         {
-          "exec": "dotnet test test/app/Integration --configuration Release --logger \"console;verbosity=detailed\""
+          "exec": "dotnet test test/app --filter \"FullyQualifiedName~Integration\" --configuration Release --logger \"console;verbosity=detailed\""
         }
       ]
     },
@@ -606,7 +703,7 @@
       "description": "Run .NET unit tests",
       "steps": [
         {
-          "exec": "dotnet test test/app/Unit --configuration Release --logger \"console;verbosity=detailed\""
+          "exec": "dotnet test test/app --filter \"FullyQualifiedName!~Integration\" --configuration Release --logger \"console;verbosity=detailed\""
         }
       ]
     },
@@ -616,6 +713,23 @@
       "steps": [
         {
           "exec": "jest --watch"
+        }
+      ]
+    },
+    "unbump": {
+      "name": "unbump",
+      "description": "Restores version to 0.0.0",
+      "env": {
+        "OUTFILE": "package.json",
+        "CHANGELOG": "dist/changelog.md",
+        "BUMPFILE": "dist/version.txt",
+        "RELEASETAG": "dist/releasetag.txt",
+        "RELEASE_TAG_PREFIX": "",
+        "BUMP_PACKAGE": "commit-and-tag-version@^12"
+      },
+      "steps": [
+        {
+          "builtin": "release/reset-version"
         }
       ]
     },
@@ -633,7 +747,7 @@
           "exec": "npm install"
         },
         {
-          "exec": "npm update @aws-cdk/lambda-layer-kubectl-v31 @cdklabs/multi-az-observability @types/jest @types/node @typescript-eslint/eslint-plugin @typescript-eslint/parser aws-cdk-lib aws-cdk esbuild eslint-import-resolver-typescript eslint-plugin-import eslint jest jest-junit projen ts-jest ts-node typescript constructs"
+          "exec": "npm update @aws-cdk/lambda-layer-kubectl-v31 @cdklabs/multi-az-observability @types/jest @types/node @typescript-eslint/eslint-plugin @typescript-eslint/parser aws-cdk-lib aws-cdk commit-and-tag-version esbuild eslint-import-resolver-typescript eslint-plugin-import eslint fast-check jest jest-junit projen ts-jest ts-node typescript constructs"
         },
         {
           "exec": "npx projen"

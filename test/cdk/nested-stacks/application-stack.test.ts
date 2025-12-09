@@ -23,11 +23,13 @@ jest.mock('../../../src/cdk/lib/nested-stacks/application-stack', () => {
 });
 
 import { ApplicationStack } from '../../../src/cdk/lib/nested-stacks/application-stack';
+import { createMockUploaderFunction } from '../../helpers';
 import { synthesizeStack, findResourcesByType } from '../../helpers/stack-helpers';
 
 describe('ApplicationStack', () => {
   let app: App;
   let parentStack: Stack;
+  let uploaderFunction: any;
 
   beforeEach(() => {
     app = new App();
@@ -44,6 +46,9 @@ describe('ApplicationStack', () => {
       type: 'String',
       default: 'test-prefix/',
     });
+
+    // Create shared uploader function for all tests
+    uploaderFunction = createMockUploaderFunction(parentStack);
   });
 
   describe('stack creation', () => {
@@ -51,6 +56,7 @@ describe('ApplicationStack', () => {
       const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
         containerImageObjectKey: 'app.tar.gz',
         containerImageWithFaultObjectKey: 'app-fault.tar.gz',
+        uploaderFunction,
       });
 
       expect(() => synthesizeStack(appStack)).not.toThrow();
@@ -60,6 +66,7 @@ describe('ApplicationStack', () => {
       new ApplicationStack(parentStack, 'ApplicationStack', {
         containerImageObjectKey: 'app.tar.gz',
         containerImageWithFaultObjectKey: 'app-fault.tar.gz',
+        uploaderFunction,
       });
 
       const template = Template.fromStack(parentStack);
@@ -72,6 +79,7 @@ describe('ApplicationStack', () => {
       const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
         containerImageObjectKey: 'app.tar.gz',
         containerImageWithFaultObjectKey: 'app-fault.tar.gz',
+        uploaderFunction,
       });
 
       const template = Template.fromStack(appStack);
@@ -83,6 +91,7 @@ describe('ApplicationStack', () => {
       const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
         containerImageObjectKey: 'app.tar.gz',
         containerImageWithFaultObjectKey: 'app-fault.tar.gz',
+        uploaderFunction,
       });
 
       const template = Template.fromStack(appStack);
@@ -95,6 +104,7 @@ describe('ApplicationStack', () => {
       const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
         containerImageObjectKey: 'app.tar.gz',
         containerImageWithFaultObjectKey: 'app-fault.tar.gz',
+        uploaderFunction,
       });
 
       const template = Template.fromStack(appStack);
@@ -109,6 +119,7 @@ describe('ApplicationStack', () => {
       const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
         containerImageObjectKey: 'app.tar.gz',
         containerImageWithFaultObjectKey: 'app-fault.tar.gz',
+        uploaderFunction,
       });
 
       expect(appStack.applicationImage).toBeDefined();
@@ -120,6 +131,7 @@ describe('ApplicationStack', () => {
       const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
         containerImageObjectKey: 'app.tar.gz',
         containerImageWithFaultObjectKey: 'app-fault.tar.gz',
+        uploaderFunction,
       });
 
       expect(appStack.applicationFaultImage).toBeDefined();
@@ -131,6 +143,7 @@ describe('ApplicationStack', () => {
       const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
         containerImageObjectKey: 'app.tar.gz',
         containerImageWithFaultObjectKey: 'app-fault.tar.gz',
+        uploaderFunction,
       });
 
       expect(appStack.cloudwatchContainerImage).toBeDefined();
@@ -139,113 +152,23 @@ describe('ApplicationStack', () => {
   });
 
   describe('Lambda uploader function', () => {
-    test('creates Lambda function for uploading', () => {
+    test('uses provided uploader function', () => {
       const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
         containerImageObjectKey: 'app.tar.gz',
         containerImageWithFaultObjectKey: 'app-fault.tar.gz',
+        uploaderFunction,
       });
 
-      const template = Template.fromStack(appStack);
-      template.resourceCountIs('AWS::Lambda::Function', 1);
-    });
-
-    test('configures Lambda with ARM architecture', () => {
-      const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
-        containerImageObjectKey: 'app.tar.gz',
-        containerImageWithFaultObjectKey: 'app-fault.tar.gz',
-      });
-
-      const template = Template.fromStack(appStack);
-      template.hasResourceProperties('AWS::Lambda::Function', {
-        Architectures: ['arm64'],
-      });
-    });
-
-    test('configures Lambda with timeout', () => {
-      const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
-        containerImageObjectKey: 'app.tar.gz',
-        containerImageWithFaultObjectKey: 'app-fault.tar.gz',
-      });
-
-      const template = Template.fromStack(appStack);
-      template.hasResourceProperties('AWS::Lambda::Function', {
-        Timeout: 300,
-      });
-    });
-
-    test('creates IAM role for Lambda', () => {
-      const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
-        containerImageObjectKey: 'app.tar.gz',
-        containerImageWithFaultObjectKey: 'app-fault.tar.gz',
-      });
-
-      const template = Template.fromStack(appStack);
-      const roles = findResourcesByType(template, 'AWS::IAM::Role');
-      const lambdaRole = roles.find((role: any) => {
-        const assumedBy = role.Properties?.AssumeRolePolicyDocument?.Statement?.[0]?.Principal?.Service;
-        return assumedBy === 'lambda.amazonaws.com' ||
-               (Array.isArray(assumedBy) && assumedBy.includes('lambda.amazonaws.com'));
-      });
-      expect(lambdaRole).toBeDefined();
-    });
-
-    test('grants S3 access to Lambda', () => {
-      const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
-        containerImageObjectKey: 'app.tar.gz',
-        containerImageWithFaultObjectKey: 'app-fault.tar.gz',
-      });
-
-      const template = Template.fromStack(appStack);
-      template.hasResourceProperties('AWS::IAM::ManagedPolicy', {
-        PolicyDocument: Match.objectLike({
-          Statement: Match.arrayWith([
-            Match.objectLike({
-              Action: 's3:GetObject',
-              Effect: 'Allow',
-            }),
-          ]),
-        }),
-      });
-    });
-
-    test('grants ECR access to Lambda', () => {
-      const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
-        containerImageObjectKey: 'app.tar.gz',
-        containerImageWithFaultObjectKey: 'app-fault.tar.gz',
-      });
-
-      const template = Template.fromStack(appStack);
-      const managedPolicies = findResourcesByType(template, 'AWS::IAM::ManagedPolicy');
-      const uploaderPolicy = managedPolicies.find((policy: any) => {
-        const statements = policy.Properties?.PolicyDocument?.Statement || [];
-        return statements.some((stmt: any) => {
-          const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
-          return actions.includes('ecr:PutImage') && actions.includes('ecr:BatchCheckLayerAvailability');
-        });
-      });
-      expect(uploaderPolicy).toBeDefined();
-    });
-
-    test('creates log group for Lambda', () => {
-      const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
-        containerImageObjectKey: 'app.tar.gz',
-        containerImageWithFaultObjectKey: 'app-fault.tar.gz',
-      });
-
-      const template = Template.fromStack(appStack);
-      const logGroups = findResourcesByType(template, 'AWS::Logs::LogGroup');
-      const lambdaLogGroup = logGroups.find((lg: any) =>
-        lg.Properties?.LogGroupName?.['Fn::Join']?.[1]?.some((part: any) =>
-          typeof part === 'string' && part.includes('/aws/lambda/'),
-        ),
-      );
-      expect(lambdaLogGroup).toBeDefined();
+      // The uploader function is passed in, not created in this stack
+      expect(appStack.uploaderFunction).toBeDefined();
+      expect(appStack.uploaderFunction).toBe(uploaderFunction);
     });
 
     test('exposes uploader function as public property', () => {
       const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
         containerImageObjectKey: 'app.tar.gz',
         containerImageWithFaultObjectKey: 'app-fault.tar.gz',
+        uploaderFunction,
       });
 
       expect(appStack.uploaderFunction).toBeDefined();
@@ -257,6 +180,7 @@ describe('ApplicationStack', () => {
       const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
         containerImageObjectKey: 'app.tar.gz',
         containerImageWithFaultObjectKey: 'app-fault.tar.gz',
+        uploaderFunction,
       });
 
       const template = Template.fromStack(appStack);
@@ -267,6 +191,7 @@ describe('ApplicationStack', () => {
       const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
         containerImageObjectKey: 'app.tar.gz',
         containerImageWithFaultObjectKey: 'app-fault.tar.gz',
+        uploaderFunction,
       });
 
       const template = Template.fromStack(appStack);
@@ -281,6 +206,7 @@ describe('ApplicationStack', () => {
       const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
         containerImageObjectKey: 'app.tar.gz',
         containerImageWithFaultObjectKey: 'app-fault.tar.gz',
+        uploaderFunction,
       });
 
       const template = Template.fromStack(appStack);
@@ -295,6 +221,7 @@ describe('ApplicationStack', () => {
       const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
         containerImageObjectKey: 'app.tar.gz',
         containerImageWithFaultObjectKey: 'app-fault.tar.gz',
+        uploaderFunction,
       });
 
       const template = Template.fromStack(appStack);
@@ -311,6 +238,7 @@ describe('ApplicationStack', () => {
       const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
         containerImageObjectKey: 'app.tar.gz',
         containerImageWithFaultObjectKey: 'app-fault.tar.gz',
+        uploaderFunction,
       });
 
       const template = Template.fromStack(appStack);
@@ -327,6 +255,7 @@ describe('ApplicationStack', () => {
       const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
         containerImageObjectKey: 'app.tar.gz',
         containerImageWithFaultObjectKey: 'app-fault.tar.gz',
+        uploaderFunction,
       });
 
       expect(appStack.containerBuildProject).toBeDefined();
@@ -338,6 +267,7 @@ describe('ApplicationStack', () => {
       const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
         containerImageObjectKey: 'app.tar.gz',
         containerImageWithFaultObjectKey: 'app-fault.tar.gz',
+        uploaderFunction,
       });
 
       const template = Template.fromStack(appStack);
@@ -350,6 +280,7 @@ describe('ApplicationStack', () => {
       const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
         containerImageObjectKey: 'app.tar.gz',
         containerImageWithFaultObjectKey: 'app-fault.tar.gz',
+        uploaderFunction,
       });
 
       const template = Template.fromStack(appStack);
@@ -363,6 +294,7 @@ describe('ApplicationStack', () => {
       const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
         containerImageObjectKey: 'custom-app.tar.gz',
         containerImageWithFaultObjectKey: 'custom-app-fault.tar.gz',
+        uploaderFunction,
       });
 
       const template = Template.fromStack(appStack);
@@ -384,6 +316,7 @@ describe('ApplicationStack', () => {
       const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
         containerImageObjectKey: 'my-app.tar.gz',
         containerImageWithFaultObjectKey: 'my-app-fault.tar.gz',
+        uploaderFunction,
       });
 
       const template = Template.fromStack(appStack);
@@ -405,34 +338,27 @@ describe('ApplicationStack', () => {
       const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
         containerImageObjectKey: 'app.tar.gz',
         containerImageWithFaultObjectKey: 'app-fault.tar.gz',
+        uploaderFunction,
       });
 
       const template = Template.fromStack(appStack);
       const repositories = findResourcesByType(template, 'AWS::ECR::Repository');
       expect(repositories.length).toBeGreaterThan(0);
-      template.resourceCountIs('AWS::Lambda::Function', 1);
+      // Lambda function is now provided externally, not created in this stack
       template.resourceCountIs('AWS::CodeBuild::Project', 1);
     });
 
-    test('creates managed policies', () => {
+    test('creates managed policies for CodeBuild', () => {
       const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
         containerImageObjectKey: 'app.tar.gz',
         containerImageWithFaultObjectKey: 'app-fault.tar.gz',
+        uploaderFunction,
       });
 
       const template = Template.fromStack(appStack);
       const managedPolicies = findResourcesByType(template, 'AWS::IAM::ManagedPolicy');
+      // Should have at least one managed policy for CodeBuild
       expect(managedPolicies.length).toBeGreaterThan(0);
-    });
-
-    test('creates Lambda layer', () => {
-      const appStack = new ApplicationStack(parentStack, 'ApplicationStack', {
-        containerImageObjectKey: 'app.tar.gz',
-        containerImageWithFaultObjectKey: 'app-fault.tar.gz',
-      });
-
-      const template = Template.fromStack(appStack);
-      template.resourceCountIs('AWS::Lambda::LayerVersion', 1);
     });
   });
 });

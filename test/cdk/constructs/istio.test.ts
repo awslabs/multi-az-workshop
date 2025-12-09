@@ -14,7 +14,7 @@ import {
   assertResourceProperties,
   assertResourceCount,
 } from '../../helpers/assertion-helpers';
-import { createMockVpc } from '../../helpers/mock-factories';
+import { createMockVpc, createMockUploaderFunction } from '../../helpers/mock-factories';
 import { synthesizeStack } from '../../helpers/stack-helpers';
 import { createTestApp, createTestStack } from '../../helpers/test-fixtures';
 
@@ -56,10 +56,11 @@ describe('Istio', () => {
     });
 
     // Create container and repo builder
+    const uploaderFunction = createMockUploaderFunction(sharedStack);
     sharedContainerAndRepoBuilder = new ContainerAndRepo(
       sharedStack,
       'ContainerAndRepo',
-      cdk.aws_lambda.Runtime.PYTHON_3_12,
+      { uploaderFunction },
     );
 
     // Create Istio with default configuration
@@ -256,10 +257,11 @@ describe('Istio', () => {
         type: 'String',
         default: 'assets/',
       });
+      const uploaderFunction = createMockUploaderFunction(stack, 'UploaderFunction1');
       const containerAndRepoBuilder = new ContainerAndRepo(
         stack,
         'ContainerAndRepo',
-        cdk.aws_lambda.Runtime.PYTHON_3_12,
+        { uploaderFunction },
       );
 
       const istio = new Istio(stack, 'Istio', {
@@ -350,10 +352,11 @@ describe('Istio', () => {
           type: 'String',
           default: 'assets/',
         });
+        const uploaderFunction = createMockUploaderFunction(customVersionStack, 'UploaderFunction2');
         const containerAndRepoBuilder = new ContainerAndRepo(
           customVersionStack,
           'ContainerAndRepo',
-          cdk.aws_lambda.Runtime.PYTHON_3_12,
+          { uploaderFunction },
         );
 
         new Istio(customVersionStack, 'Istio', {

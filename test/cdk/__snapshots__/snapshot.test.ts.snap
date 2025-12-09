@@ -591,7 +591,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "a",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"a1"}],["AWS/ApplicationELB","HTTPCode_Target_2XX_Count","AvailabilityZone","",
+              "","id":"a1","visible":false,"period":60,"stat":"Sum"}],["AWS/ApplicationELB","HTTPCode_Target_2XX_Count","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -609,7 +609,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "a",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"a2"}],["AWS/ApplicationELB","HTTPCode_Target_3XX_Count","AvailabilityZone","",
+              "","id":"a2","visible":false,"period":60,"stat":"Sum"}],["AWS/ApplicationELB","HTTPCode_Target_3XX_Count","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -627,7 +627,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "a",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"a3"}],[{"label":"",
+              "","id":"a3","visible":false,"period":60,"stat":"Sum"}],[{"label":"",
               {
                 "Fn::GetAtt": [
                   "basicserviceavailabilityzonemapperAvailabilityZoneMapper9BFCD8FF",
@@ -652,7 +652,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "b",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"b1"}],["AWS/ApplicationELB","HTTPCode_Target_2XX_Count","AvailabilityZone","",
+              "","id":"b1","visible":false,"period":60,"stat":"Sum"}],["AWS/ApplicationELB","HTTPCode_Target_2XX_Count","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -670,7 +670,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "b",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"b2"}],["AWS/ApplicationELB","HTTPCode_Target_3XX_Count","AvailabilityZone","",
+              "","id":"b2","visible":false,"period":60,"stat":"Sum"}],["AWS/ApplicationELB","HTTPCode_Target_3XX_Count","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -688,7 +688,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "b",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"b3"}],[{"label":"",
+              "","id":"b3","visible":false,"period":60,"stat":"Sum"}],[{"label":"",
               {
                 "Fn::GetAtt": [
                   "basicserviceavailabilityzonemapperAvailabilityZoneMapper9BFCD8FF",
@@ -713,7 +713,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "c",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"c1"}],["AWS/ApplicationELB","HTTPCode_Target_2XX_Count","AvailabilityZone","",
+              "","id":"c1","visible":false,"period":60,"stat":"Sum"}],["AWS/ApplicationELB","HTTPCode_Target_2XX_Count","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -731,7 +731,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "c",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"c2"}],["AWS/ApplicationELB","HTTPCode_Target_3XX_Count","AvailabilityZone","",
+              "","id":"c2","visible":false,"period":60,"stat":"Sum"}],["AWS/ApplicationELB","HTTPCode_Target_3XX_Count","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -749,7 +749,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "c",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"c3"}]],"yAxis":{"left":{"min":0,"label":"Count","showUnits":false}}}},{"type":"metric","width":8,"height":8,"x":8,"y":3,"properties":{"view":"timeSeries","title":"Target 5xx Count","region":"",
+              "","id":"c3","visible":false,"period":60,"stat":"Sum"}]],"yAxis":{"left":{"min":0,"label":"Count","showUnits":false}}}},{"type":"metric","width":8,"height":8,"x":8,"y":3,"properties":{"view":"timeSeries","title":"Target 5xx Count","region":"",
               {
                 "Ref": "AWS::Region",
               },
@@ -778,7 +778,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "a",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"a0_faultcount"}],[{"label":"",
+              "","id":"a0_faultcount","visible":false,"period":60,"stat":"Sum"}],[{"label":"",
               {
                 "Fn::GetAtt": [
                   "basicserviceavailabilityzonemapperAvailabilityZoneMapper9BFCD8FF",
@@ -803,7 +803,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "b",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"b0_faultcount"}],[{"label":"",
+              "","id":"b0_faultcount","visible":false,"period":60,"stat":"Sum"}],[{"label":"",
               {
                 "Fn::GetAtt": [
                   "basicserviceavailabilityzonemapperAvailabilityZoneMapper9BFCD8FF",
@@ -828,7 +828,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "c",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"c0_faultcount"}]],"yAxis":{"left":{"min":0,"label":"Count","showUnits":false}}}},{"type":"metric","width":8,"height":8,"x":16,"y":3,"properties":{"view":"timeSeries","title":"ELB 5xx Count","region":"",
+              "","id":"c0_faultcount","visible":false,"period":60,"stat":"Sum"}]],"yAxis":{"left":{"min":0,"label":"Count","showUnits":false}}}},{"type":"metric","width":8,"height":8,"x":16,"y":3,"properties":{"view":"timeSeries","title":"ELB 5xx Count","region":"",
               {
                 "Ref": "AWS::Region",
               },
@@ -857,7 +857,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "a",
                 ],
               },
-              "","stat":"Sum","visible":false,"id":"a"}],[{"label":"",
+              "","id":"a","visible":false,"stat":"Sum"}],[{"label":"",
               {
                 "Fn::GetAtt": [
                   "basicserviceavailabilityzonemapperAvailabilityZoneMapper9BFCD8FF",
@@ -882,7 +882,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "b",
                 ],
               },
-              "","stat":"Sum","visible":false,"id":"b"}],[{"label":"",
+              "","id":"b","visible":false,"stat":"Sum"}],[{"label":"",
               {
                 "Fn::GetAtt": [
                   "basicserviceavailabilityzonemapperAvailabilityZoneMapper9BFCD8FF",
@@ -907,7 +907,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "c",
                 ],
               },
-              "","stat":"Sum","visible":false,"id":"c"}]],"yAxis":{"left":{"min":0,"label":"Count","showUnits":false}}}},{"type":"metric","width":8,"height":8,"x":0,"y":11,"properties":{"view":"timeSeries","title":"Request Count","region":"",
+              "","id":"c","visible":false,"stat":"Sum"}]],"yAxis":{"left":{"min":0,"label":"Count","showUnits":false}}}},{"type":"metric","width":8,"height":8,"x":0,"y":11,"properties":{"view":"timeSeries","title":"Request Count","region":"",
               {
                 "Ref": "AWS::Region",
               },
@@ -1001,7 +1001,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "a",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"a0_faultcount"}],["AWS/ApplicationELB","RequestCount","AvailabilityZone","",
+              "","id":"a0_faultcount","visible":false,"period":60,"stat":"Sum"}],["AWS/ApplicationELB","RequestCount","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -1019,7 +1019,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "a",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"za2"}],[{"label":"",
+              "","id":"za2","visible":false,"period":60,"stat":"Sum"}],[{"label":"",
               {
                 "Fn::GetAtt": [
                   "basicserviceavailabilityzonemapperAvailabilityZoneMapper9BFCD8FF",
@@ -1051,7 +1051,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "b",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"b0_faultcount"}],["AWS/ApplicationELB","RequestCount","AvailabilityZone","",
+              "","id":"b0_faultcount","visible":false,"period":60,"stat":"Sum"}],["AWS/ApplicationELB","RequestCount","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -1069,7 +1069,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "b",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"zb2"}],[{"label":"",
+              "","id":"zb2","visible":false,"period":60,"stat":"Sum"}],[{"label":"",
               {
                 "Fn::GetAtt": [
                   "basicserviceavailabilityzonemapperAvailabilityZoneMapper9BFCD8FF",
@@ -1101,7 +1101,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "c",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"c0_faultcount"}],["AWS/ApplicationELB","RequestCount","AvailabilityZone","",
+              "","id":"c0_faultcount","visible":false,"period":60,"stat":"Sum"}],["AWS/ApplicationELB","RequestCount","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -1119,7 +1119,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "c",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"zc2"}]],"annotations":{"horizontal":[{"label":"High Severity","value":1,"color":"#d62728","yAxis":"left"}]},"yAxis":{"left":{"min":0,"label":"Percent","showUnits":false}}}},{"type":"metric","width":8,"height":8,"x":16,"y":11,"properties":{"view":"timeSeries","title":"Processed Bytes","region":"",
+              "","id":"zc2","visible":false,"period":60,"stat":"Sum"}]],"annotations":{"horizontal":[{"label":"High Severity","value":1,"color":"#d62728","yAxis":"left"}]},"yAxis":{"left":{"min":0,"label":"Percent","showUnits":false}}}},{"type":"metric","width":8,"height":8,"x":16,"y":11,"properties":{"view":"timeSeries","title":"Processed Bytes","region":"",
               {
                 "Ref": "AWS::Region",
               },
@@ -1206,7 +1206,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "a",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"a0_requests"}],["AWS/ApplicationELB","TargetResponseTime","AvailabilityZone","",
+              "","id":"a0_requests","visible":false,"period":60,"stat":"Sum"}],["AWS/ApplicationELB","TargetResponseTime","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -1224,7 +1224,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "a",
                 ],
               },
-              "","period":60,"stat":"p99","visible":false,"id":"a0_latency"}],[{"label":"",
+              "","id":"a0_latency","visible":false,"period":60,"stat":"p99"}],[{"label":"",
               {
                 "Fn::GetAtt": [
                   "basicserviceavailabilityzonemapperAvailabilityZoneMapper9BFCD8FF",
@@ -1249,7 +1249,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "b",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"b0_requests"}],["AWS/ApplicationELB","TargetResponseTime","AvailabilityZone","",
+              "","id":"b0_requests","visible":false,"period":60,"stat":"Sum"}],["AWS/ApplicationELB","TargetResponseTime","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -1267,7 +1267,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "b",
                 ],
               },
-              "","period":60,"stat":"p99","visible":false,"id":"b0_latency"}],[{"label":"",
+              "","id":"b0_latency","visible":false,"period":60,"stat":"p99"}],[{"label":"",
               {
                 "Fn::GetAtt": [
                   "basicserviceavailabilityzonemapperAvailabilityZoneMapper9BFCD8FF",
@@ -1292,7 +1292,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "c",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"c0_requests"}],["AWS/ApplicationELB","TargetResponseTime","AvailabilityZone","",
+              "","id":"c0_requests","visible":false,"period":60,"stat":"Sum"}],["AWS/ApplicationELB","TargetResponseTime","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -1310,7 +1310,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "c",
                 ],
               },
-              "","period":60,"stat":"p99","visible":false,"id":"c0_latency"}]],"annotations":{"horizontal":[{"label":"High Severity","value":500,"color":"#d62728","yAxis":"left"}]},"yAxis":{"left":{"min":0,"label":"Milliseconds","showUnits":false}}}},{"type":"metric","width":8,"height":8,"x":8,"y":19,"properties":{"view":"timeSeries","title":"Latency Z-Score (p99)","region":"",
+              "","id":"c0_latency","visible":false,"period":60,"stat":"p99"}]],"annotations":{"horizontal":[{"label":"High Severity","value":500,"color":"#d62728","yAxis":"left"}]},"yAxis":{"left":{"min":0,"label":"Milliseconds","showUnits":false}}}},{"type":"metric","width":8,"height":8,"x":8,"y":19,"properties":{"view":"timeSeries","title":"Latency Z-Score (p99)","region":"",
               {
                 "Ref": "AWS::Region",
               },
@@ -1346,7 +1346,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "a",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"a0_requests"}],["AWS/ApplicationELB","TargetResponseTime","AvailabilityZone","",
+              "","id":"a0_requests","visible":false,"period":60,"stat":"Sum"}],["AWS/ApplicationELB","TargetResponseTime","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -1364,7 +1364,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "a",
                 ],
               },
-              "","period":60,"stat":"p99","visible":false,"id":"a0_latency"}],[{"label":"",
+              "","id":"a0_latency","visible":false,"period":60,"stat":"p99"}],[{"label":"",
               {
                 "Fn::GetAtt": [
                   "basicserviceavailabilityzonemapperAvailabilityZoneMapper9BFCD8FF",
@@ -1389,7 +1389,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "b",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"b0_requests"}],["AWS/ApplicationELB","TargetResponseTime","AvailabilityZone","",
+              "","id":"b0_requests","visible":false,"period":60,"stat":"Sum"}],["AWS/ApplicationELB","TargetResponseTime","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -1407,7 +1407,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "b",
                 ],
               },
-              "","period":60,"stat":"p99","visible":false,"id":"b0_latency"}],[{"label":"",
+              "","id":"b0_latency","visible":false,"period":60,"stat":"p99"}],[{"label":"",
               {
                 "Fn::GetAtt": [
                   "basicserviceavailabilityzonemapperAvailabilityZoneMapper9BFCD8FF",
@@ -1432,7 +1432,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "c",
                 ],
               },
-              "","period":60,"stat":"Sum","visible":false,"id":"c0_requests"}],["AWS/ApplicationELB","TargetResponseTime","AvailabilityZone","",
+              "","id":"c0_requests","visible":false,"period":60,"stat":"Sum"}],["AWS/ApplicationELB","TargetResponseTime","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -1450,7 +1450,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "c",
                 ],
               },
-              "","period":60,"stat":"p99","visible":false,"id":"c0_latency"}],[{"label":"",
+              "","id":"c0_latency","visible":false,"period":60,"stat":"p99"}],[{"label":"",
               {
                 "Fn::GetAtt": [
                   "basicserviceavailabilityzonemapperAvailabilityZoneMapper9BFCD8FF",
@@ -1507,11 +1507,11 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "a",
                 ],
               },
-              "","region":"",
+              "","id":"a0","visible":false,"region":"",
               {
                 "Ref": "AWS::Region",
               },
-              "","period":60,"stat":"Maximum","visible":false,"id":"a0"}],["AWS/ApplicationELB","AnomalousHostCount","AvailabilityZone","",
+              "","period":60,"stat":"Maximum"}],["AWS/ApplicationELB","AnomalousHostCount","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -1543,11 +1543,11 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "a",
                 ],
               },
-              "","region":"",
+              "","id":"a1","visible":false,"region":"",
               {
                 "Ref": "AWS::Region",
               },
-              "","period":60,"stat":"Maximum","visible":false,"id":"a1"}],[{"label":"",
+              "","period":60,"stat":"Maximum"}],[{"label":"",
               {
                 "Fn::GetAtt": [
                   "basicserviceavailabilityzonemapperAvailabilityZoneMapper9BFCD8FF",
@@ -1586,11 +1586,11 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "b",
                 ],
               },
-              "","region":"",
+              "","id":"b0","visible":false,"region":"",
               {
                 "Ref": "AWS::Region",
               },
-              "","period":60,"stat":"Maximum","visible":false,"id":"b0"}],["AWS/ApplicationELB","AnomalousHostCount","AvailabilityZone","",
+              "","period":60,"stat":"Maximum"}],["AWS/ApplicationELB","AnomalousHostCount","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -1622,11 +1622,11 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "b",
                 ],
               },
-              "","region":"",
+              "","id":"b1","visible":false,"region":"",
               {
                 "Ref": "AWS::Region",
               },
-              "","period":60,"stat":"Maximum","visible":false,"id":"b1"}],[{"label":"",
+              "","period":60,"stat":"Maximum"}],[{"label":"",
               {
                 "Fn::GetAtt": [
                   "basicserviceavailabilityzonemapperAvailabilityZoneMapper9BFCD8FF",
@@ -1665,11 +1665,11 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "c",
                 ],
               },
-              "","region":"",
+              "","id":"c0","visible":false,"region":"",
               {
                 "Ref": "AWS::Region",
               },
-              "","period":60,"stat":"Maximum","visible":false,"id":"c0"}],["AWS/ApplicationELB","AnomalousHostCount","AvailabilityZone","",
+              "","period":60,"stat":"Maximum"}],["AWS/ApplicationELB","AnomalousHostCount","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -1701,11 +1701,11 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "c",
                 ],
               },
-              "","region":"",
+              "","id":"c1","visible":false,"region":"",
               {
                 "Ref": "AWS::Region",
               },
-              "","period":60,"stat":"Maximum","visible":false,"id":"c1"}]],"yAxis":{"left":{"min":0,"label":"Count","showUnits":false}}}},{"type":"metric","width":8,"height":8,"x":0,"y":27,"properties":{"view":"timeSeries","title":"Mitigated Hosts","region":"",
+              "","period":60,"stat":"Maximum"}]],"yAxis":{"left":{"min":0,"label":"Count","showUnits":false}}}},{"type":"metric","width":8,"height":8,"x":0,"y":27,"properties":{"view":"timeSeries","title":"Mitigated Hosts","region":"",
               {
                 "Ref": "AWS::Region",
               },
@@ -1748,11 +1748,11 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "a",
                 ],
               },
-              "","region":"",
+              "","id":"a0","visible":false,"region":"",
               {
                 "Ref": "AWS::Region",
               },
-              "","period":60,"stat":"Maximum","visible":false,"id":"a0"}],["AWS/ApplicationELB","MitigatedHostCount","AvailabilityZone","",
+              "","period":60,"stat":"Maximum"}],["AWS/ApplicationELB","MitigatedHostCount","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -1784,11 +1784,11 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "a",
                 ],
               },
-              "","region":"",
+              "","id":"a1","visible":false,"region":"",
               {
                 "Ref": "AWS::Region",
               },
-              "","period":60,"stat":"Maximum","visible":false,"id":"a1"}],[{"label":"",
+              "","period":60,"stat":"Maximum"}],[{"label":"",
               {
                 "Fn::GetAtt": [
                   "basicserviceavailabilityzonemapperAvailabilityZoneMapper9BFCD8FF",
@@ -1827,11 +1827,11 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "b",
                 ],
               },
-              "","region":"",
+              "","id":"b0","visible":false,"region":"",
               {
                 "Ref": "AWS::Region",
               },
-              "","period":60,"stat":"Maximum","visible":false,"id":"b0"}],["AWS/ApplicationELB","MitigatedHostCount","AvailabilityZone","",
+              "","period":60,"stat":"Maximum"}],["AWS/ApplicationELB","MitigatedHostCount","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -1863,11 +1863,11 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "b",
                 ],
               },
-              "","region":"",
+              "","id":"b1","visible":false,"region":"",
               {
                 "Ref": "AWS::Region",
               },
-              "","period":60,"stat":"Maximum","visible":false,"id":"b1"}],[{"label":"",
+              "","period":60,"stat":"Maximum"}],[{"label":"",
               {
                 "Fn::GetAtt": [
                   "basicserviceavailabilityzonemapperAvailabilityZoneMapper9BFCD8FF",
@@ -1906,11 +1906,11 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "c",
                 ],
               },
-              "","region":"",
+              "","id":"c0","visible":false,"region":"",
               {
                 "Ref": "AWS::Region",
               },
-              "","period":60,"stat":"Maximum","visible":false,"id":"c0"}],["AWS/ApplicationELB","MitigatedHostCount","AvailabilityZone","",
+              "","period":60,"stat":"Maximum"}],["AWS/ApplicationELB","MitigatedHostCount","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -1942,11 +1942,11 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "c",
                 ],
               },
-              "","region":"",
+              "","id":"c1","visible":false,"region":"",
               {
                 "Ref": "AWS::Region",
               },
-              "","period":60,"stat":"Maximum","visible":false,"id":"c1"}]],"yAxis":{"left":{"min":0,"label":"Count","showUnits":false}}}},{"type":"metric","width":8,"height":8,"x":8,"y":27,"properties":{"view":"timeSeries","title":"Healthy Hosts","region":"",
+              "","period":60,"stat":"Maximum"}]],"yAxis":{"left":{"min":0,"label":"Count","showUnits":false}}}},{"type":"metric","width":8,"height":8,"x":8,"y":27,"properties":{"view":"timeSeries","title":"Healthy Hosts","region":"",
               {
                 "Ref": "AWS::Region",
               },
@@ -1989,11 +1989,11 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "a",
                 ],
               },
-              "","region":"",
+              "","id":"a0","visible":false,"region":"",
               {
                 "Ref": "AWS::Region",
               },
-              "","period":60,"stat":"Maximum","visible":false,"id":"a0"}],["AWS/ApplicationELB","HealthyHostCount","AvailabilityZone","",
+              "","period":60,"stat":"Maximum"}],["AWS/ApplicationELB","HealthyHostCount","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -2025,11 +2025,11 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "a",
                 ],
               },
-              "","region":"",
+              "","id":"a1","visible":false,"region":"",
               {
                 "Ref": "AWS::Region",
               },
-              "","period":60,"stat":"Maximum","visible":false,"id":"a1"}],[{"label":"",
+              "","period":60,"stat":"Maximum"}],[{"label":"",
               {
                 "Fn::GetAtt": [
                   "basicserviceavailabilityzonemapperAvailabilityZoneMapper9BFCD8FF",
@@ -2068,11 +2068,11 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "b",
                 ],
               },
-              "","region":"",
+              "","id":"b0","visible":false,"region":"",
               {
                 "Ref": "AWS::Region",
               },
-              "","period":60,"stat":"Maximum","visible":false,"id":"b0"}],["AWS/ApplicationELB","HealthyHostCount","AvailabilityZone","",
+              "","period":60,"stat":"Maximum"}],["AWS/ApplicationELB","HealthyHostCount","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -2104,11 +2104,11 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "b",
                 ],
               },
-              "","region":"",
+              "","id":"b1","visible":false,"region":"",
               {
                 "Ref": "AWS::Region",
               },
-              "","period":60,"stat":"Maximum","visible":false,"id":"b1"}],[{"label":"",
+              "","period":60,"stat":"Maximum"}],[{"label":"",
               {
                 "Fn::GetAtt": [
                   "basicserviceavailabilityzonemapperAvailabilityZoneMapper9BFCD8FF",
@@ -2147,11 +2147,11 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "c",
                 ],
               },
-              "","region":"",
+              "","id":"c0","visible":false,"region":"",
               {
                 "Ref": "AWS::Region",
               },
-              "","period":60,"stat":"Maximum","visible":false,"id":"c0"}],["AWS/ApplicationELB","HealthyHostCount","AvailabilityZone","",
+              "","period":60,"stat":"Maximum"}],["AWS/ApplicationELB","HealthyHostCount","AvailabilityZone","",
               {
                 "Ref": "AWS::Region",
               },
@@ -2183,11 +2183,11 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                   "c",
                 ],
               },
-              "","region":"",
+              "","id":"c1","visible":false,"region":"",
               {
                 "Ref": "AWS::Region",
               },
-              "","period":60,"stat":"Maximum","visible":false,"id":"c1"}]],"yAxis":{"left":{"min":0,"label":"Count","showUnits":false}}}}]}",
+              "","period":60,"stat":"Maximum"}]],"yAxis":{"left":{"min":0,"label":"Count","showUnits":false}}}}]}",
             ],
           ],
         },
@@ -2348,6 +2348,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                 ],
               ],
             },
+            "ReturnData": true,
           },
           {
             "Id": "a1",
@@ -2594,6 +2595,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                 "a",
               ],
             },
+            "ReturnData": true,
           },
           {
             "Expression": "(((a0_latency * a0_requests)) / (a0_requests)) * 1000",
@@ -3360,6 +3362,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                 ],
               ],
             },
+            "ReturnData": true,
           },
           {
             "Id": "b1",
@@ -3606,6 +3609,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                 "b",
               ],
             },
+            "ReturnData": true,
           },
           {
             "Expression": "(((a0_latency * a0_requests)) / (a0_requests)) * 1000",
@@ -4053,6 +4057,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                 ],
               ],
             },
+            "ReturnData": true,
           },
           {
             "Id": "c1",
@@ -4299,6 +4304,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                 "c",
               ],
             },
+            "ReturnData": true,
           },
           {
             "Expression": "(((a0_latency * a0_requests)) / (a0_requests)) * 1000",
@@ -4649,6 +4655,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                 ],
               ],
             },
+            "ReturnData": true,
           },
           {
             "Expression": "FILL(a1, 0) + FILL(a2, 0)",
@@ -5083,6 +5090,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                 ],
               ],
             },
+            "ReturnData": true,
           },
           {
             "Expression": "FILL(b1, 0) + FILL(b2, 0)",
@@ -5517,6 +5525,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
                 ],
               ],
             },
+            "ReturnData": true,
           },
           {
             "Expression": "FILL(c1, 0) + FILL(c2, 0)",
@@ -6038,7 +6047,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
               {
                 "Fn::Sub": "cdk-hnb659fds-assets-\${AWS::AccountId}-us-east-1",
               },
-              "/2022aecfb6827294386d45a5240cd0fb195b6e334a2a38e18f0af72712e2f135.json",
+              "/d585055d8caae0f6a7704c6dbe6a6151f7faa3a8f2c16b5630fe86563b5f333c.json",
             ],
           ],
         },
@@ -6110,10 +6119,34 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
       "Type": "AWS::CloudFormation::Stack",
       "UpdateReplacePolicy": "Delete",
     },
+    "ecruploaderNestedStackecruploaderNestedStackResourceCFB39880": {
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "TemplateURL": {
+          "Fn::Join": [
+            "",
+            [
+              "https://s3.us-east-1.",
+              {
+                "Ref": "AWS::URLSuffix",
+              },
+              "/",
+              {
+                "Fn::Sub": "cdk-hnb659fds-assets-\${AWS::AccountId}-us-east-1",
+              },
+              "/be123bad7feba3ba8e31dd9b2d424ab259853edfe2c989e5411614ae886f0bd7.json",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::CloudFormation::Stack",
+      "UpdateReplacePolicy": "Delete",
+    },
     "eksNestedStackeksNestedStackResource518D71CA": {
       "DeletionPolicy": "Delete",
       "DependsOn": [
         "aztaggerNestedStackaztaggerNestedStackResource5BE7FF15",
+        "ecruploaderNestedStackecruploaderNestedStackResourceCFB39880",
         "frontendloggroup0047D9DD",
         "networkNestedStacknetworkNestedStackResource8842CEE2",
       ],
@@ -6144,6 +6177,12 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
             "Fn::GetAtt": [
               "databaseNestedStackdatabaseNestedStackResourceF5AAE956",
               "Outputs.SnapshotTestStackdatabaseSecretAttachment7D820EADRef",
+            ],
+          },
+          "referencetoSnapshotTestStackecruploaderNestedStackecruploaderNestedStackResource3580F35AOutputsSnapshotTestStackecruploaderEcrUploaderD477E30AArn": {
+            "Fn::GetAtt": [
+              "ecruploaderNestedStackecruploaderNestedStackResourceCFB39880",
+              "Outputs.SnapshotTestStackecruploaderEcrUploaderD477E30AArn",
             ],
           },
           "referencetoSnapshotTestStacknetworkNestedStacknetworkNestedStackResource590805DFOutputsSnapshotTestStacknetworkvpcC5222FE1Ref": {
@@ -6183,7 +6222,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
               {
                 "Fn::Sub": "cdk-hnb659fds-assets-\${AWS::AccountId}-us-east-1",
               },
-              "/a313a2ad88aa119fb558772c3dcf73c12229cd395c3f88e4316b422999e83a25.json",
+              "/ef6c4534e5757708d60cca4b201ad7a49d7580ae33a43274f35afa27d3f0b086.json",
             ],
           ],
         },
@@ -6404,7 +6443,7 @@ def sendResponse(event, context, responseStatus, responseData, physicalResourceI
               {
                 "Fn::Sub": "cdk-hnb659fds-assets-\${AWS::AccountId}-us-east-1",
               },
-              "/50e9abc9062ad397d03d5cf0d3eedbfffca4db201c158f6ffce34d1fec4cee12.json",
+              "/1041730e47d83e993e1def179caf123f5b480d52ce4892fe699cecc741480c0e.json",
             ],
           ],
         },

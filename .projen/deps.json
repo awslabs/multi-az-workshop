@@ -39,6 +39,11 @@
       "type": "build"
     },
     {
+      "name": "commit-and-tag-version",
+      "version": "^12",
+      "type": "build"
+    },
+    {
       "name": "esbuild",
       "type": "build"
     },
@@ -53,6 +58,11 @@
     {
       "name": "eslint",
       "version": "^8",
+      "type": "build"
+    },
+    {
+      "name": "fast-check",
+      "version": "^3.15.0",
       "type": "build"
     },
     {

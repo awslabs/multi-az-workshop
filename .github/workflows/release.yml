@@ -2,154 +2,113 @@
 
 name: release
 on:
-  workflow_dispatch:
-    inputs:
-      aws_access_key_id:
-        type: string
-        description: The access key id
-      aws_secret_access_key:
-        type: string
-        description: The secret access key
-      aws_session_token:
-        type: string
-        description: The session token
-      email:
-        type: string
-        description: The email used for the git commit
-      prerelease:
-        type: string
-        description: If you want to make this a pre-release specify the value like 'alpha' or 'beta'
+  push:
+    branches:
+      - main
+    paths:
+      - src/**
+      - content/**
+      - static/**
+      - contentspec.yaml
+  workflow_dispatch: {}
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
 jobs:
-  build:
-    runs-on: ubuntu-24.04-arm
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "9.0"
-      - name: Install dependencies
-        run: npm ci
-      - name: Bundle workshop
-        run: npx projen bundle:workshop
-      - name: Extract assets from content.zip
-        run: npx projen release:extract-assets
-      - name: Upload assets artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: workshop-assets
-          path: tmp/assets
-          retention-days: 1
-      - name: Upload workshop content artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: workshop-content
-          path: |-
-            content
-            static
-            contentspec.yaml
-          retention-days: 1
-      - name: Upload content.zip artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: content-zip
-          path: assets/content.zip
-          retention-days: 1
-  assets:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Download assets artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: workshop-assets
-          path: ${{ github.workspace }}/assets
-      - name: Upload assets to S3
-        run: aws s3 sync ${{ github.workspace }}/assets s3://ws-assets-us-east-1/$WORKSHOP_ID --delete
-  workshop:
-    needs:
-      - build
-      - assets
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Download workshop content artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: workshop-content
-          path: ${{ github.workspace }}/workshop
-      - name: Install git-remote-workshopstudio
-        run: |-
-          pip config set global.trusted-host plugin.us-east-1.prod.workshops.aws
-          pip config set global.extra-index-url https://plugin.us-east-1.prod.workshops.aws
-          pipx install git-remote-workshopstudio
-          git config --global user.email $EMAIL
-          git config --global user.name "$USER_NAME"
-      - name: Push workshop content
-        run: |-
-          git clone --branch mainline workshopstudio://ws-content-$WORKSHOP_ID/$REMOTE_REPO ${{ github.workspace }}/$REMOTE_REPO
-          cd ${{ github.workspace }}/$REMOTE_REPO
-          find . -path ./.git -prune -o ! -name . ! -name .. -exec rm -rf {} + 2> /dev/null
-          cp -r ${{ github.workspace }}/workshop/. ${{ github.workspace }}/$REMOTE_REPO
-          # exits 1 if there are changes, which is interpreted as true
-          set +e
-          git diff --quiet
-          if [ $? -eq 1 ]; then
-            set -e
-            git add -A
-            git commit -m "New workshop version"
-            git push
-          else
-            echo "No changes detected, nothing to commit"
-          fi
   release:
-    needs:
-      - build
-      - assets
-      - workshop
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      latest_commit: ${{ steps.git_remote.outputs.latest_commit }}
+      tag_exists: ${{ steps.check_tag_exists.outputs.exists }}
+    env:
+      CI: "true"
     steps:
-      - name: Download content.zip artifact
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set git identity
+        run: |-
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+      - name: Install dependencies
+        run: npm ci
+      - name: release
+        run: npx projen release
+      - name: Check if version has already been tagged
+        id: check_tag_exists
+        run: |-
+          TAG=$(cat dist/releasetag.txt)
+          ([ ! -z "$TAG" ] && git ls-remote -q --exit-code --tags origin $TAG && (echo "exists=true" >> $GITHUB_OUTPUT)) || (echo "exists=false" >> $GITHUB_OUTPUT)
+          cat $GITHUB_OUTPUT
+      - name: Check for new commits
+        id: git_remote
+        run: |-
+          echo "latest_commit=$(git ls-remote origin -h ${{ github.ref }} | cut -f1)" >> $GITHUB_OUTPUT
+          cat $GITHUB_OUTPUT
+      - name: Backup artifact permissions
+        if: ${{ steps.git_remote.outputs.latest_commit == github.sha }}
+        run: cd dist && getfacl -R . > permissions-backup.acl
+        continue-on-error: true
+      - name: Upload artifact
+        if: ${{ steps.git_remote.outputs.latest_commit == github.sha }}
+        uses: actions/upload-artifact@v4.4.0
+        with:
+          name: build-artifact
+          path: dist
+          overwrite: true
+  release_github:
+    name: Publish to GitHub Releases
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: needs.release.outputs.tag_exists != 'true' && needs.release.outputs.latest_commit == github.sha
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: content-zip
-          path: .
-      - name: Determine version bump
-        id: version
+          name: build-artifact
+          path: dist
+      - name: Restore build artifact permissions
+        run: cd dist && setfacl --restore=permissions-backup.acl
+        continue-on-error: true
+      - name: Release
         env:
-          PRERELEASE_INPUT: ${{ inputs.prerelease }}
-        run: npx projen release:determine-version
-      - name: Create Git tag
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF: ${{ github.sha }}
         run: |-
-          git tag ${{ env.BUMPED_VERSION }}
-                  git push origin ${{ env.BUMPED_VERSION }}
-      - name: Create GitHub release
-        run: |-
-          if [[ -n "${{ inputs.prerelease }}" ]]; then
-            gh release create ${{ env.BUMPED_VERSION }} --title "${{ env.BUMPED_VERSION }}" --prerelease --verify-tag content.zip
-          else
-            gh release create ${{ env.BUMPED_VERSION }} --title "${{ env.BUMPED_VERSION }}" --verify-tag content.zip
-          fi
-env:
-  AWS_DEFAULT_REGION: us-east-1
-  WS_REPO_SOURCE: s3
-  AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
-  AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
-  AWS_SESSION_TOKEN: ${{ inputs.aws_session_token }}
-  WORKSHOP_ID: e9383b42-6c6f-416b-b50a-9313e476e372
-  USER_NAME: ${{ github.triggering_actor }}
-  EMAIL: ${{ inputs.email }}
-  REMOTE_REPO: advanced-multi-az-resilience-patterns
-  GH_TOKEN: ${{ github.token }}
+          errout=$(mktemp)
+                    RELEASE_TAG=$(cat dist/releasetag.txt)
+                    
+                    # Check if this is a prerelease by looking for hyphen in tag (e.g., v1.0.0-alpha)
+                    if [[ "$RELEASE_TAG" == *"-"* ]]; then
+                      echo "Creating prerelease: $RELEASE_TAG"
+                      gh release create "$RELEASE_TAG" \
+                        -R $GITHUB_REPOSITORY \
+                        -F dist/changelog.md \
+                        -t "$RELEASE_TAG" \
+                        --target $GITHUB_REF \
+                        --prerelease \
+                        dist/content.zip 2> $errout && true
+                    else
+                      echo "Creating release: $RELEASE_TAG"
+                      gh release create "$RELEASE_TAG" \
+                        -R $GITHUB_REPOSITORY \
+                        -F dist/changelog.md \
+                        -t "$RELEASE_TAG" \
+                        --target $GITHUB_REF \
+                        dist/content.zip 2> $errout && true
+                    fi
+                    
+                    exitcode=$?
+                    if [ $exitcode -ne 0 ] && ! grep -q "Release.tag_name already exists" $errout; then
+                      cat $errout
+                      exit $exitcode
+                    fi

@@ -9,6 +9,7 @@ import * as eks from 'aws-cdk-lib/aws-eks';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { AwsLoadBalancerController } from '../../../src/cdk/lib/constructs/aws-load-balancer-controller';
 import { ContainerAndRepo } from '../../../src/cdk/lib/constructs/container-and-repo';
+import { createMockUploaderFunction } from '../../helpers';
 import {
   assertResourceExists,
   assertResourceProperties,
@@ -54,10 +55,11 @@ describe('AwsLoadBalancerController', () => {
     });
 
     // Create container and repo builder
+    const uploaderFunction = createMockUploaderFunction(sharedStack);
     sharedContainerAndRepoBuilder = new ContainerAndRepo(
       sharedStack,
       'ContainerAndRepo',
-      cdk.aws_lambda.Runtime.PYTHON_3_12,
+      { uploaderFunction },
     );
 
     // Create the load balancer controller with default configuration
@@ -273,10 +275,11 @@ describe('AwsLoadBalancerController', () => {
         default: 'assets/',
       });
 
+      const uploaderFunction = createMockUploaderFunction(stack, 'TestUploaderFunction');
       const containerAndRepoBuilder = new ContainerAndRepo(
         stack,
         'TestContainerAndRepo',
-        cdk.aws_lambda.Runtime.PYTHON_3_12,
+        { uploaderFunction },
       );
 
       controller = new AwsLoadBalancerController(stack, 'TestLoadBalancerController', {
@@ -334,7 +337,7 @@ describe('AwsLoadBalancerController', () => {
       const containerAndRepoBuilder = new ContainerAndRepo(
         stack,
         'ContainerAndRepo',
-        cdk.aws_lambda.Runtime.PYTHON_3_12,
+        { uploaderFunction: createMockUploaderFunction(stack, 'Uploader' + Math.random()) },
       );
 
       new AwsLoadBalancerController(stack, 'LoadBalancerController', {
@@ -383,7 +386,7 @@ describe('AwsLoadBalancerController', () => {
       const containerAndRepoBuilder = new ContainerAndRepo(
         stack,
         'ContainerAndRepo',
-        cdk.aws_lambda.Runtime.PYTHON_3_12,
+        { uploaderFunction: createMockUploaderFunction(stack, 'Uploader' + Math.random()) },
       );
 
       new AwsLoadBalancerController(stack, 'LoadBalancerController', {

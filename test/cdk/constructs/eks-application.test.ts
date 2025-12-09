@@ -15,7 +15,7 @@ import {
   assertResourceProperties,
   assertResourceCount,
 } from '../../helpers/assertion-helpers';
-import { createMockVpc } from '../../helpers/mock-factories';
+import { createMockVpc, createMockUploaderFunction } from '../../helpers/mock-factories';
 import { synthesizeStack } from '../../helpers/stack-helpers';
 import { createTestApp, createTestStack } from '../../helpers/test-fixtures';
 
@@ -72,10 +72,11 @@ describe('EKSApplication', () => {
     });
 
     // Create container and repo builder
+    const uploaderFunction = createMockUploaderFunction(stack);
     containerAndRepoBuilder = new ContainerAndRepo(
       stack,
       'ContainerAndRepo',
-      cdk.aws_lambda.Runtime.PYTHON_3_12,
+      { uploaderFunction },
     );
 
     // Create the EKS application once
