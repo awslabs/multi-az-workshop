@@ -21,6 +21,7 @@ const project = new AwsCdkTypeScriptApp({
   license: 'Apache-2.0',
 
   // Enable default build workflow with custom configuration
+  workflowRunsOn: ["ubuntu-24.04-arm"],
   buildWorkflow: true,
   buildWorkflowOptions: {
     preBuildSteps: [
