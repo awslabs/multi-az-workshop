@@ -61,11 +61,17 @@ function createDotnetBuildTasks(project: AwsCdkTypeScriptApp): Task {
 function createDotnetTestTasks(project: AwsCdkTypeScriptApp): { unit: Task; integration: Task } {
   const testAppUnit = project.addTask('test:app:unit', {
     description: 'Run .NET unit tests',
+    env: {
+      AWS_EC2_METADATA_DISABLED: 'true',
+    },
     exec: 'dotnet test test/app --filter "FullyQualifiedName!~Integration" --configuration Release --logger "console;verbosity=detailed"',
   });
 
   const testAppIntegration = project.addTask('test:app:integration', {
     description: 'Run .NET integration tests',
+    env: {
+      AWS_EC2_METADATA_DISABLED: 'true',
+    },
     exec: 'dotnet test test/app --filter "FullyQualifiedName~Integration" --configuration Release --logger "console;verbosity=detailed"',
   });
 

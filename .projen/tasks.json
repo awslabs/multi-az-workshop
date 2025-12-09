@@ -692,6 +692,9 @@
     "test:app:integration": {
       "name": "test:app:integration",
       "description": "Run .NET integration tests",
+      "env": {
+        "AWS_EC2_METADATA_DISABLED": "true"
+      },
       "steps": [
         {
           "exec": "dotnet test test/app --filter \"FullyQualifiedName~Integration\" --configuration Release --logger \"console;verbosity=detailed\""
@@ -701,6 +704,9 @@
     "test:app:unit": {
       "name": "test:app:unit",
       "description": "Run .NET unit tests",
+      "env": {
+        "AWS_EC2_METADATA_DISABLED": "true"
+      },
       "steps": [
         {
           "exec": "dotnet test test/app --filter \"FullyQualifiedName!~Integration\" --configuration Release --logger \"console;verbosity=detailed\""
