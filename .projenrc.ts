@@ -82,7 +82,6 @@ const project = new AwsCdkTypeScriptApp({
     '.DS_Store',
     '**/.DS_Store',
     'tsconfig.tsbuildinfo',
-    'package-lock.json',
 
     // IDE
     '.kiro/',

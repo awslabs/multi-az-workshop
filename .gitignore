@@ -37,7 +37,6 @@ test-reports/
 .DS_Store
 **/.DS_Store
 tsconfig.tsbuildinfo
-package-lock.json
 .kiro/
 cdk.out/
 src/app/bin
