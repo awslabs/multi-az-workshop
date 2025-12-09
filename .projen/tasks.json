@@ -493,7 +493,7 @@
       "description": "Install project dependencies and update lockfile (non-frozen)",
       "steps": [
         {
-          "exec": "npm install"
+          "exec": "yarn install --check-files"
         }
       ]
     },
@@ -502,7 +502,7 @@
       "description": "Install project dependencies using frozen lockfile",
       "steps": [
         {
-          "exec": "npm ci"
+          "exec": "yarn install --check-files --frozen-lockfile"
         }
       ]
     },
@@ -744,10 +744,10 @@
           "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --dep=dev,peer,prod,optional --filter=@types/jest,@types/node,esbuild,eslint-import-resolver-typescript,eslint-plugin-import,jest,projen,ts-jest,ts-node,typescript"
         },
         {
-          "exec": "npm install"
+          "exec": "yarn install --check-files"
         },
         {
-          "exec": "npm update @aws-cdk/lambda-layer-kubectl-v31 @cdklabs/multi-az-observability @types/jest @types/node @typescript-eslint/eslint-plugin @typescript-eslint/parser aws-cdk-lib aws-cdk commit-and-tag-version esbuild eslint-import-resolver-typescript eslint-plugin-import eslint fast-check jest jest-junit projen ts-jest ts-node typescript constructs"
+          "exec": "yarn upgrade @aws-cdk/lambda-layer-kubectl-v31 @cdklabs/multi-az-observability @types/jest @types/node @typescript-eslint/eslint-plugin @typescript-eslint/parser aws-cdk-lib aws-cdk commit-and-tag-version esbuild eslint-import-resolver-typescript eslint-plugin-import eslint fast-check jest jest-junit projen ts-jest ts-node typescript constructs"
         },
         {
           "exec": "npx projen"

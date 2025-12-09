@@ -1,5 +1,5 @@
 import { AwsCdkTypeScriptApp } from 'projen/lib/awscdk';
-import { UpgradeDependenciesSchedule, NodePackageManager } from 'projen/lib/javascript';
+import { UpgradeDependenciesSchedule } from 'projen/lib/javascript';
 import { createBuildTasks, createDeployTasks, createPublishTasks } from './projenrc/tasks/';
 import { createDeployWorkflow, createAutoApproveWorkflow, createPublishWorkflow, customizeReleaseWorkflow } from './projenrc/workflows';
 
@@ -53,9 +53,6 @@ const project = new AwsCdkTypeScriptApp({
   githubOptions: {
     mergify: true,
   },
-
-  // Package manager
-  packageManager: NodePackageManager.NPM,
 
   // Minimal dependencies for root project
   devDeps: [
