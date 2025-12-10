@@ -305,9 +305,6 @@ function createCdkAssetProcessingTasks(project: AwsCdkTypeScriptApp): { cdkProce
       {
         exec: 'cd assets && zip -r ../dist/content.zip .',
       },
-      {
-        exec: 'rm -rf assets',
-      },
     ],
   });
 
