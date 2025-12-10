@@ -18,9 +18,6 @@ export function customizeBuildWorkflow(project: AwsCdkTypeScriptApp): void {
     return;
   }
 
-  // Add AWS_EC2_METADATA_DISABLED to prevent metadata endpoint access
-  // The test tasks have their own AWS credentials configured separately
-  if (buildWorkflow.file) {
-    buildWorkflow.file.addOverride('jobs.build.env.AWS_EC2_METADATA_DISABLED', 'true');
-  }
+  // The test tasks have their own AWS environment variables configured
+  // No job-level environment variables needed since they might affect CDK synthesis
 }
