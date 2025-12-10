@@ -25,95 +25,29 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "9.0"
-      - name: Debug CI environment before build
-        run: |-
-          echo "=== PRE-BUILD CI ENVIRONMENT DEBUG ===" | tee ci-debug-pre.txt
-          node scripts/debug-asset-hashes.js | tee -a ci-debug-pre.txt
       - name: build
         run: npx projen build
-      - name: Debug CI environment after build
-        run: |-
-          echo "=== POST-BUILD CI ENVIRONMENT DEBUG ===" | tee ci-debug-post.txt
-          node scripts/debug-asset-hashes.js | tee -a ci-debug-post.txt
       - name: Find mutations
         id: self_mutation
         run: |-
           set -e
           git add .
           git diff --staged --patch --exit-code > repo.patch || echo "self_mutation_happened=true" >> $GITHUB_OUTPUT
-          if [ -f repo.patch ]; then
-            echo "=== MUTATION DETECTED ===" | tee -a debug-output.txt
-            echo "Files changed during build:" | tee -a debug-output.txt
-            git diff --staged --name-only | tee -a debug-output.txt || echo "Failed to list changed files" | tee -a debug-output.txt
-            echo "" | tee -a debug-output.txt
-            echo "=== STATIC TEMPLATE CHANGES ===" | tee -a debug-output.txt
-            if git diff --staged --name-only | grep -q "static/multi-az-workshop.json"; then
-              echo "Extracting changed asset hashes from static/multi-az-workshop.json:" | tee -a debug-output.txt
-              git diff --staged static/multi-az-workshop.json | grep -E "[\+\-].*[a-f0-9]{64}\.json" | head -10 | tee -a debug-output.txt || echo "No asset hash changes found" | tee -a debug-output.txt
-              echo "" | tee -a debug-output.txt
-              echo "=== FIRST CHANGED ASSET HASH DETAILS ===" | tee -a debug-output.txt
-              CHANGED_HASH=$(git diff --staged static/multi-az-workshop.json | grep -E "[\+\-].*[a-f0-9]{64}\.json" | head -1 | grep -oE "[a-f0-9]{64}" | head -1 || echo "")
-              if [ ! -z "$CHANGED_HASH" ]; then
-                echo "Changed asset hash: $CHANGED_HASH" | tee -a debug-output.txt
-                echo "Looking up asset in manifest file..." | tee -a debug-output.txt
-                if [ -f "cdk.out/multi-az-workshop.assets.json" ]; then
-                  ASSET_PATH=$(cat cdk.out/multi-az-workshop.assets.json | jq -r ".files[\"$CHANGED_HASH\"].source.path // empty" 2>/dev/null || echo "")
-                  if [ ! -z "$ASSET_PATH" ] && [ "$ASSET_PATH" != "null" ]; then
-                    ASSET_FILE="cdk.out/$ASSET_PATH"
-                    echo "Asset source file: $ASSET_FILE" | tee -a debug-output.txt
-                    if [ -f "$ASSET_FILE" ]; then
-                      echo "Content of newly generated $ASSET_FILE:" | tee -a debug-output.txt
-                      cat "$ASSET_FILE" >> debug-output.txt 2>/dev/null || echo "Failed to read asset file" | tee -a debug-output.txt
-                      echo "" | tee -a debug-output.txt
-                      echo "=== COMPARISON WITH COMMITTED VERSION ===" | tee -a debug-output.txt
-                      OLD_HASH=$(git show HEAD:static/multi-az-workshop.json 2>/dev/null | grep -oE "[a-f0-9]{64}\.json" | head -1 | grep -oE "[a-f0-9]{64}" || echo "")
-                      if [ ! -z "$OLD_HASH" ] && [ "$OLD_HASH" != "$CHANGED_HASH" ]; then
-                        echo "Previous committed asset hash: $OLD_HASH" | tee -a debug-output.txt
-                        OLD_ASSET_PATH=$(cat cdk.out/multi-az-workshop.assets.json | jq -r ".files[\"$OLD_HASH\"].source.path // empty" 2>/dev/null || echo "")
-                        if [ ! -z "$OLD_ASSET_PATH" ] && [ "$OLD_ASSET_PATH" != "null" ]; then
-                          OLD_ASSET_FILE="cdk.out/$OLD_ASSET_PATH"
-                          echo "Previous asset source file: $OLD_ASSET_FILE" | tee -a debug-output.txt
-                          if [ -f "$OLD_ASSET_FILE" ]; then
-                            echo "Content of previous version $OLD_ASSET_FILE:" | tee -a debug-output.txt
-                            cat "$OLD_ASSET_FILE" >> debug-output.txt 2>/dev/null || echo "Failed to read previous asset file" | tee -a debug-output.txt
-                          else
-                            echo "Previous asset file $OLD_ASSET_FILE not found in current cdk.out/" | tee -a debug-output.txt
-                          fi
-                        else
-                          echo "Previous asset hash $OLD_HASH not found in current manifest" | tee -a debug-output.txt
-                        fi
-                      else
-                        echo "No previous asset hash found or hashes are identical" | tee -a debug-output.txt
-                      fi
-                    else
-                      echo "Asset file $ASSET_FILE not found" | tee -a debug-output.txt
-                    fi
-                  else
-                    echo "Asset hash $CHANGED_HASH not found in manifest" | tee -a debug-output.txt
-                  fi
-                else
-                  echo "Asset manifest file not found" | tee -a debug-output.txt
-                fi
-              else
-                echo "No changed asset hash found" | tee -a debug-output.txt
-              fi
-            else
-              echo "static/multi-az-workshop.json was not modified" | tee -a debug-output.txt
-            fi
-          else
-            echo "No mutations detected" | tee -a debug-output.txt
-          fi
         working-directory: ./
+      - name: Analyze asset differences
+        if: steps.self_mutation.outputs.self_mutation_happened
+        run: |-
+          echo "=== RUNNING FOCUSED ASSET DIFF ANALYSIS ===" | tee debug-output.txt
+          node scripts/analyze-asset-diff.js | tee -a debug-output.txt
       - name: Upload debug output
+        if: steps.self_mutation.outputs.self_mutation_happened
         uses: actions/upload-artifact@v4.4.0
         with:
-          name: debug-outputs
+          name: asset-diff-analysis
           path: |
             debug-output.txt
-            ci-debug-pre.txt
-            ci-debug-post.txt
-            asset-debug-output.txt
-            asset-comparison-output.txt
+            asset-diff-analysis.txt
+            repo.patch
           overwrite: true
       - name: Fail build on mutation
         if: steps.self_mutation.outputs.self_mutation_happened
