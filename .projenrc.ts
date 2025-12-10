@@ -84,6 +84,7 @@ const project = new AwsCdkTypeScriptApp({
     '.kiro/',
 
     // CDK specific
+    'static/multi-az-workshop.json',
     'cdk.out/',
 
     // Build artifacts

@@ -38,6 +38,7 @@ test-reports/
 **/.DS_Store
 tsconfig.tsbuildinfo
 .kiro/
+static/multi-az-workshop.json
 cdk.out/
 src/app/bin
 src/app/obj
