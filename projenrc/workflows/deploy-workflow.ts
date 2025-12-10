@@ -16,9 +16,9 @@ export function createDeployWorkflow(github: GitHub): void {
 
   deployWorkflow.on({
     workflowRun: {
-      workflows: ["review", "auto-approve"],
+      workflows: ['review', 'auto-approve'],
       types: [
-        "completed"
+        'completed',
       ]
     }
   });
