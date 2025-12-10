@@ -1,7 +1,7 @@
 import { AwsCdkTypeScriptApp } from 'projen/lib/awscdk';
 import { UpgradeDependenciesSchedule } from 'projen/lib/javascript';
 import { createBuildTasks, createDeployTasks, createPublishTasks } from './projenrc/tasks/';
-import { customizeBuildWorkflow, createDeployWorkflow, createAutoApproveWorkflow, createPublishWorkflow, customizeReleaseWorkflow } from './projenrc/workflows';
+import { createDeployWorkflow, createAutoApproveWorkflow, createPublishWorkflow, customizeReleaseWorkflow } from './projenrc/workflows';
 
 // Root project that manages the entire multi-az-workshop monorepo
 const project = new AwsCdkTypeScriptApp({
@@ -108,7 +108,6 @@ const project = new AwsCdkTypeScriptApp({
 project.tasks.addEnvironment('PROJECT_NAME', project.name);
 
 // Create workflows using externalized modules
-customizeBuildWorkflow(project);
 createDeployWorkflow(project.github!);
 createAutoApproveWorkflow(project.github!);
 createPublishWorkflow(project.github!);
