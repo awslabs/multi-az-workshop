@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   release:
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     outputs:
@@ -62,7 +62,7 @@ jobs:
   release_github:
     name: Publish to GitHub Releases
     needs: release
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     if: needs.release.outputs.tag_exists != 'true' && needs.release.outputs.latest_commit == github.sha

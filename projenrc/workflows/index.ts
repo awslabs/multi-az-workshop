@@ -3,6 +3,7 @@
  * Exports all workflow creation functions
  */
 
+export { createBuildWorkflow } from './build-workflow';
 export { createDeployWorkflow } from './deploy-workflow';
 export { createAutoApproveWorkflow, AUTHORIZED_APPROVERS } from './auto-approve-workflow';
 export { createPublishWorkflow } from './publish-workflow';
