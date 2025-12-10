@@ -155,7 +155,7 @@ export function createDeployWorkflow(github: GitHub): void {
       },
       {
         name: 'Install dependencies',
-        run: 'npm ci',
+        run: 'yarn install --check-files --frozen-lockfile',
       },
       {
         name: 'Configure AWS credentials',
