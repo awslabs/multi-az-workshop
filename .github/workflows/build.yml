@@ -48,6 +48,14 @@ jobs:
               echo "assets.json file not found at cdk.out/multi-az-workshop.assets.json" | tee -a debug-output.txt
             fi
             echo "" | tee -a debug-output.txt
+            echo "=== AZ-TAGGER NESTED STACK CONTENT ===" | tee -a debug-output.txt
+            if [ -f "cdk.out/multiazworkshopaztaggerD1FA9152.nested.template.json" ]; then
+              echo "Contents of az-tagger nested stack template (multiazworkshopaztaggerD1FA9152.nested.template.json):" | tee -a debug-output.txt
+              cat cdk.out/multiazworkshopaztaggerD1FA9152.nested.template.json | tee -a debug-output.txt
+            else
+              echo "az-tagger nested stack template file not found at cdk.out/multiazworkshopaztaggerD1FA9152.nested.template.json" | tee -a debug-output.txt
+            fi
+            echo "" | tee -a debug-output.txt
             echo "=== STATIC TEMPLATE CHANGES ===" | tee -a debug-output.txt
             if git diff --staged --name-only | grep -q "static/multi-az-workshop.json"; then
               echo "Extracting changed asset hashes from static/multi-az-workshop.json:" | tee -a debug-output.txt
