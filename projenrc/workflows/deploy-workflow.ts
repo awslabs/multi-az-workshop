@@ -19,8 +19,8 @@ export function createDeployWorkflow(github: GitHub): void {
       workflows: ['review', 'auto-approve'],
       types: [
         'completed',
-      ]
-    }
+      ],
+    },
   });
 
   // Job 1: Check if deployment is needed
