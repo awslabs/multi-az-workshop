@@ -1,0 +1,406 @@
+[2025-12-10T04:02:33.118Z] CDK Asset Hash Debugging Utility
+[2025-12-10T04:02:33.129Z] ================================
+[2025-12-10T04:02:33.130Z] === ENVIRONMENT INFORMATION ===
+[2025-12-10T04:02:33.131Z] Node.js version: v24.4.1
+[2025-12-10T04:02:33.433Z] NPM version: 11.5.2
+[2025-12-10T04:02:34.754Z] CDK version: 2.1033.0 (build 1ec3310)
+[2025-12-10T04:02:34.754Z] Platform: darwin
+[2025-12-10T04:02:34.755Z] Architecture: arm64
+[2025-12-10T04:02:34.755Z] Working directory: /Users/mhaken/source/multi-az-workshop
+[2025-12-10T04:02:34.755Z] Relevant environment variables:
+[2025-12-10T04:02:34.756Z]   CI: undefined
+[2025-12-10T04:02:34.756Z]   NODE_ENV: undefined
+[2025-12-10T04:02:34.756Z]   CDK_DEFAULT_ACCOUNT: undefined
+[2025-12-10T04:02:34.757Z]   CDK_DEFAULT_REGION: undefined
+[2025-12-10T04:02:34.757Z]   AWS_REGION: undefined
+[2025-12-10T04:02:34.758Z]   AWS_DEFAULT_REGION: undefined
+[2025-12-10T04:02:34.758Z]   GITHUB_ACTIONS: undefined
+[2025-12-10T04:02:34.758Z]   RUNNER_OS: undefined
+[2025-12-10T04:02:34.759Z] 
+=== GIT REPOSITORY INFORMATION ===
+[2025-12-10T04:02:34.803Z] Current branch: feature/cdk-typescript-conversion
+[2025-12-10T04:02:34.842Z] Current commit: 8418de83ec6c95d20e1ffe4ab4b0bad001338909
+[2025-12-10T04:02:34.883Z] Short commit: 8418de8
+[2025-12-10T04:02:34.929Z] Commit message: improve: use CDK asset manifest to properly locate changed asset files
+
+- Use multi-az-workshop.assets.json to map asset hashes to source files
+- This will provide accurate file content comparison for debugging
+- Should help identify the exact differences causing asset hash mutations
+[2025-12-10T04:02:35.015Z] Commit author: Michael Haken
+[2025-12-10T04:02:35.016Z] Commit date: 2025-12-09 22:28:44 -0500
+[2025-12-10T04:02:35.066Z] Working directory: has uncommitted changes
+[2025-12-10T04:02:35.116Z] Modified files: .github/workflows/build.yml, projenrc/workflows/build-workflow.ts, src/cdk/multi-az-workshop.ts
+[2025-12-10T04:02:35.160Z] 
+=== GIT BLOB SHA ANALYSIS ===
+[2025-12-10T04:02:35.200Z] Static template blob SHA: 52fd9509d46c393dbd717e6732a9fb107f12e074
+[2025-12-10T04:02:35.243Z] Committed static template blob SHA: 52fd9509d46c393dbd717e6732a9fb107f12e074
+[2025-12-10T04:02:35.243Z] Static template matches committed: YES
+[2025-12-10T04:02:35.298Z] Generated template blob SHA: 52fd9509d46c393dbd717e6732a9fb107f12e074
+[2025-12-10T04:02:35.336Z] Generated vs Static blob SHA match: YES
+[2025-12-10T04:02:35.376Z] multi-az-workshop.assets.json blob SHA: b7460deedb104af4cc9048b7b19230499567eb19
+[2025-12-10T04:02:35.417Z] manifest.json blob SHA: 85f4b6b90c2c36992f615adba5111b96a0bb36bc
+[2025-12-10T04:02:35.418Z] 
+=== COMMIT HISTORY FOR STATIC TEMPLATE ===
+[2025-12-10T04:02:35.562Z] Recent commits affecting static template:
+[2025-12-10T04:02:35.563Z]   edf36a7 debug: enhance build workflow to capture detailed asset hash differences
+[2025-12-10T04:02:35.563Z]   1bd8019 fix: updated build
+[2025-12-10T04:02:35.563Z]   33da424 fix: updated unit tests
+[2025-12-10T04:02:35.563Z]   f073b4e fix: modified projen
+[2025-12-10T04:02:35.564Z]   db6d745 fix: updated working version
+[2025-12-10T04:02:35.606Z]   Commit edf36a7 - blob SHA: 52fd9509d46c393dbd717e6732a9fb107f12e074
+[2025-12-10T04:02:35.646Z]   Commit 1bd8019 - blob SHA: c8d37a9caf82b453f50288d3f3f6228ace8afbb6
+[2025-12-10T04:02:35.690Z]   Commit 33da424 - blob SHA: 0fd29e9ad9819a8bcd8850ee228843f687202ac8
+[2025-12-10T04:02:35.691Z] 
+=== FILE SYSTEM INFORMATION ===
+[2025-12-10T04:02:35.691Z] CDK output directory contains 60 files
+[2025-12-10T04:02:35.692Z]   multi-az-workshop.template.json: 2025-12-10T02:49:08.880Z (333140 bytes)
+[2025-12-10T04:02:35.692Z]   multi-az-workshop.assets.json: 2025-12-10T02:45:20.794Z (28402 bytes)
+[2025-12-10T04:02:35.692Z]   manifest.json: 2025-12-10T02:45:21.449Z (454367 bytes)
+[2025-12-10T04:02:35.693Z] Temp directory tmp: modified 2025-12-09T03:51:05.086Z
+[2025-12-10T04:02:35.693Z] 
+=== ASSET MANIFEST ANALYSIS ===
+[2025-12-10T04:02:35.694Z] CDK version in manifest: 48.0.0
+[2025-12-10T04:02:35.694Z] Total assets: 39
+[2025-12-10T04:02:35.694Z] 
+Asset details:
+[2025-12-10T04:02:35.695Z]   Hash: a81ce5a783f553abd9699d414578781b3c49b551368e8969336d013b06a79531
+[2025-12-10T04:02:35.695Z]     Display Name: az-tagger/azTagger/Code
+[2025-12-10T04:02:35.695Z]     Source Path: asset.a81ce5a783f553abd9699d414578781b3c49b551368e8969336d013b06a79531
+[2025-12-10T04:02:35.695Z]     Packaging: zip
+[2025-12-10T04:02:35.696Z]     File Size: 96 bytes
+[2025-12-10T04:02:35.696Z]     Modified: 2025-11-25T05:11:38.644Z
+[2025-12-10T04:02:35.696Z]     Actual SHA256: Error: EISDIR: illegal operation on a directory, read
+[2025-12-10T04:02:35.697Z]     Hash Match: NO
+[2025-12-10T04:02:35.697Z]   Hash: 0d9204f0a0ed2a6d3318bfb81033822cafe2da7700f71aa602a8f17fe17f65b9
+[2025-12-10T04:02:35.697Z]     Display Name: ecr-uploader/HelmLayer/Code
+[2025-12-10T04:02:35.697Z]     Source Path: asset.0d9204f0a0ed2a6d3318bfb81033822cafe2da7700f71aa602a8f17fe17f65b9.zip
+[2025-12-10T04:02:35.697Z]     Packaging: file
+[2025-12-10T04:02:35.698Z]     File Size: 15714797 bytes
+[2025-12-10T04:02:35.698Z]     Modified: 2025-12-10T02:45:19.567Z
+[2025-12-10T04:02:35.710Z]     Actual SHA256: aac1a1c575ef09770c4a2ab29f10b3c52fe16d34d3b60d9bd6485e8a6eddaad4
+[2025-12-10T04:02:35.711Z]     Hash Match: NO
+[2025-12-10T04:02:35.711Z]   Hash: 77675805670406a68c1baf43392c7e699bee435fe9b667ef4f9f1134b8c41d0e
+[2025-12-10T04:02:35.711Z]     Display Name: eks/Cluster/KubectlV31Layer/Code
+[2025-12-10T04:02:35.712Z]     Source Path: asset.77675805670406a68c1baf43392c7e699bee435fe9b667ef4f9f1134b8c41d0e.zip
+[2025-12-10T04:02:35.712Z]     Packaging: file
+[2025-12-10T04:02:35.712Z]     File Size: 34517080 bytes
+[2025-12-10T04:02:35.713Z]     Modified: 2025-11-25T05:12:37.724Z
+[2025-12-10T04:02:35.739Z]     Actual SHA256: 368cde1c70458c9a801a63cc292fab63acd01d4e4dab5c0c8d779dee0b7afcd1
+[2025-12-10T04:02:35.741Z]     Hash Match: NO
+[2025-12-10T04:02:35.742Z]   Hash: 93d96d34e0d3cd20eb082652b91012b131bdc34fcf2bc16eb4170e04772fddb1
+[2025-12-10T04:02:35.742Z]     Display Name: eks/@aws-cdk--aws-eks.ClusterResourceProvider/NodeProxyAgentLayer/Code
+[2025-12-10T04:02:35.743Z]     Source Path: asset.93d96d34e0d3cd20eb082652b91012b131bdc34fcf2bc16eb4170e04772fddb1.zip
+[2025-12-10T04:02:35.743Z]     Packaging: file
+[2025-12-10T04:02:35.743Z]     File Size: 1648381 bytes
+[2025-12-10T04:02:35.744Z]     Modified: 2025-11-25T05:12:37.752Z
+[2025-12-10T04:02:35.747Z]     Actual SHA256: 61b9ac5570c8c2e0ccd02bde4bae997f3316df00cda69f54b124981feaf8fc7d
+[2025-12-10T04:02:35.747Z]     Hash Match: NO
+[2025-12-10T04:02:35.748Z]   Hash: 92bab4bb93b28b8ba825ee123eb50042a179a1215099399dcc583d0daa453522
+[2025-12-10T04:02:35.748Z]     Display Name: eks/@aws-cdk--aws-eks.ClusterResourceProvider/OnEventHandler/Code
+[2025-12-10T04:02:35.749Z]     Source Path: asset.92bab4bb93b28b8ba825ee123eb50042a179a1215099399dcc583d0daa453522
+[2025-12-10T04:02:35.749Z]     Packaging: zip
+[2025-12-10T04:02:35.750Z]     File Size: 96 bytes
+[2025-12-10T04:02:35.750Z]     Modified: 2025-12-09T21:54:53.068Z
+[2025-12-10T04:02:35.751Z]     Actual SHA256: Error: EISDIR: illegal operation on a directory, read
+[2025-12-10T04:02:35.751Z]     Hash Match: NO
+[2025-12-10T04:02:35.751Z]   Hash: bdc104ed9cab1b5b6421713c8155f0b753380595356f710400609664d3635eca
+[2025-12-10T04:02:35.752Z]     Display Name: eks/@aws-cdk--aws-eks.ClusterResourceProvider/Provider/framework-onEvent/Code
+[2025-12-10T04:02:35.752Z]     Source Path: asset.bdc104ed9cab1b5b6421713c8155f0b753380595356f710400609664d3635eca
+[2025-12-10T04:02:35.753Z]     Packaging: zip
+[2025-12-10T04:02:35.753Z]     File Size: 224 bytes
+[2025-12-10T04:02:35.754Z]     Modified: 2025-11-25T05:12:37.799Z
+[2025-12-10T04:02:35.755Z]     Actual SHA256: Error: EISDIR: illegal operation on a directory, read
+[2025-12-10T04:02:35.755Z]     Hash Match: NO
+[2025-12-10T04:02:35.756Z]   Hash: d671460286b61f85906debbcec5341ea4edad148fbc432b0663593611866728e
+[2025-12-10T04:02:35.756Z]     Display Name: eks/@aws-cdk--aws-eks.KubectlProvider/Handler/Code
+[2025-12-10T04:02:35.757Z]     Source Path: asset.d671460286b61f85906debbcec5341ea4edad148fbc432b0663593611866728e
+[2025-12-10T04:02:35.757Z]     Packaging: zip
+[2025-12-10T04:02:35.758Z]     File Size: 224 bytes
+[2025-12-10T04:02:35.759Z]     Modified: 2025-12-09T04:30:57.889Z
+[2025-12-10T04:02:35.760Z]     Actual SHA256: Error: EISDIR: illegal operation on a directory, read
+[2025-12-10T04:02:35.761Z]     Hash Match: NO
+[2025-12-10T04:02:35.761Z]   Hash: c49d356cac773d491c5f7ac148995a1181498a8e289429f8612a7f7e3814f535
+[2025-12-10T04:02:35.762Z]     Display Name: eks/@aws-cdk--aws-eks.KubectlProvider/AwsCliLayer/Code
+[2025-12-10T04:02:35.763Z]     Source Path: asset.c49d356cac773d491c5f7ac148995a1181498a8e289429f8612a7f7e3814f535.zip
+[2025-12-10T04:02:35.763Z]     Packaging: file
+[2025-12-10T04:02:35.764Z]     File Size: 20070226 bytes
+[2025-12-10T04:02:35.764Z]     Modified: 2025-12-09T04:30:57.954Z
+[2025-12-10T04:02:35.784Z]     Actual SHA256: abfc56bd6dd08da4187fcfe414cc667082e772f62b09cd0702c37ebeea412945
+[2025-12-10T04:02:35.785Z]     Hash Match: NO
+[2025-12-10T04:02:35.786Z]   Hash: 3a349a2ec1c77a1061010e23fe4594edd7f286de74f7a6adfccb0b0f927922a7
+[2025-12-10T04:02:35.786Z]     Display Name: multi-az-observability-/instrumented-service-/Canary/CanaryFunction/MonitoringLayer/Code
+[2025-12-10T04:02:35.787Z]     Source Path: asset.3a349a2ec1c77a1061010e23fe4594edd7f286de74f7a6adfccb0b0f927922a7.zip
+[2025-12-10T04:02:35.788Z]     Packaging: file
+[2025-12-10T04:02:35.788Z]     File Size: 19696202 bytes
+[2025-12-10T04:02:35.789Z]     Modified: 2025-11-25T05:12:38.025Z
+[2025-12-10T04:02:35.804Z]     Actual SHA256: 21a652e5a40cf1abe3198e70a4dc318fa930a246d69124ae529a6a9a36692523
+[2025-12-10T04:02:35.805Z]     Hash Match: NO
+[2025-12-10T04:02:35.806Z]   Hash: 8f135885fdaead773f171b9178228c358bd02907f3c90d304e1c622e3cf68eed
+[2025-12-10T04:02:35.806Z]     Display Name: multi-az-observability-/instrumented-service-/Canary/CanaryFunction/canary/Code
+[2025-12-10T04:02:35.807Z]     Source Path: asset.8f135885fdaead773f171b9178228c358bd02907f3c90d304e1c622e3cf68eed.zip
+[2025-12-10T04:02:35.808Z]     Packaging: file
+[2025-12-10T04:02:35.808Z]     File Size: 1063119 bytes
+[2025-12-10T04:02:35.809Z]     Modified: 2025-11-25T05:12:38.033Z
+[2025-12-10T04:02:35.811Z]     Actual SHA256: 8b4de2697dc75c5bb7667130b6356ca06d5c13eed94022588d0a2d25204b3e97
+[2025-12-10T04:02:35.812Z]     Hash Match: NO
+[2025-12-10T04:02:35.812Z]   Hash: 7023f9131f354766edc6775eed1d584eec086894bd0b4cb088793a77153a25ad
+[2025-12-10T04:02:35.813Z]     Display Name: az-tagger Nested Stack Template
+[2025-12-10T04:02:35.813Z]     Source Path: multiazworkshopaztaggerD1FA9152.nested.template.json
+[2025-12-10T04:02:35.814Z]     Packaging: file
+[2025-12-10T04:02:35.814Z]     File Size: 20811 bytes
+[2025-12-10T04:02:35.814Z]     Modified: 2025-12-10T02:49:08.869Z
+[2025-12-10T04:02:35.816Z]     Actual SHA256: 144170bb71d7ec309ba7b67b3ffb58b3683e73e94c4bf5011764b5236b61794a
+[2025-12-10T04:02:35.816Z]     Hash Match: NO
+[2025-12-10T04:02:35.817Z]   Hash: 10825c9cb02097bd6fdaef79404066e29664503a292846ab8481a4bf819e4d00
+[2025-12-10T04:02:35.817Z]     Display Name: network Nested Stack Template
+[2025-12-10T04:02:35.818Z]     Source Path: multiazworkshopnetworkFBEB94A3.nested.template.json
+[2025-12-10T04:02:35.818Z]     Packaging: file
+[2025-12-10T04:02:35.819Z]     File Size: 56266 bytes
+[2025-12-10T04:02:35.819Z]     Modified: 2025-12-10T02:45:20.557Z
+[2025-12-10T04:02:35.820Z]     Actual SHA256: eb9cf25faf2522b04d87293b57ac6257cf00b41afc80e6473a3d5d5a34650100
+[2025-12-10T04:02:35.821Z]     Hash Match: NO
+[2025-12-10T04:02:35.821Z]   Hash: 2fd0fe2a22283b09b8e059ee7907f58551753e09d147b94e4e36173ea6bd678a
+[2025-12-10T04:02:35.822Z]     Display Name: database Nested Stack Template
+[2025-12-10T04:02:35.822Z]     Source Path: multiazworkshopdatabase0F201493.nested.template.json
+[2025-12-10T04:02:35.823Z]     Packaging: file
+[2025-12-10T04:02:35.823Z]     File Size: 10358 bytes
+[2025-12-10T04:02:35.824Z]     Modified: 2025-12-10T02:45:20.561Z
+[2025-12-10T04:02:35.825Z]     Actual SHA256: 3e3bebb19a364a9d6a93a6a9b8528ec909dcb8f37d45dc45b35a91b6ec16a46b
+[2025-12-10T04:02:35.826Z]     Hash Match: NO
+[2025-12-10T04:02:35.826Z]   Hash: cf17d9fc9b9120eb0f9e6c4944dc59e3fb148267cd19acf4dce3617fc87c25b4
+[2025-12-10T04:02:35.827Z]     Display Name: ecr-uploader Nested Stack Template
+[2025-12-10T04:02:35.827Z]     Source Path: multiazworkshopecruploader1AA6410E.nested.template.json
+[2025-12-10T04:02:35.828Z]     Packaging: file
+[2025-12-10T04:02:35.828Z]     File Size: 22304 bytes
+[2025-12-10T04:02:35.829Z]     Modified: 2025-12-10T02:49:08.873Z
+[2025-12-10T04:02:35.830Z]     Actual SHA256: 23f87bc7a51a76e48bb0b7a01f01f9caffabf69b5b8ebb65dbe35fd5e3141531
+[2025-12-10T04:02:35.830Z]     Hash Match: NO
+[2025-12-10T04:02:35.831Z]   Hash: 3b5cbf37bd4d39b27b5b502d1cb765c2384101b830451bb9b1146abded8e818c
+[2025-12-10T04:02:35.831Z]     Display Name: ec2 Nested Stack Template
+[2025-12-10T04:02:35.832Z]     Source Path: multiazworkshopec26A5BF54E.nested.template.json
+[2025-12-10T04:02:35.832Z]     Packaging: file
+[2025-12-10T04:02:35.833Z]     File Size: 23082 bytes
+[2025-12-10T04:02:35.834Z]     Modified: 2025-12-10T02:45:20.570Z
+[2025-12-10T04:02:35.835Z]     Actual SHA256: 99e6a5c31358467081390adb65a8ac48d5d1fd713c838c3122b6c998a8936ece
+[2025-12-10T04:02:35.835Z]     Hash Match: NO
+[2025-12-10T04:02:35.836Z]   Hash: 0c10678416b335c4fa5b3d2519672a92e726d65cdb7620400146654387571477
+[2025-12-10T04:02:35.836Z]     Display Name: eks/@aws-cdk--aws-eks.ClusterResourceProvider Nested Stack Template
+[2025-12-10T04:02:35.837Z]     Source Path: multiazworkshopeksawscdkawseksClusterResourceProvider63E9D719.nested.template.json
+[2025-12-10T04:02:35.837Z]     Packaging: file
+[2025-12-10T04:02:35.838Z]     File Size: 47355 bytes
+[2025-12-10T04:02:35.838Z]     Modified: 2025-12-10T02:49:08.811Z
+[2025-12-10T04:02:35.839Z]     Actual SHA256: 590f0ef45c397b493642d384f9b0961f6f0c2e08561d8ac8816e8d5a80095fb7
+[2025-12-10T04:02:35.840Z]     Hash Match: NO
+[2025-12-10T04:02:35.841Z]   Hash: 81be94c68b397abb62cf803a4eeba8e4d66384db114eb65f9c1e3d9a7d3e4feb
+[2025-12-10T04:02:35.841Z]     Display Name: eks/@aws-cdk--aws-eks.KubectlProvider Nested Stack Template
+[2025-12-10T04:02:35.842Z]     Source Path: multiazworkshopeksawscdkawseksKubectlProviderDD49E120.nested.template.json
+[2025-12-10T04:02:35.843Z]     Packaging: file
+[2025-12-10T04:02:35.843Z]     File Size: 22547 bytes
+[2025-12-10T04:02:35.843Z]     Modified: 2025-12-10T02:49:08.812Z
+[2025-12-10T04:02:35.845Z]     Actual SHA256: 04fc79a939ac42084e3bec2de85946ad5ca15f8c5c7bcbde1cb036e4ee4529be
+[2025-12-10T04:02:35.845Z]     Hash Match: NO
+[2025-12-10T04:02:35.846Z]   Hash: bd286eaa292830fab0f090ffb74e07a9990ac983004b8314335e4cf72974051c
+[2025-12-10T04:02:35.846Z]     Display Name: eks Nested Stack Template
+[2025-12-10T04:02:35.847Z]     Source Path: multiazworkshopeksA69B46B9.nested.template.json
+[2025-12-10T04:02:35.848Z]     Packaging: file
+[2025-12-10T04:02:35.848Z]     File Size: 174264 bytes
+[2025-12-10T04:02:35.849Z]     Modified: 2025-12-10T02:49:08.876Z
+[2025-12-10T04:02:35.850Z]     Actual SHA256: bdf73d81fa4e0980a8b36b789023515f2d0795468efddc7bf3b775f9225a64f0
+[2025-12-10T04:02:35.851Z]     Hash Match: NO
+[2025-12-10T04:02:35.851Z]   Hash: bb4dccf81680ba75a43517a443d6d25165f7e45fa1e42b5a9f04cf94a6c23aaa
+[2025-12-10T04:02:35.852Z]     Display Name: multi-az-observability-/instrumented-service-/Canary Nested Stack Template
+[2025-12-10T04:02:35.852Z]     Source Path: multiazworkshopmultiazobservabilityinstrumentedserviceCanaryEDCAED9C.nested.template.json
+[2025-12-10T04:02:35.853Z]     Packaging: file
+[2025-12-10T04:02:35.854Z]     File Size: 24650 bytes
+[2025-12-10T04:02:35.854Z]     Modified: 2025-12-10T02:49:08.853Z
+[2025-12-10T04:02:35.855Z]     Actual SHA256: b0bde9ca2e0f898930c4dc17eed8758ddd6f983a87708b225861c42c7dcf70b2
+[2025-12-10T04:02:35.856Z]     Hash Match: NO
+[2025-12-10T04:02:35.856Z]   Hash: 82c57b2a2ab70dbd00e8b290157c4eb738f2aeaafcc9117e5c3fcfb82c0f539a
+[2025-12-10T04:02:35.857Z]     Display Name: multi-az-observability-/instrumented-service-/SigninCanaryTest Nested Stack Template
+[2025-12-10T04:02:35.857Z]     Source Path: multiazworkshopmultiazobservabilityinstrumentedserviceSigninCanaryTestB21A664D.nested.template.json
+[2025-12-10T04:02:35.858Z]     Packaging: file
+[2025-12-10T04:02:35.859Z]     File Size: 13903 bytes
+[2025-12-10T04:02:35.859Z]     Modified: 2025-12-10T02:45:20.600Z
+[2025-12-10T04:02:35.860Z]     Actual SHA256: 187d73bac8628eda3c6854e7b7bde7edda19d4f87015480a289887e69028e0b9
+[2025-12-10T04:02:35.861Z]     Hash Match: NO
+[2025-12-10T04:02:35.861Z]   Hash: 07b0e8cc5ced4a1100a4cd085f7746a5176b68218ed1ef03686c91c10b95220c
+[2025-12-10T04:02:35.862Z]     Display Name: multi-az-observability-/instrumented-service-/PayCanaryTest Nested Stack Template
+[2025-12-10T04:02:35.862Z]     Source Path: multiazworkshopmultiazobservabilityinstrumentedservicePayCanaryTest68587490.nested.template.json
+[2025-12-10T04:02:35.863Z]     Packaging: file
+[2025-12-10T04:02:35.863Z]     File Size: 13747 bytes
+[2025-12-10T04:02:35.863Z]     Modified: 2025-12-10T02:45:20.603Z
+[2025-12-10T04:02:35.865Z]     Actual SHA256: 3035e6ba0c8a45570ba50857a2e0d1352dcfcf42b43bf717ab6141a783e643aa
+[2025-12-10T04:02:35.866Z]     Hash Match: NO
+[2025-12-10T04:02:35.866Z]   Hash: febfea66dc90ccb85eda55e03d63122d042d9b21d451b00d595477af5f823f0e
+[2025-12-10T04:02:35.866Z]     Display Name: multi-az-observability-/instrumented-service-/RideCanaryTest Nested Stack Template
+[2025-12-10T04:02:35.867Z]     Source Path: multiazworkshopmultiazobservabilityinstrumentedserviceRideCanaryTest53E698A3.nested.template.json
+[2025-12-10T04:02:35.867Z]     Packaging: file
+[2025-12-10T04:02:35.868Z]     File Size: 13799 bytes
+[2025-12-10T04:02:35.868Z]     Modified: 2025-12-10T02:45:20.606Z
+[2025-12-10T04:02:35.869Z]     Actual SHA256: 9beae231e5a4307b7d0e6045721c8b2a6689567852c9f65e2868d141ec027d40
+[2025-12-10T04:02:35.869Z]     Hash Match: NO
+[2025-12-10T04:02:35.870Z]   Hash: 68a804a9a8deab3e9619eb626af243fa550088326fcb53ba069abca06ac53c72
+[2025-12-10T04:02:35.870Z]     Display Name: multi-az-observability-/instrumented-service-/HomeCanaryTest Nested Stack Template
+[2025-12-10T04:02:35.871Z]     Source Path: multiazworkshopmultiazobservabilityinstrumentedserviceHomeCanaryTestECE366CC.nested.template.json
+[2025-12-10T04:02:35.871Z]     Packaging: file
+[2025-12-10T04:02:35.872Z]     File Size: 13799 bytes
+[2025-12-10T04:02:35.872Z]     Modified: 2025-12-10T02:45:20.609Z
+[2025-12-10T04:02:35.873Z]     Actual SHA256: d364429f2ff0a7d58d74c5a5e9b1b181511eb2e53b9e54266877f4ccd412537b
+[2025-12-10T04:02:35.873Z]     Hash Match: NO
+[2025-12-10T04:02:35.874Z]   Hash: 2188ef0182725a2b19c29dde6215828bf78a74f18998a4f8463178075efdad50
+[2025-12-10T04:02:35.874Z]     Display Name: multi-az-observability-/instrumented-service-/SigninOperationAlarmsAndRulesNestedStack Nested Stack Template
+[2025-12-10T04:02:35.875Z]     Source Path: multiazworkshopmultiazobservabilityinstrumentedserviceSigninOperationAlarmsAndRulesNestedStack3D43D103.nested.template.json
+[2025-12-10T04:02:35.875Z]     Packaging: file
+[2025-12-10T04:02:35.876Z]     File Size: 141966 bytes
+[2025-12-10T04:02:35.876Z]     Modified: 2025-12-10T02:45:20.622Z
+[2025-12-10T04:02:35.878Z]     Actual SHA256: 05aaf1764f6e815fe391073e6d53040358b8906efecc6e6c5ce1d70d4e3dedbb
+[2025-12-10T04:02:35.878Z]     Hash Match: NO
+[2025-12-10T04:02:35.878Z]   Hash: 61a19003b146c014024e0bba5855ee2e9813c91b362df0eee85e57a8f955dec3
+[2025-12-10T04:02:35.879Z]     Display Name: multi-az-observability-/instrumented-service-/PayOperationAlarmsAndRulesNestedStack Nested Stack Template
+[2025-12-10T04:02:35.879Z]     Source Path: multiazworkshopmultiazobservabilityinstrumentedservicePayOperationAlarmsAndRulesNestedStack85BCA7DC.nested.template.json
+[2025-12-10T04:02:35.880Z]     Packaging: file
+[2025-12-10T04:02:35.880Z]     File Size: 139188 bytes
+[2025-12-10T04:02:35.881Z]     Modified: 2025-12-10T02:45:20.636Z
+[2025-12-10T04:02:35.882Z]     Actual SHA256: 726c8f3a4eeb63d0a570bfe57f9c818a42b10fe24478749cbb919cbf1856d859
+[2025-12-10T04:02:35.882Z]     Hash Match: NO
+[2025-12-10T04:02:35.883Z]   Hash: 7056fd0452591e5e70cf1b4729ddea23154743243ee0bc19d7f607361b6c4c28
+[2025-12-10T04:02:35.883Z]     Display Name: multi-az-observability-/instrumented-service-/RideOperationAlarmsAndRulesNestedStack Nested Stack Template
+[2025-12-10T04:02:35.884Z]     Source Path: multiazworkshopmultiazobservabilityinstrumentedserviceRideOperationAlarmsAndRulesNestedStackE9F01471.nested.template.json
+[2025-12-10T04:02:35.884Z]     Packaging: file
+[2025-12-10T04:02:35.885Z]     File Size: 140114 bytes
+[2025-12-10T04:02:35.885Z]     Modified: 2025-12-10T02:45:20.651Z
+[2025-12-10T04:02:35.886Z]     Actual SHA256: 5cf8a9aa1a3a3948636af5f46d46c05bb7f1af39a7fbf36495ec5ef22c20e4ea
+[2025-12-10T04:02:35.887Z]     Hash Match: NO
+[2025-12-10T04:02:35.887Z]   Hash: 619a4bd02f285b72109511f30546781bc4c5e4393df312378b5898afeca3c48c
+[2025-12-10T04:02:35.888Z]     Display Name: multi-az-observability-/instrumented-service-/HomeOperationAlarmsAndRulesNestedStack Nested Stack Template
+[2025-12-10T04:02:35.888Z]     Source Path: multiazworkshopmultiazobservabilityinstrumentedserviceHomeOperationAlarmsAndRulesNestedStack1834F565.nested.template.json
+[2025-12-10T04:02:35.889Z]     Packaging: file
+[2025-12-10T04:02:35.889Z]     File Size: 140114 bytes
+[2025-12-10T04:02:35.889Z]     Modified: 2025-12-10T02:45:20.666Z
+[2025-12-10T04:02:35.891Z]     Actual SHA256: 94bfa3d889000d53a27b6301ab52a672c94be994af7d4ca11238bcb992ba340b
+[2025-12-10T04:02:35.891Z]     Hash Match: NO
+[2025-12-10T04:02:35.892Z]   Hash: ca3d04b7f7cfef941f8076cba8417483d70ea81f61628a72d3411eafd55bd994
+[2025-12-10T04:02:35.892Z]     Display Name: multi-az-observability-/instrumented-service-/ServiceAlarmsNestedStack Nested Stack Template
+[2025-12-10T04:02:35.893Z]     Source Path: multiazworkshopmultiazobservabilityinstrumentedserviceServiceAlarmsNestedStack91001D62.nested.template.json
+[2025-12-10T04:02:35.893Z]     Packaging: file
+[2025-12-10T04:02:35.893Z]     File Size: 35236 bytes
+[2025-12-10T04:02:35.894Z]     Modified: 2025-12-10T02:45:20.672Z
+[2025-12-10T04:02:35.895Z]     Actual SHA256: 2fead339894a14dfbbc5e539fb4f8909a0db6e1e2c67900df7c3ff50e169b8d1
+[2025-12-10T04:02:35.896Z]     Hash Match: NO
+[2025-12-10T04:02:35.896Z]   Hash: 2fdb8c728dbe324f9c5b7ef5872e06a1bcd6d9542217b3aa1e58844a7d75c5c2
+[2025-12-10T04:02:35.896Z]     Display Name: multi-az-observability-/instrumented-service-/SigninDashboard Nested Stack Template
+[2025-12-10T04:02:35.897Z]     Source Path: multiazworkshopmultiazobservabilityinstrumentedserviceSigninDashboard429A889D.nested.template.json
+[2025-12-10T04:02:35.897Z]     Packaging: file
+[2025-12-10T04:02:35.898Z]     File Size: 75839 bytes
+[2025-12-10T04:02:35.898Z]     Modified: 2025-12-10T02:45:20.682Z
+[2025-12-10T04:02:35.900Z]     Actual SHA256: 25d98c30b0d328eabdcf64bfb6cd1d161a7cd70ee51504831bc424797fc6d496
+[2025-12-10T04:02:35.900Z]     Hash Match: NO
+[2025-12-10T04:02:35.901Z]   Hash: 0e51100406a7aa102983cdcb9df40e1d234f94eb5fc354fc9714879f6daff863
+[2025-12-10T04:02:35.901Z]     Display Name: multi-az-observability-/instrumented-service-/PayDashboard Nested Stack Template
+[2025-12-10T04:02:35.901Z]     Source Path: multiazworkshopmultiazobservabilityinstrumentedservicePayDashboard9E27563B.nested.template.json
+[2025-12-10T04:02:35.902Z]     Packaging: file
+[2025-12-10T04:02:35.902Z]     File Size: 75167 bytes
+[2025-12-10T04:02:35.902Z]     Modified: 2025-12-10T02:45:20.692Z
+[2025-12-10T04:02:35.904Z]     Actual SHA256: 7861aa3fde9646454a6ea0b5a077f77d12af889a050fa49b684e4f0d1d79c3f6
+[2025-12-10T04:02:35.904Z]     Hash Match: NO
+[2025-12-10T04:02:35.904Z]   Hash: d464386aaabc3aa452d2815ccc86ebc599490a9da9c2f25b64e53f3714511070
+[2025-12-10T04:02:35.905Z]     Display Name: multi-az-observability-/instrumented-service-/RideDashboard Nested Stack Template
+[2025-12-10T04:02:35.905Z]     Source Path: multiazworkshopmultiazobservabilityinstrumentedserviceRideDashboardD127752B.nested.template.json
+[2025-12-10T04:02:35.906Z]     Packaging: file
+[2025-12-10T04:02:35.906Z]     File Size: 75391 bytes
+[2025-12-10T04:02:35.907Z]     Modified: 2025-12-10T02:45:20.702Z
+[2025-12-10T04:02:35.908Z]     Actual SHA256: 15772f035c3a3df9bf24cf15dc29d5041249f757b38622c39184fceae7df12e0
+[2025-12-10T04:02:35.909Z]     Hash Match: NO
+[2025-12-10T04:02:35.909Z]   Hash: dcbec4d18f4cdf85acb31dec13139051008ae7d6de5872f85e10057cf80f0670
+[2025-12-10T04:02:35.910Z]     Display Name: multi-az-observability-/instrumented-service-/HomeDashboard Nested Stack Template
+[2025-12-10T04:02:35.910Z]     Source Path: multiazworkshopmultiazobservabilityinstrumentedserviceHomeDashboard7FDA6AEF.nested.template.json
+[2025-12-10T04:02:35.910Z]     Packaging: file
+[2025-12-10T04:02:35.911Z]     File Size: 75391 bytes
+[2025-12-10T04:02:35.911Z]     Modified: 2025-12-10T02:45:20.711Z
+[2025-12-10T04:02:35.912Z]     Actual SHA256: f9f5b1a77bbd9b76065d393873713df4ad7389dcfcb2ace9d6f1ea744033ce83
+[2025-12-10T04:02:35.912Z]     Hash Match: NO
+[2025-12-10T04:02:35.912Z]   Hash: 8581bd872ccb271cc9fb448faf2cf73301b3a339d73f75319b79a6b34ce57f75
+[2025-12-10T04:02:35.912Z]     Display Name: multi-az-observability-/instrumented-service-/ServiceDashboard Nested Stack Template
+[2025-12-10T04:02:35.913Z]     Source Path: multiazworkshopmultiazobservabilityinstrumentedserviceServiceDashboardC8008980.nested.template.json
+[2025-12-10T04:02:35.913Z]     Packaging: file
+[2025-12-10T04:02:35.913Z]     File Size: 219546 bytes
+[2025-12-10T04:02:35.913Z]     Modified: 2025-12-10T02:45:20.735Z
+[2025-12-10T04:02:35.914Z]     Actual SHA256: 9a861231db65c7b46dca99c63f4ebeb33f36448be75ae8bfc7f2f229c97da483
+[2025-12-10T04:02:35.914Z]     Hash Match: NO
+[2025-12-10T04:02:35.915Z]   Hash: 56a1bfcaeb95bc8174bb13d833f03400ec6592e59c2f2d2e9f46d95a5ecc06dd
+[2025-12-10T04:02:35.915Z]     Display Name: multi-az-observability- Nested Stack Template
+[2025-12-10T04:02:35.916Z]     Source Path: multiazworkshopmultiazobservabilityFDA9DFFB.nested.template.json
+[2025-12-10T04:02:35.916Z]     Packaging: file
+[2025-12-10T04:02:35.916Z]     File Size: 168944 bytes
+[2025-12-10T04:02:35.916Z]     Modified: 2025-12-10T02:49:08.879Z
+[2025-12-10T04:02:35.917Z]     Actual SHA256: 3ce941acd737cdfa77093448c8bfb1d4e5b3a5b11b68fa293d93424cefec4e63
+[2025-12-10T04:02:35.917Z]     Hash Match: NO
+[2025-12-10T04:02:35.918Z]   Hash: 153b5e6dbc2657b386aefbeba5f5284d0adc82cc5003afde109bd375736391d6
+[2025-12-10T04:02:35.918Z]     Display Name: fault-injection Nested Stack Template
+[2025-12-10T04:02:35.918Z]     Source Path: multiazworkshopfaultinjection5D99EF95.nested.template.json
+[2025-12-10T04:02:35.918Z]     Packaging: file
+[2025-12-10T04:02:35.919Z]     File Size: 40311 bytes
+[2025-12-10T04:02:35.919Z]     Modified: 2025-12-10T02:45:20.753Z
+[2025-12-10T04:02:35.920Z]     Actual SHA256: 0954338e84459bc92bfa05fbe107116526983dd9c8046132034218dfe85fbeb8
+[2025-12-10T04:02:35.920Z]     Hash Match: NO
+[2025-12-10T04:02:35.920Z]   Hash: 86eab9f5a472c02085bf9eb318ab7a19ebdc9cad416d0464e28cb916128e24c6
+[2025-12-10T04:02:35.920Z]     Display Name: ssm-random-fault Nested Stack Template
+[2025-12-10T04:02:35.920Z]     Source Path: multiazworkshopssmrandomfault8D229582.nested.template.json
+[2025-12-10T04:02:35.921Z]     Packaging: file
+[2025-12-10T04:02:35.921Z]     File Size: 18204 bytes
+[2025-12-10T04:02:35.921Z]     Modified: 2025-12-10T02:45:20.756Z
+[2025-12-10T04:02:35.922Z]     Actual SHA256: fcb062c43a1e0ab4acfccecc83551b2bba86d726d55b3fc1a5b2e3b4d485dcfa
+[2025-12-10T04:02:35.922Z]     Hash Match: NO
+[2025-12-10T04:02:35.922Z]   Hash: c8a04afc8ae3ba87b5bbc08e0fa1af3aab6147b5d067ec13923ad61da68e68bd
+[2025-12-10T04:02:35.922Z]     Display Name: log-query- Nested Stack Template
+[2025-12-10T04:02:35.922Z]     Source Path: multiazworkshoplogqueryC112D85F.nested.template.json
+[2025-12-10T04:02:35.923Z]     Packaging: file
+[2025-12-10T04:02:35.923Z]     File Size: 46864 bytes
+[2025-12-10T04:02:35.923Z]     Modified: 2025-12-10T02:45:20.762Z
+[2025-12-10T04:02:35.924Z]     Actual SHA256: 6cc5f6e222a2f2f2ee13306af8c4d3099e3965dec4106f4643ab92c1fdb2e0bc
+[2025-12-10T04:02:35.924Z]     Hash Match: NO
+[2025-12-10T04:02:35.925Z]   Hash: 4043dd621812959cbc65daf11a5eb1466761d2d3960d0ecdb4907689adcfa89e
+[2025-12-10T04:02:35.925Z]     Display Name: codedeploy Nested Stack Template
+[2025-12-10T04:02:35.925Z]     Source Path: multiazworkshopcodedeployA76D402A.nested.template.json
+[2025-12-10T04:02:35.925Z]     Packaging: file
+[2025-12-10T04:02:35.926Z]     File Size: 12155 bytes
+[2025-12-10T04:02:35.926Z]     Modified: 2025-12-10T02:45:20.766Z
+[2025-12-10T04:02:35.926Z]     Actual SHA256: ff58389b586beec3acc3204c11326f3c9e4e0cf94b42b2f854b22c3bc748cb05
+[2025-12-10T04:02:35.927Z]     Hash Match: NO
+[2025-12-10T04:02:35.927Z]   Hash: 5027bfa54aad15a3d5ac11ad25bf3a85f4427a9b4872913b3cd7343712d757a9
+[2025-12-10T04:02:35.927Z]     Display Name: multi-az-workshop Template
+[2025-12-10T04:02:35.927Z]     Source Path: multi-az-workshop.template.json
+[2025-12-10T04:02:35.928Z]     Packaging: file
+[2025-12-10T04:02:35.928Z]     File Size: 333140 bytes
+[2025-12-10T04:02:35.928Z]     Modified: 2025-12-10T02:49:08.880Z
+[2025-12-10T04:02:35.929Z]     Actual SHA256: fc415f0eec2c2c9b25104bc0ce98444d58cdaa79560386f72779f229b0770121
+[2025-12-10T04:02:35.929Z]     Hash Match: NO
+[2025-12-10T04:02:35.929Z] 
+=== NESTED STACK TEMPLATE ANALYSIS ===
+[2025-12-10T04:02:35.930Z] Found 28 nested stack templates
+[2025-12-10T04:02:35.930Z] 
+Analyzing az-tagger template: multiazworkshopaztaggerD1FA9152.nested.template.json
+[2025-12-10T04:02:35.931Z]   Template size: 20811 characters
+[2025-12-10T04:02:35.931Z]   Asset references found: 2
+[2025-12-10T04:02:35.932Z]   First few hashes: a81ce5a783f553abd9699d414578781b3c49b551368e8969336d013b06a79531, a81ce5a783f553abd9699d414578781b3c49b551368e8969336d013b06a79531
+[2025-12-10T04:02:35.932Z]   Environment pattern 1 matches: 3
+[2025-12-10T04:02:35.932Z]   Environment pattern 2 matches: 2
+[2025-12-10T04:02:35.933Z] 
+Analyzing template: multiazworkshopcodedeployA76D402A.nested.template.json
+[2025-12-10T04:02:35.933Z]   Template size: 12155 characters
+[2025-12-10T04:02:35.934Z] 
+Analyzing template: multiazworkshopdatabase0F201493.nested.template.json
+[2025-12-10T04:02:35.934Z]   Template size: 10358 characters
+[2025-12-10T04:02:35.935Z] 
+=== STATIC TEMPLATE COMPARISON ===
+[2025-12-10T04:02:35.936Z] Static template size: 333140 characters
+[2025-12-10T04:02:35.936Z] Generated template size: 333140 characters
+[2025-12-10T04:02:35.938Z] Static template asset hashes: 11
+[2025-12-10T04:02:35.939Z] Generated template asset hashes: 11
+[2025-12-10T04:02:35.940Z] All asset hashes match between static and generated templates
+[2025-12-10T04:02:35.940Z] 
+=== SIMULATED GIT DIFF STAGED ANALYSIS ===
+[2025-12-10T04:02:36.071Z] No staged changes detected (templates are identical)
+[2025-12-10T04:02:36.157Z] 
+=== DEBUG COMPLETE ===
+[2025-12-10T04:02:36.158Z] Full output saved to: asset-debug-output.txt

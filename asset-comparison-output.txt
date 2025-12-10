@@ -1,0 +1,166 @@
+[2025-12-10T04:02:44.559Z] CDK Asset Content Comparison Utility
+[2025-12-10T04:02:44.568Z] ===================================
+[2025-12-10T04:02:44.569Z] === NESTED STACK TEMPLATE CONTENT ANALYSIS ===
+[2025-12-10T04:02:44.569Z] Found 28 nested stack templates
+[2025-12-10T04:02:44.570Z] 
+=== DETAILED ANALYSIS: multiazworkshopaztaggerD1FA9152.nested.template.json ===
+[2025-12-10T04:02:44.571Z] Template: multiazworkshopaztaggerD1FA9152.nested.template.json
+[2025-12-10T04:02:44.571Z] Size: 20811 characters
+[2025-12-10T04:02:44.572Z] 
+  --- TIMESTAMP ANALYSIS ---
+[2025-12-10T04:02:44.572Z]     Date strings: 5 matches
+[2025-12-10T04:02:44.573Z]     Examples: 2012-10-17, 2012-10-17, 2012-10-17
+[2025-12-10T04:02:44.573Z] 
+  --- ENVIRONMENT-SPECIFIC CONTENT ---
+[2025-12-10T04:02:44.574Z]     AWS Pseudo Parameters: 3 matches
+[2025-12-10T04:02:44.575Z]     Values: ${AWS::Partition}, ${AWS::Region}, ${AWS::AccountId}
+[2025-12-10T04:02:44.575Z]     Assets Bucket References: 2 matches
+[2025-12-10T04:02:44.575Z]     Values: ${AssetsBucketName}, ${AssetsBucketPrefix}
+[2025-12-10T04:02:44.576Z]     Random Suffixes: 30 matches
+[2025-12-10T04:02:44.576Z]     Sample values: 234D62C1, E8D03004, 2F5D1D4F
+[2025-12-10T04:02:44.577Z] 
+  --- ASSET REFERENCE ANALYSIS ---
+[2025-12-10T04:02:44.577Z]     Asset hashes found: 2
+[2025-12-10T04:02:44.578Z]     Unique hashes: 1
+[2025-12-10T04:02:44.578Z]     Sample hashes: a81ce5a783f553abd9699d414578781b3c49b551368e8969336d013b06a79531, a81ce5a783f553abd9699d414578781b3c49b551368e8969336d013b06a79531
+[2025-12-10T04:02:44.579Z] 
+  --- METADATA ANALYSIS ---
+[2025-12-10T04:02:44.580Z]     Resources with metadata: 11
+[2025-12-10T04:02:44.580Z]     Metadata keys: aws:cdk:path, aws:asset:path, aws:asset:is-bundled, aws:asset:property
+[2025-12-10T04:02:44.581Z] 
+  --- ORDERING ANALYSIS ---
+[2025-12-10T04:02:44.582Z]     Resource count: 11
+[2025-12-10T04:02:44.582Z]     First few resources: xrayManagedPolicy234D62C1, ec2ManagedPolicyE8D03004, executionRole2F5D1D4F
+[2025-12-10T04:02:44.582Z]     Resources are sorted: false
+[2025-12-10T04:02:44.583Z]     Parameter count: 2
+[2025-12-10T04:02:44.583Z]     Parameters: AssetsBucketName, AssetsBucketPrefix
+[2025-12-10T04:02:44.584Z] 
+  --- CDK-SPECIFIC PATTERNS ---
+[2025-12-10T04:02:44.584Z]     CDK Path metadata: 11 matches
+[2025-12-10T04:02:44.585Z]     CDK Logical IDs: 26 matches
+[2025-12-10T04:02:44.585Z] 
+  --- CONTENT FINGERPRINT ---
+[2025-12-10T04:02:44.586Z]     Full content SHA256: 144170bb71d7ec309ba7b67b3ffb58b3683e73e94c4bf5011764b5236b61794a
+[2025-12-10T04:02:44.587Z]     Normalized content SHA256: 0bc7778a0a8a75ffa4cf02b00c16da4a28eac9cf8292dc0380dd772f99db0773
+[2025-12-10T04:02:44.587Z]     Content without assets SHA256: f2ba7cef124170ebe09f99ab41f13266f273164c388b996a8f0e078a479f69b8
+[2025-12-10T04:02:44.588Z]     Structure-only SHA256: 59c2d34de01d7eaf9df10de0c5863cea0162f960d2c665684c158a8e24db8c34
+[2025-12-10T04:02:44.589Z] 
+=== DETAILED ANALYSIS: multiazworkshopdatabase0F201493.nested.template.json ===
+[2025-12-10T04:02:44.590Z] Template: multiazworkshopdatabase0F201493.nested.template.json
+[2025-12-10T04:02:44.591Z] Size: 10358 characters
+[2025-12-10T04:02:44.591Z] 
+  --- TIMESTAMP ANALYSIS ---
+[2025-12-10T04:02:44.592Z]     No timestamps found
+[2025-12-10T04:02:44.592Z] 
+  --- ENVIRONMENT-SPECIFIC CONTENT ---
+[2025-12-10T04:02:44.593Z]     Random Suffixes: 42 matches
+[2025-12-10T04:02:44.594Z]     Sample values: FA8AAF25, 18E55BB8O, 1892923DR
+[2025-12-10T04:02:44.595Z] 
+  --- ASSET REFERENCE ANALYSIS ---
+[2025-12-10T04:02:44.596Z]     Asset hashes found: 0
+[2025-12-10T04:02:44.597Z] 
+  --- METADATA ANALYSIS ---
+[2025-12-10T04:02:44.598Z]     Resources with metadata: 7
+[2025-12-10T04:02:44.600Z]     Metadata keys: aws:cdk:path
+[2025-12-10T04:02:44.601Z] 
+  --- ORDERING ANALYSIS ---
+[2025-12-10T04:02:44.601Z]     Resource count: 7
+[2025-12-10T04:02:44.602Z]     First few resources: databaseSubnetsFA8AAF25, databaseSecurityGroup984F86C4, databaseSecret87F1207C
+[2025-12-10T04:02:44.603Z]     Resources are sorted: false
+[2025-12-10T04:02:44.603Z]     Parameter count: 5
+[2025-12-10T04:02:44.604Z]     Parameters: referencetomultiazworkshopnetworkNestedStacknetworkNestedStackResource18E55BB8OutputsmultiazworkshopnetworkvpcisolatedsubnetSubnet1Subnet1892923DRef, referencetomultiazworkshopnetworkNestedStacknetworkNestedStackResource18E55BB8OutputsmultiazworkshopnetworkvpcisolatedsubnetSubnet2SubnetF11DBDCERef, referencetomultiazworkshopnetworkNestedStacknetworkNestedStackResource18E55BB8OutputsmultiazworkshopnetworkvpcisolatedsubnetSubnet3Subnet43DC83D0Ref, referencetomultiazworkshopnetworkNestedStacknetworkNestedStackResource18E55BB8OutputsmultiazworkshopnetworkvpcFECF9FE3CidrBlock, referencetomultiazworkshopnetworkNestedStacknetworkNestedStackResource18E55BB8OutputsmultiazworkshopnetworkvpcFECF9FE3Ref
+[2025-12-10T04:02:44.604Z] 
+  --- CDK-SPECIFIC PATTERNS ---
+[2025-12-10T04:02:44.605Z]     CDK Path metadata: 7 matches
+[2025-12-10T04:02:44.606Z]     CDK Logical IDs: 25 matches
+[2025-12-10T04:02:44.606Z] 
+  --- CONTENT FINGERPRINT ---
+[2025-12-10T04:02:44.607Z]     Full content SHA256: 3e3bebb19a364a9d6a93a6a9b8528ec909dcb8f37d45dc45b35a91b6ec16a46b
+[2025-12-10T04:02:44.608Z]     Normalized content SHA256: 66739db48129286d4de488a00df5c1ffe1ac7df6b79ae1197ec3dd4f5c45c0e8
+[2025-12-10T04:02:44.609Z]     Content without assets SHA256: 3e3bebb19a364a9d6a93a6a9b8528ec909dcb8f37d45dc45b35a91b6ec16a46b
+[2025-12-10T04:02:44.610Z]     Structure-only SHA256: 56bc5b2f128042a913144ca40b884e94f9c37e73975f1e51bc6dce0e0f4a16f2
+[2025-12-10T04:02:44.611Z] 
+=== DETAILED ANALYSIS: multiazworkshopecruploader1AA6410E.nested.template.json ===
+[2025-12-10T04:02:44.612Z] Template: multiazworkshopecruploader1AA6410E.nested.template.json
+[2025-12-10T04:02:44.612Z] Size: 22304 characters
+[2025-12-10T04:02:44.613Z] 
+  --- TIMESTAMP ANALYSIS ---
+[2025-12-10T04:02:44.614Z]     Date strings: 3 matches
+[2025-12-10T04:02:44.614Z]     Examples: 2012-10-17, 2012-10-17, 2012-10-17
+[2025-12-10T04:02:44.614Z] 
+  --- ENVIRONMENT-SPECIFIC CONTENT ---
+[2025-12-10T04:02:44.615Z]     Assets Bucket References: 2 matches
+[2025-12-10T04:02:44.615Z]     Values: ${AssetsBucketName}, ${AssetsBucketPrefix}
+[2025-12-10T04:02:44.616Z]     Random Suffixes: 25 matches
+[2025-12-10T04:02:44.616Z]     Sample values: F32D6CBE, DB02C75E, F32D6CBE
+[2025-12-10T04:02:44.617Z] 
+  --- ASSET REFERENCE ANALYSIS ---
+[2025-12-10T04:02:44.617Z]     Asset hashes found: 2
+[2025-12-10T04:02:44.618Z]     Unique hashes: 1
+[2025-12-10T04:02:44.618Z]     Sample hashes: 0d9204f0a0ed2a6d3318bfb81033822cafe2da7700f71aa602a8f17fe17f65b9, 0d9204f0a0ed2a6d3318bfb81033822cafe2da7700f71aa602a8f17fe17f65b9
+[2025-12-10T04:02:44.619Z] 
+  --- METADATA ANALYSIS ---
+[2025-12-10T04:02:44.619Z]     Resources with metadata: 7
+[2025-12-10T04:02:44.619Z]     Metadata keys: aws:cdk:path, aws:asset:path, aws:asset:is-bundled, aws:asset:property
+[2025-12-10T04:02:44.620Z] 
+  --- ORDERING ANALYSIS ---
+[2025-12-10T04:02:44.620Z]     Resource count: 7
+[2025-12-10T04:02:44.620Z]     First few resources: UploaderPolicyF32D6CBE, UploaderRoleDB02C75E, HelmLayer814FB0FA
+[2025-12-10T04:02:44.621Z]     Resources are sorted: false
+[2025-12-10T04:02:44.621Z]     Parameter count: 2
+[2025-12-10T04:02:44.622Z]     Parameters: AssetsBucketName, AssetsBucketPrefix
+[2025-12-10T04:02:44.622Z] 
+  --- CDK-SPECIFIC PATTERNS ---
+[2025-12-10T04:02:44.623Z]     CDK Path metadata: 7 matches
+[2025-12-10T04:02:44.623Z]     CDK Logical IDs: 17 matches
+[2025-12-10T04:02:44.624Z] 
+  --- CONTENT FINGERPRINT ---
+[2025-12-10T04:02:44.624Z]     Full content SHA256: 23f87bc7a51a76e48bb0b7a01f01f9caffabf69b5b8ebb65dbe35fd5e3141531
+[2025-12-10T04:02:44.625Z]     Normalized content SHA256: a1e3b8bf54917c4da6670bf2501cd0c94826e9e59aa78c809a15c09474996a08
+[2025-12-10T04:02:44.625Z]     Content without assets SHA256: 0a1ad5dc1085dbb1b650aa42ad4c8303f8195fccf12d8398ed037b1049d607cf
+[2025-12-10T04:02:44.626Z]     Structure-only SHA256: 0824e38e7698e00488f491c56b157d076adbe8fa828081e0a16823d6b9ec971e
+[2025-12-10T04:02:44.627Z] 
+=== DETAILED ANALYSIS: multiazworkshopnetworkFBEB94A3.nested.template.json ===
+[2025-12-10T04:02:44.628Z] Template: multiazworkshopnetworkFBEB94A3.nested.template.json
+[2025-12-10T04:02:44.629Z] Size: 56266 characters
+[2025-12-10T04:02:44.629Z] 
+  --- TIMESTAMP ANALYSIS ---
+[2025-12-10T04:02:44.630Z]     No timestamps found
+[2025-12-10T04:02:44.630Z] 
+  --- ENVIRONMENT-SPECIFIC CONTENT ---
+[2025-12-10T04:02:44.630Z]     AWS Pseudo Parameters: 1 matches
+[2025-12-10T04:02:44.631Z]     Values: ${AWS::StackName}
+[2025-12-10T04:02:44.632Z]     Random Suffixes: 260 matches
+[2025-12-10T04:02:44.632Z]     Sample values: A2121C38, 921E8AB0, A2121C38
+[2025-12-10T04:02:44.633Z] 
+  --- ASSET REFERENCE ANALYSIS ---
+[2025-12-10T04:02:44.633Z]     Asset hashes found: 0
+[2025-12-10T04:02:44.634Z] 
+  --- METADATA ANALYSIS ---
+[2025-12-10T04:02:44.634Z]     Resources with metadata: 56
+[2025-12-10T04:02:44.635Z]     Metadata keys: aws:cdk:path
+[2025-12-10T04:02:44.635Z] 
+  --- ORDERING ANALYSIS ---
+[2025-12-10T04:02:44.636Z]     Resource count: 56
+[2025-12-10T04:02:44.636Z]     First few resources: vpcA2121C38, vpcisolatedsubnetSubnet1Subnet921E8AB0, vpcisolatedsubnetSubnet1RouteTableE010D231
+[2025-12-10T04:02:44.636Z]     Resources are sorted: false
+[2025-12-10T04:02:44.637Z]     Parameter count: 2
+[2025-12-10T04:02:44.637Z]     Parameters: AssetsBucketName, AssetsBucketPrefix
+[2025-12-10T04:02:44.638Z] 
+  --- CDK-SPECIFIC PATTERNS ---
+[2025-12-10T04:02:44.639Z]     CDK Path metadata: 56 matches
+[2025-12-10T04:02:44.639Z]     CDK Logical IDs: 137 matches
+[2025-12-10T04:02:44.640Z] 
+  --- CONTENT FINGERPRINT ---
+[2025-12-10T04:02:44.641Z]     Full content SHA256: eb9cf25faf2522b04d87293b57ac6257cf00b41afc80e6473a3d5d5a34650100
+[2025-12-10T04:02:44.641Z]     Normalized content SHA256: 3fd8ea537e83272e28463f1c8b28c92f55a761092028cfd3c047742f8183f4c9
+[2025-12-10T04:02:44.642Z]     Content without assets SHA256: eb9cf25faf2522b04d87293b57ac6257cf00b41afc80e6473a3d5d5a34650100
+[2025-12-10T04:02:44.643Z]     Structure-only SHA256: 46802808bc3de36321eb4d26244850b1f9f3dc9eceaa0353910d5a116b8edc00
+[2025-12-10T04:02:44.644Z] 
+=== COMPARISON WITH COMMITTED STATIC TEMPLATE ===
+[2025-12-10T04:02:44.645Z] Static template size: 333140 characters
+[2025-12-10T04:02:44.646Z] Generated template size: 333140 characters
+[2025-12-10T04:02:44.646Z] Templates are identical
+[2025-12-10T04:02:44.647Z] 
+=== ANALYSIS COMPLETE ===
+[2025-12-10T04:02:44.647Z] Full output saved to: asset-comparison-output.txt

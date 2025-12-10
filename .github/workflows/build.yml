@@ -38,7 +38,12 @@ jobs:
         if: steps.self_mutation.outputs.self_mutation_happened
         run: |-
           echo "=== RUNNING FOCUSED ASSET DIFF ANALYSIS ===" | tee debug-output.txt
+          echo "Analyzing git diff to find CDK asset hash mismatches..." | tee -a debug-output.txt
           node scripts/analyze-asset-diff.js | tee -a debug-output.txt
+          echo "" | tee -a debug-output.txt
+          echo "=== BASIC MUTATION INFO ===" | tee -a debug-output.txt
+          echo "Files changed during build:" | tee -a debug-output.txt
+          git diff --staged --name-only | tee -a debug-output.txt || echo "Failed to list changed files" | tee -a debug-output.txt
       - name: Upload debug output
         if: steps.self_mutation.outputs.self_mutation_happened
         uses: actions/upload-artifact@v4.4.0
