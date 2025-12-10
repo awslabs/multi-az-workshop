@@ -26,6 +26,17 @@ if [ -f repo.patch ]; then
   echo "Files changed during build:" | tee -a debug-output.txt
   git diff --staged --name-only | tee -a debug-output.txt
   echo "" | tee -a debug-output.txt
+  echo "=== CDK VERSION INFO ===" | tee -a debug-output.txt
+  npx cdk --version | tee -a debug-output.txt || echo "Failed to get CDK version" | tee -a debug-output.txt
+  echo "" | tee -a debug-output.txt
+  echo "=== ASSETS.JSON CONTENT ===" | tee -a debug-output.txt
+  if [ -f "cdk.out/multi-az-workshop.assets.json" ]; then
+    echo "Contents of cdk.out/multi-az-workshop.assets.json:" | tee -a debug-output.txt
+    cat cdk.out/multi-az-workshop.assets.json | tee -a debug-output.txt
+  else
+    echo "assets.json file not found at cdk.out/multi-az-workshop.assets.json" | tee -a debug-output.txt
+  fi
+  echo "" | tee -a debug-output.txt
   echo "=== STATIC TEMPLATE CHANGES ===" | tee -a debug-output.txt
   if git diff --staged --name-only | grep -q "static/multi-az-workshop.json"; then
     echo "Extracting changed asset hashes from static/multi-az-workshop.json:" | tee -a debug-output.txt
