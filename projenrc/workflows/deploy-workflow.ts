@@ -60,15 +60,15 @@ export function createDeployWorkflow(github: GitHub): void {
             echo "should_deploy=true" >> $GITHUB_OUTPUT
           else
             # For workflow_run events, check changes against the base branch (main)
-            git fetch origin main:main
-            if git diff --name-only main...HEAD | grep -q "^src/"; then
-              echo "Changes detected in src/ compared to main - will deploy"
-              git diff --name-only main...HEAD | grep "^src/" | head -10
+            git fetch origin main
+            if git diff --name-only origin/main...HEAD | grep -q "^src/"; then
+              echo "Changes detected in src/ compared to origin/main - will deploy"
+              git diff --name-only origin/main...HEAD | grep "^src/" | head -10
               echo "should_deploy=true" >> $GITHUB_OUTPUT
             else
-              echo "No changes in src/ compared to main - skipping deployment"
+              echo "No changes in src/ compared to origin/main - skipping deployment"
               echo "All changed files:"
-              git diff --name-only main...HEAD | head -10
+              git diff --name-only origin/main...HEAD | head -10
               echo "should_deploy=false" >> $GITHUB_OUTPUT
             fi
           fi
