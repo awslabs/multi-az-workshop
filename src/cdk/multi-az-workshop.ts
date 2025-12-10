@@ -7,7 +7,7 @@ const app = new cdk.App({
   context: {
     evacuationMethod: EvacuationMethod.ZonalShift,
   },
-  analyticsReporting: false
+  analyticsReporting: false,
 });
 
 new MultiAZWorkshopStack(app, 'multi-az-workshop', {
