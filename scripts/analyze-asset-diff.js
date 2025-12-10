@@ -110,40 +110,30 @@ class AssetDiffAnalyzer {
 
   /**
    * Get the content of an asset file from a specific commit
+   * Since cdk.out/ is not committed, we need to reconstruct or find alternative approaches
    */
   getCommittedAssetContent(commit, sourcePath) {
+    this.log(`Attempting to get committed content for ${sourcePath} from ${commit}`);
+    
+    // Since cdk.out/ is not committed to git, we can't directly access the committed version
+    // We'll need to use alternative approaches:
+    
+    // 1. Try to get the file directly (this will likely fail)
     try {
-      // First, try to get the file directly from the commit
       const fullPath = `cdk.out/${sourcePath}`;
       const content = execSync(`git show ${commit}:${fullPath}`, { encoding: 'utf8' });
+      this.log(`Successfully read committed file directly: ${fullPath}`);
       return content;
     } catch (error) {
-      this.log(`Error reading committed asset file ${sourcePath} from ${commit}: ${error.message}`);
-      
-      // If that fails, try to find the asset by looking at the committed static template
-      try {
-        const committedTemplate = execSync(`git show ${commit}:${this.staticTemplateFile}`, { encoding: 'utf8' });
-        const assetHashes = committedTemplate.match(/[a-f0-9]{64}\.json/g) || [];
-        
-        this.log(`Found ${assetHashes.length} asset hashes in committed template from ${commit}`);
-        
-        // Try to find a matching asset in the current manifest
-        for (const hashWithExt of assetHashes) {
-          const hash = hashWithExt.replace('.json', '');
-          const assetInfo = this.getAssetInfo(hash);
-          
-          if (assetInfo && assetInfo.source.path === sourcePath) {
-            this.log(`Found matching asset ${hash} for source path ${sourcePath}`);
-            return this.getCurrentAssetContent(sourcePath);
-          }
-        }
-        
-        return null;
-      } catch (nestedError) {
-        this.log(`Error finding committed asset through template: ${nestedError.message}`);
-        return null;
-      }
+      this.log(`Cannot read committed cdk.out file directly (expected): ${error.message}`);
     }
+    
+    // 2. Since we can't get the committed version, we'll note this limitation
+    this.log(`Note: cdk.out/ directory is not committed to git, so we cannot directly compare`);
+    this.log(`with the committed version of the asset file.`);
+    this.log(`The asset hash difference indicates the content has changed between builds.`);
+    
+    return null;
   }
 
   /**
@@ -161,28 +151,27 @@ class AssetDiffAnalyzer {
       const committedTemplate = execSync(`git show ${commit}:${this.staticTemplateFile}`, { encoding: 'utf8' });
       const committedHashes = committedTemplate.match(/[a-f0-9]{64}/g) || [];
       
-      // Get the committed asset manifest if it exists
-      try {
-        const committedManifestContent = execSync(`git show ${commit}:${this.assetManifestFile}`, { encoding: 'utf8' });
-        const committedManifest = JSON.parse(committedManifestContent);
-        
-        // Look for an asset with the same display name or similar characteristics
-        for (const hash of committedHashes) {
-          if (committedManifest.files && committedManifest.files[hash]) {
-            const committedAssetInfo = committedManifest.files[hash];
-            
-            // Match by display name or source path pattern
-            if (committedAssetInfo.displayName === currentAssetInfo.displayName ||
-                this.isSimilarSourcePath(committedAssetInfo.source.path, currentAssetInfo.source.path)) {
-              return {
-                hash: hash,
-                assetInfo: committedAssetInfo
-              };
+      this.log(`Found ${committedHashes.length} asset hashes in committed template`);
+      
+      // Since cdk.out/ is not committed, we can't read the committed manifest
+      // Instead, we'll try to match based on the asset hashes in the template
+      // and assume the first different hash corresponds to our current asset
+      
+      // For now, return the first committed hash that's different from current
+      for (const hash of committedHashes) {
+        if (hash !== currentHash) {
+          this.log(`Found different committed hash: ${hash}`);
+          return {
+            hash: hash,
+            assetInfo: {
+              displayName: currentAssetInfo.displayName + ' (committed version)',
+              source: {
+                path: currentAssetInfo.source.path,
+                packaging: currentAssetInfo.source.packaging
+              }
             }
-          }
+          };
         }
-      } catch (manifestError) {
-        this.log(`Could not read committed manifest: ${manifestError.message}`);
       }
       
       return null;
@@ -379,40 +368,48 @@ class AssetDiffAnalyzer {
         // Get current content
         const currentContent = this.getCurrentAssetContent(addedAssetInfo.source.path);
         
-        if (removedCorresponding) {
-          this.log(`\nCorresponding committed asset (${removedCorresponding.hash}):`);
-          this.log(`  Display Name: ${removedCorresponding.assetInfo.displayName}`);
-          this.log(`  Source Path: ${removedCorresponding.assetInfo.source.path}`);
+        this.log(`\nCurrent asset content preview:`);
+        if (currentContent) {
+          this.log(`  Content length: ${currentContent.length} characters`);
           
-          // Get committed content
-          const committedContent = this.getCommittedAssetContent('HEAD', removedCorresponding.assetInfo.source.path);
+          // Show first few lines of content
+          const lines = currentContent.split('\n').slice(0, 5);
+          this.log(`  First few lines:`);
+          lines.forEach((line, index) => {
+            this.log(`    ${index + 1}: ${line.substring(0, 100)}${line.length > 100 ? '...' : ''}`);
+          });
           
-          // Compare contents
-          this.compareAssetContents(
-            committedContent,
-            currentContent,
-            `Committed (${removedCorresponding.hash})`,
-            `Current (${addedHash})`
-          );
-        } else {
-          this.log('\nCould not find corresponding committed asset');
-          
-          // Try to get content using the removed hash directly
-          const removedAssetInfo = this.getAssetInfo(removedHash);
-          if (removedAssetInfo) {
-            this.log(`\nFound removed asset info (${removedHash}):`);
-            this.log(`  Display Name: ${removedAssetInfo.displayName}`);
-            this.log(`  Source Path: ${removedAssetInfo.source.path}`);
+          // Try to identify what type of content this is
+          try {
+            const parsed = JSON.parse(currentContent);
+            this.log(`  Content type: JSON`);
             
-            const removedContent = this.getCurrentAssetContent(removedAssetInfo.source.path);
-            this.compareAssetContents(
-              removedContent,
-              currentContent,
-              `Removed (${removedHash})`,
-              `Current (${addedHash})`
-            );
+            if (parsed.AWSTemplateFormatVersion) {
+              this.log(`  CloudFormation template detected`);
+              this.log(`  Template description: ${parsed.Description || 'N/A'}`);
+              
+              // Look for resources that might indicate what changed
+              if (parsed.Resources) {
+                const resourceCount = Object.keys(parsed.Resources).length;
+                this.log(`  Resource count: ${resourceCount}`);
+                
+                const resourceTypes = [...new Set(Object.values(parsed.Resources).map(r => r.Type))];
+                this.log(`  Resource types: ${resourceTypes.slice(0, 5).join(', ')}${resourceTypes.length > 5 ? '...' : ''}`);
+              }
+            }
+          } catch (e) {
+            this.log(`  Content type: Non-JSON or malformed JSON`);
           }
+        } else {
+          this.log(`  Could not read current content`);
         }
+        
+        // Since we can't easily get the committed version, focus on what we can determine
+        this.log(`\nAsset hash analysis:`);
+        this.log(`  Old hash (being removed): ${removedHash}`);
+        this.log(`  New hash (being added): ${addedHash}`);
+        this.log(`  This indicates the content of ${addedAssetInfo.source.path} has changed`);
+        this.log(`  between the committed version and the current build.`)
       } else {
         this.log(`Could not find asset info for added hash: ${addedHash}`);
       }
