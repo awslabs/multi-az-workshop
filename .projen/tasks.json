@@ -693,7 +693,10 @@
       "name": "test:app:integration",
       "description": "Run .NET integration tests",
       "env": {
-        "AWS_EC2_METADATA_DISABLED": "true"
+        "AWS_EC2_METADATA_DISABLED": "true",
+        "AWS_ACCESS_KEY_ID": "fake",
+        "AWS_SECRET_ACCESS_KEY": "fake",
+        "AWS_DEFAULT_REGION": "us-east-1"
       },
       "steps": [
         {
@@ -705,7 +708,10 @@
       "name": "test:app:unit",
       "description": "Run .NET unit tests",
       "env": {
-        "AWS_EC2_METADATA_DISABLED": "true"
+        "AWS_EC2_METADATA_DISABLED": "true",
+        "AWS_ACCESS_KEY_ID": "fake",
+        "AWS_SECRET_ACCESS_KEY": "fake",
+        "AWS_DEFAULT_REGION": "us-east-1"
       },
       "steps": [
         {

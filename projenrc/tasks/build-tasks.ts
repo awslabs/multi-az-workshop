@@ -63,6 +63,9 @@ function createDotnetTestTasks(project: AwsCdkTypeScriptApp): { unit: Task; inte
     description: 'Run .NET unit tests',
     env: {
       AWS_EC2_METADATA_DISABLED: 'true',
+      AWS_ACCESS_KEY_ID: 'fake',
+      AWS_SECRET_ACCESS_KEY: 'fake',
+      AWS_DEFAULT_REGION: 'us-east-1',
     },
     exec: 'dotnet test test/app --filter "FullyQualifiedName!~Integration" --configuration Release --logger "console;verbosity=detailed"',
   });
@@ -71,6 +74,9 @@ function createDotnetTestTasks(project: AwsCdkTypeScriptApp): { unit: Task; inte
     description: 'Run .NET integration tests',
     env: {
       AWS_EC2_METADATA_DISABLED: 'true',
+      AWS_ACCESS_KEY_ID: 'fake',
+      AWS_SECRET_ACCESS_KEY: 'fake',
+      AWS_DEFAULT_REGION: 'us-east-1',
     },
     exec: 'dotnet test test/app --filter "FullyQualifiedName~Integration" --configuration Release --logger "console;verbosity=detailed"',
   });
