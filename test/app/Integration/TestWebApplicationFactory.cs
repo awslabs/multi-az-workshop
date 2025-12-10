@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -16,30 +17,34 @@ namespace BAMCIS.MultiAZApp.Tests.Integration
         {
             builder.ConfigureServices(services =>
             {
-                // Remove the hosted background service that causes AWS connection issues
-                var hostedServiceDescriptor = services.SingleOrDefault(
-                    d => d.ServiceType == typeof(IHostedService) && 
-                         d.ImplementationType == typeof(BackgroundWorker));
+                // Clear all existing service registrations that might cause AWS connections
+                var servicesToRemove = services.Where(d => 
+                    (d.ServiceType == typeof(IHostedService) && d.ImplementationType == typeof(BackgroundWorker)) ||
+                    (d.ServiceType == typeof(IWorker) && d.ImplementationType == typeof(CacheRefreshWorker))
+                ).ToList();
                 
-                if (hostedServiceDescriptor != null)
+                foreach (var service in servicesToRemove)
                 {
-                    services.Remove(hostedServiceDescriptor);
-                }
-
-                // Replace the CacheRefreshWorker with a mock that doesn't call AWS
-                var workerDescriptor = services.SingleOrDefault(
-                    d => d.ServiceType == typeof(IWorker));
-                
-                if (workerDescriptor != null)
-                {
-                    services.Remove(workerDescriptor);
+                    services.Remove(service);
                 }
                 
                 // Add a mock worker that doesn't make AWS calls
                 services.AddSingleton<IWorker, MockCacheRefreshWorker>();
             });
 
+            // Use a test-specific environment
             builder.UseEnvironment("Testing");
+            
+            // Override configuration to prevent any AWS service initialization
+            builder.ConfigureAppConfiguration((context, config) =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["AWS_REGION"] = "us-east-1",
+                    ["ENVIRONMENT"] = "Testing",
+                    ["DB_SECRET_ID"] = "test-secret-id"
+                });
+            });
         }
     }
 
