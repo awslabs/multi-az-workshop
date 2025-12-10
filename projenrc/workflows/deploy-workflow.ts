@@ -38,7 +38,7 @@ export function createDeployWorkflow(github: GitHub): void {
         name: 'Checkout',
         uses: 'actions/checkout@v4',
         with: {
-          'fetch-depth': 2,
+          'fetch-depth': 0,
         },
       },
       {
@@ -48,12 +48,19 @@ export function createDeployWorkflow(github: GitHub): void {
           if [ "\${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "Manual trigger - will deploy"
             echo "should_deploy=true" >> $GITHUB_OUTPUT
-          elif git diff --name-only HEAD^ HEAD | grep -q "^src/"; then
-            echo "Changes detected in src/ - will deploy"
-            echo "should_deploy=true" >> $GITHUB_OUTPUT
           else
-            echo "No changes in src/ - skipping deployment"
-            echo "should_deploy=false" >> $GITHUB_OUTPUT
+            # For workflow_run events, check changes against the base branch (main)
+            git fetch origin main:main
+            if git diff --name-only main...HEAD | grep -q "^src/"; then
+              echo "Changes detected in src/ compared to main - will deploy"
+              git diff --name-only main...HEAD | grep "^src/" | head -10
+              echo "should_deploy=true" >> $GITHUB_OUTPUT
+            else
+              echo "No changes in src/ compared to main - skipping deployment"
+              echo "All changed files:"
+              git diff --name-only main...HEAD | head -10
+              echo "should_deploy=false" >> $GITHUB_OUTPUT
+            fi
           fi
         `.trim(),
       },
@@ -67,9 +74,6 @@ export function createDeployWorkflow(github: GitHub): void {
     permissions: {
       contents: JobPermission.READ,
       deployments: JobPermission.WRITE,
-    },
-    environment: {
-      name: 'AWS',
     },
     outputs: {
       deployment_id: {
@@ -162,9 +166,6 @@ export function createDeployWorkflow(github: GitHub): void {
     runsOn: ['ubuntu-latest'],
     permissions: {
       deployments: JobPermission.WRITE,
-    },
-    environment: {
-      name: 'AWS',
     },
     env: {
       GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}',
