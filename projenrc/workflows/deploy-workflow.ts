@@ -60,10 +60,9 @@ export function createDeployWorkflow(github: GitHub): void {
     ],
   });
 
-  // Job 2: Create GitHub deployment
+  // Job 2: Create GitHub deployment (always runs)
   deployWorkflow.addJob('create-deployment', {
     needs: ['check-changes'],
-    if: 'needs.check-changes.outputs.should_deploy == \'true\'',
     runsOn: ['ubuntu-latest'],
     permissions: {
       contents: JobPermission.READ,
@@ -95,7 +94,7 @@ export function createDeployWorkflow(github: GitHub): void {
     ],
   });
 
-  // Job 3: Bundle and deploy
+  // Job 3: Bundle and deploy (only runs if there are src changes)
   deployWorkflow.addJob('bundle-and-deploy', {
     needs: ['check-changes', 'create-deployment'],
     if: 'needs.check-changes.outputs.should_deploy == \'true\'',
@@ -153,10 +152,10 @@ export function createDeployWorkflow(github: GitHub): void {
     ],
   });
 
-  // Job 4: Report deployment status
+  // Job 4: Report deployment status (always runs after create-deployment)
   deployWorkflow.addJob('report-deployment', {
     needs: ['check-changes', 'create-deployment', 'bundle-and-deploy'],
-    if: 'always() && needs.check-changes.outputs.should_deploy == \'true\'',
+    if: 'always() && needs.create-deployment.result != \'skipped\'',
     runsOn: ['ubuntu-latest'],
     permissions: {
       deployments: JobPermission.WRITE,
@@ -168,10 +167,15 @@ export function createDeployWorkflow(github: GitHub): void {
       {
         name: 'Report deployment status',
         run: `
-          if [ "\${{ needs.bundle-and-deploy.result }}" == "success" ]; then
-            STATE="success"
+          if [ "\${{ needs.check-changes.outputs.should_deploy }}" == "true" ]; then
+            if [ "\${{ needs.bundle-and-deploy.result }}" == "success" ]; then
+              STATE="success"
+            else
+              STATE="failure"
+            fi
           else
-            STATE="failure"
+            STATE="success"
+            echo "No deployment needed - marking as success"
           fi
           gh api repos/\${{ github.repository }}/deployments/\${{ needs.create-deployment.outputs.deployment_id }}/statuses \\
             -f state=$STATE

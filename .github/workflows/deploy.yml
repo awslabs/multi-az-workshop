@@ -42,7 +42,6 @@ jobs:
       deployment_id: ${{ steps.create.outputs.deployment_id }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    if: needs.check-changes.outputs.should_deploy == 'true'
     steps:
       - name: Create deployment
         id: create
@@ -102,14 +101,19 @@ jobs:
       deployments: write
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    if: always() && needs.check-changes.outputs.should_deploy == 'true'
+    if: always() && needs.create-deployment.result != 'skipped'
     steps:
       - name: Report deployment status
         run: |-
-          if [ "${{ needs.bundle-and-deploy.result }}" == "success" ]; then
-                      STATE="success"
+          if [ "${{ needs.check-changes.outputs.should_deploy }}" == "true" ]; then
+                      if [ "${{ needs.bundle-and-deploy.result }}" == "success" ]; then
+                        STATE="success"
+                      else
+                        STATE="failure"
+                      fi
                     else
-                      STATE="failure"
+                      STATE="success"
+                      echo "No deployment needed - marking as success"
                     fi
                     gh api repos/${{ github.repository }}/deployments/${{ needs.create-deployment.outputs.deployment_id }}/statuses \
                       -f state=$STATE
