@@ -172,7 +172,7 @@ export function createDeployWorkflow(github: GitHub): void {
   // Job 4: Report deployment status (always runs after create-deployment)
   deployWorkflow.addJob('report-deployment', {
     needs: ['check-changes', 'create-deployment', 'bundle-and-deploy'],
-    if: 'always() && needs.create-deployment.result != \'skipped\'',
+    if: 'always() && needs.create-deployment.result == \'success\'',
     runsOn: ['ubuntu-latest'],
     permissions: {
       deployments: JobPermission.WRITE,

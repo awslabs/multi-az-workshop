@@ -115,7 +115,7 @@ jobs:
       deployments: write
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    if: always() && needs.create-deployment.result != 'skipped'
+    if: always() && needs.create-deployment.result == 'success'
     steps:
       - name: Report deployment status
         run: |-
