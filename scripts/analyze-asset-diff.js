@@ -3,17 +3,19 @@
 /**
  * CDK Asset Diff Analysis Utility
  * 
- * This script analyzes git diff output to identify CDK asset hash mismatches,
- * traces them back to their source files, and compares content between commits.
+ * Analyzes git diff output to find CDK asset hash mismatches by:
+ * 1. Getting blob SHAs from git diff
+ * 2. Finding branch/commit info for each blob
+ * 3. Identifying first CDK asset hash difference
+ * 4. Recording content from both old and new versions
  */
 
 const fs = require('fs');
-const path = require('path');
 const { execSync } = require('child_process');
 
 class AssetDiffAnalyzer {
   constructor() {
-    this.outputFile = 'asset-diff-analysis.txt';
+    this.outputFile = 'debug-output.txt';
     this.staticTemplateFile = 'static/multi-az-workshop.json';
     this.assetManifestFile = 'cdk.out/multi-az-workshop.assets.json';
   }
@@ -26,12 +28,12 @@ class AssetDiffAnalyzer {
   }
 
   /**
-   * Get git diff for the static template file
+   * Get git diff with blob SHA information
    */
-  getStaticTemplateDiff() {
+  getGitDiffWithBlobs() {
     try {
-      // Get the diff for the static template
-      const diff = execSync(`git diff HEAD ${this.staticTemplateFile}`, { encoding: 'utf8' });
+      // Get staged diff (what the CI sees)
+      const diff = execSync('git diff --staged', { encoding: 'utf8' });
       return diff;
     } catch (error) {
       this.log(`Error getting git diff: ${error.message}`);
@@ -40,37 +42,95 @@ class AssetDiffAnalyzer {
   }
 
   /**
-   * Extract asset hash changes from git diff output
+   * Extract blob SHAs from git diff output
    */
-  extractAssetHashChanges(diffOutput) {
-    const changes = [];
+  extractBlobSHAs(diffOutput) {
+    const blobs = [];
     const lines = diffOutput.split('\n');
     
+    let currentFile = null;
     for (const line of lines) {
-      // Look for lines that show asset hash changes (64-character hex strings)
-      const assetHashRegex = /[\+\-].*([a-f0-9]{64})\.json/g;
-      let match;
+      // Look for diff header with file path
+      if (line.startsWith('diff --git')) {
+        const match = line.match(/diff --git a\/(.+) b\/(.+)/);
+        if (match) {
+          currentFile = match[1]; // Use the 'a/' path
+        }
+      }
       
-      while ((match = assetHashRegex.exec(line)) !== null) {
-        const isAddition = line.startsWith('+');
-        const isRemoval = line.startsWith('-');
-        const hash = match[1];
-        
-        if (isAddition || isRemoval) {
-          changes.push({
-            type: isAddition ? 'added' : 'removed',
-            hash: hash,
-            line: line.trim()
+      // Look for index line with blob SHAs
+      if (line.startsWith('index ') && currentFile) {
+        const match = line.match(/index ([a-f0-9]+)\.\.([a-f0-9]+)/);
+        if (match) {
+          blobs.push({
+            file: currentFile,
+            oldBlob: match[1],
+            newBlob: match[2]
           });
         }
       }
     }
     
-    return changes;
+    return blobs;
   }
 
   /**
-   * Get asset information from the manifest file
+   * Find commit information for a blob SHA
+   */
+  findCommitForBlob(blobSHA) {
+    try {
+      // Find which commit contains this blob
+      const result = execSync(`git log --all --pretty=format:"%H %s" --find-object=${blobSHA}`, { encoding: 'utf8' });
+      const lines = result.trim().split('\n').filter(line => line.length > 0);
+      
+      if (lines.length > 0) {
+        const firstLine = lines[0];
+        const [commitSHA, ...messageParts] = firstLine.split(' ');
+        return {
+          commit: commitSHA,
+          message: messageParts.join(' '),
+          allCommits: lines
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      this.log(`Error finding commit for blob ${blobSHA}: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Get file content from a specific blob SHA
+   */
+  getContentFromBlob(blobSHA) {
+    try {
+      const content = execSync(`git cat-file -p ${blobSHA}`, { encoding: 'utf8' });
+      return content;
+    } catch (error) {
+      this.log(`Error getting content from blob ${blobSHA}: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Extract CDK asset hash changes from file content
+   */
+  findAssetHashDifferences(oldContent, newContent) {
+    const oldHashes = (oldContent.match(/[a-f0-9]{64}/g) || []);
+    const newHashes = (newContent.match(/[a-f0-9]{64}/g) || []);
+    
+    const oldHashSet = new Set(oldHashes);
+    const newHashSet = new Set(newHashes);
+    
+    const removed = oldHashes.filter(h => !newHashSet.has(h));
+    const added = newHashes.filter(h => !oldHashSet.has(h));
+    
+    return { removed, added };
+  }
+
+  /**
+   * Get asset information from manifest
    */
   getAssetInfo(hash) {
     try {
@@ -81,11 +141,7 @@ class AssetDiffAnalyzer {
       const manifestContent = fs.readFileSync(this.assetManifestFile, 'utf8');
       const manifest = JSON.parse(manifestContent);
       
-      if (manifest.files && manifest.files[hash]) {
-        return manifest.files[hash];
-      }
-      
-      return null;
+      return manifest.files && manifest.files[hash] ? manifest.files[hash] : null;
     } catch (error) {
       this.log(`Error reading asset manifest: ${error.message}`);
       return null;
@@ -93,216 +149,18 @@ class AssetDiffAnalyzer {
   }
 
   /**
-   * Get the content of an asset file from the current working directory
+   * Get current asset file content
    */
   getCurrentAssetContent(sourcePath) {
     try {
-      const fullPath = path.join('cdk.out', sourcePath);
+      const fullPath = `cdk.out/${sourcePath}`;
       if (fs.existsSync(fullPath)) {
         return fs.readFileSync(fullPath, 'utf8');
       }
       return null;
     } catch (error) {
-      this.log(`Error reading current asset file ${sourcePath}: ${error.message}`);
+      this.log(`Error reading asset file ${sourcePath}: ${error.message}`);
       return null;
-    }
-  }
-
-  /**
-   * Get the content of an asset file from a specific commit
-   * Since cdk.out/ is not committed, we need to reconstruct or find alternative approaches
-   */
-  getCommittedAssetContent(commit, sourcePath) {
-    this.log(`Attempting to get committed content for ${sourcePath} from ${commit}`);
-    
-    // Since cdk.out/ is not committed to git, we can't directly access the committed version
-    // We'll need to use alternative approaches:
-    
-    // 1. Try to get the file directly (this will likely fail)
-    try {
-      const fullPath = `cdk.out/${sourcePath}`;
-      const content = execSync(`git show ${commit}:${fullPath}`, { encoding: 'utf8' });
-      this.log(`Successfully read committed file directly: ${fullPath}`);
-      return content;
-    } catch (error) {
-      this.log(`Cannot read committed cdk.out file directly (expected): ${error.message}`);
-    }
-    
-    // 2. Since we can't get the committed version, we'll note this limitation
-    this.log(`Note: cdk.out/ directory is not committed to git, so we cannot directly compare`);
-    this.log(`with the committed version of the asset file.`);
-    this.log(`The asset hash difference indicates the content has changed between builds.`);
-    
-    return null;
-  }
-
-  /**
-   * Find the corresponding asset hash in the committed version
-   */
-  findCorrespondingCommittedHash(currentHash, commit = 'HEAD') {
-    try {
-      // Get the current asset info
-      const currentAssetInfo = this.getAssetInfo(currentHash);
-      if (!currentAssetInfo) {
-        return null;
-      }
-      
-      // Get the committed static template
-      const committedTemplate = execSync(`git show ${commit}:${this.staticTemplateFile}`, { encoding: 'utf8' });
-      const committedHashes = committedTemplate.match(/[a-f0-9]{64}/g) || [];
-      
-      this.log(`Found ${committedHashes.length} asset hashes in committed template`);
-      
-      // Since cdk.out/ is not committed, we can't read the committed manifest
-      // Instead, we'll try to match based on the asset hashes in the template
-      // and assume the first different hash corresponds to our current asset
-      
-      // For now, return the first committed hash that's different from current
-      for (const hash of committedHashes) {
-        if (hash !== currentHash) {
-          this.log(`Found different committed hash: ${hash}`);
-          return {
-            hash: hash,
-            assetInfo: {
-              displayName: currentAssetInfo.displayName + ' (committed version)',
-              source: {
-                path: currentAssetInfo.source.path,
-                packaging: currentAssetInfo.source.packaging
-              }
-            }
-          };
-        }
-      }
-      
-      return null;
-    } catch (error) {
-      this.log(`Error finding corresponding committed hash: ${error.message}`);
-      return null;
-    }
-  }
-
-  /**
-   * Check if two source paths are similar (same file, different hash)
-   */
-  isSimilarSourcePath(path1, path2) {
-    // Remove hash prefixes and compare the rest
-    const cleanPath1 = path1.replace(/^asset\.[a-f0-9]{64}\.?/, '');
-    const cleanPath2 = path2.replace(/^asset\.[a-f0-9]{64}\.?/, '');
-    
-    return cleanPath1 === cleanPath2;
-  }
-
-  /**
-   * Compare two asset contents and highlight differences
-   */
-  compareAssetContents(content1, content2, label1, label2) {
-    this.log(`\n=== CONTENT COMPARISON: ${label1} vs ${label2} ===`);
-    
-    if (!content1 && !content2) {
-      this.log('Both contents are null');
-      return;
-    }
-    
-    if (!content1) {
-      this.log(`${label1} content is null`);
-      this.log(`${label2} content length: ${content2.length} characters`);
-      return;
-    }
-    
-    if (!content2) {
-      this.log(`${label2} content is null`);
-      this.log(`${label1} content length: ${content1.length} characters`);
-      return;
-    }
-    
-    this.log(`${label1} content length: ${content1.length} characters`);
-    this.log(`${label2} content length: ${content2.length} characters`);
-    
-    if (content1 === content2) {
-      this.log('Contents are identical');
-      return;
-    }
-    
-    // Try to parse as JSON and compare
-    try {
-      const json1 = JSON.parse(content1);
-      const json2 = JSON.parse(content2);
-      
-      this.log('Both contents are valid JSON');
-      
-      // Compare keys
-      const keys1 = Object.keys(json1).sort();
-      const keys2 = Object.keys(json2).sort();
-      
-      if (JSON.stringify(keys1) !== JSON.stringify(keys2)) {
-        this.log(`Different top-level keys:`);
-        this.log(`  ${label1}: ${keys1.join(', ')}`);
-        this.log(`  ${label2}: ${keys2.join(', ')}`);
-      } else {
-        this.log('Same top-level keys');
-      }
-      
-      // Look for specific differences
-      this.findJsonDifferences(json1, json2, label1, label2);
-      
-    } catch (error) {
-      this.log('Contents are not valid JSON, comparing as text');
-      
-      // Simple line-by-line comparison
-      const lines1 = content1.split('\n');
-      const lines2 = content2.split('\n');
-      
-      const maxLines = Math.max(lines1.length, lines2.length);
-      let differences = 0;
-      
-      for (let i = 0; i < Math.min(maxLines, 10); i++) {
-        const line1 = lines1[i] || '';
-        const line2 = lines2[i] || '';
-        
-        if (line1 !== line2) {
-          differences++;
-          this.log(`Line ${i + 1} differs:`);
-          this.log(`  ${label1}: ${line1.substring(0, 100)}${line1.length > 100 ? '...' : ''}`);
-          this.log(`  ${label2}: ${line2.substring(0, 100)}${line2.length > 100 ? '...' : ''}`);
-        }
-      }
-      
-      if (differences === 0) {
-        this.log('First 10 lines are identical');
-      } else {
-        this.log(`Found ${differences} different lines in first 10 lines`);
-      }
-    }
-  }
-
-  /**
-   * Find specific differences in JSON objects
-   */
-  findJsonDifferences(obj1, obj2, label1, label2, path = '') {
-    const keys = new Set([...Object.keys(obj1), ...Object.keys(obj2)]);
-    
-    for (const key of keys) {
-      const currentPath = path ? `${path}.${key}` : key;
-      const val1 = obj1[key];
-      const val2 = obj2[key];
-      
-      if (val1 === undefined) {
-        this.log(`  ${currentPath}: only in ${label2}`);
-      } else if (val2 === undefined) {
-        this.log(`  ${currentPath}: only in ${label1}`);
-      } else if (typeof val1 !== typeof val2) {
-        this.log(`  ${currentPath}: different types (${typeof val1} vs ${typeof val2})`);
-      } else if (typeof val1 === 'object' && val1 !== null && val2 !== null) {
-        // Recursively compare objects (but limit depth)
-        if (path.split('.').length < 3) {
-          this.findJsonDifferences(val1, val2, label1, label2, currentPath);
-        }
-      } else if (val1 !== val2) {
-        // Show first difference found
-        const val1Str = String(val1).substring(0, 100);
-        const val2Str = String(val2).substring(0, 100);
-        this.log(`  ${currentPath}: "${val1Str}" vs "${val2Str}"`);
-      }
     }
   }
 
@@ -310,126 +168,186 @@ class AssetDiffAnalyzer {
    * Main analysis function
    */
   async analyze() {
-    // Clear previous output
+    // Clear previous output and start fresh
     if (fs.existsSync(this.outputFile)) {
       fs.unlinkSync(this.outputFile);
     }
     
-    this.log('CDK Asset Diff Analysis');
-    this.log('=======================');
+    this.log('=== CDK ASSET DIFF ANALYSIS ===');
     
-    // Get git diff for static template
-    this.log('\n=== ANALYZING GIT DIFF ===');
-    const diff = this.getStaticTemplateDiff();
+    // Step 1: Get git diff with blob information
+    this.log('\n=== STEP 1: ANALYZING GIT DIFF ===');
+    const diff = this.getGitDiffWithBlobs();
     
     if (!diff) {
-      this.log('No git diff found for static template');
+      this.log('No git diff found');
       return;
     }
     
     this.log(`Git diff length: ${diff.length} characters`);
     
-    // Extract asset hash changes
-    const changes = this.extractAssetHashChanges(diff);
-    this.log(`Found ${changes.length} asset hash changes`);
+    // Step 2: Extract blob SHAs
+    this.log('\n=== STEP 2: EXTRACTING BLOB SHAS ===');
+    const blobs = this.extractBlobSHAs(diff);
+    this.log(`Found ${blobs.length} files with blob changes`);
     
-    if (changes.length === 0) {
-      this.log('No asset hash changes found in diff');
+    for (const blob of blobs) {
+      this.log(`File: ${blob.file}`);
+      this.log(`  Old blob: ${blob.oldBlob}`);
+      this.log(`  New blob: ${blob.newBlob}`);
+    }
+    
+    // Step 3: Find the static template file
+    const staticTemplateBlob = blobs.find(b => b.file === this.staticTemplateFile);
+    if (!staticTemplateBlob) {
+      this.log(`\nStatic template file ${this.staticTemplateFile} not found in diff`);
       return;
     }
     
-    // Analyze the first mismatch
-    this.log('\n=== ANALYZING FIRST ASSET HASH MISMATCH ===');
+    this.log(`\n=== STEP 3: ANALYZING STATIC TEMPLATE CHANGES ===`);
+    this.log(`Static template old blob: ${staticTemplateBlob.oldBlob}`);
+    this.log(`Static template new blob: ${staticTemplateBlob.newBlob}`);
     
-    // Group changes by type
-    const added = changes.filter(c => c.type === 'added');
-    const removed = changes.filter(c => c.type === 'removed');
+    // Step 4: Find commit information for each blob
+    this.log('\n=== STEP 4: FINDING COMMIT INFORMATION ===');
     
-    this.log(`Added hashes: ${added.length}`);
-    this.log(`Removed hashes: ${removed.length}`);
+    const oldCommitInfo = this.findCommitForBlob(staticTemplateBlob.oldBlob);
+    const newCommitInfo = this.findCommitForBlob(staticTemplateBlob.newBlob);
     
-    if (added.length > 0 && removed.length > 0) {
-      // Analyze the first pair
-      const addedHash = added[0].hash;
-      const removedHash = removed[0].hash;
-      
-      this.log(`\nAnalyzing hash change: ${removedHash} -> ${addedHash}`);
-      
-      // Get asset info for both hashes
-      const addedAssetInfo = this.getAssetInfo(addedHash);
-      const removedCorresponding = this.findCorrespondingCommittedHash(addedHash);
-      
-      if (addedAssetInfo) {
-        this.log(`\nCurrent asset info (${addedHash}):`);
-        this.log(`  Display Name: ${addedAssetInfo.displayName}`);
-        this.log(`  Source Path: ${addedAssetInfo.source.path}`);
-        this.log(`  Packaging: ${addedAssetInfo.source.packaging}`);
-        
-        // Get current content
-        const currentContent = this.getCurrentAssetContent(addedAssetInfo.source.path);
-        
-        this.log(`\nCurrent asset content preview:`);
-        if (currentContent) {
-          this.log(`  Content length: ${currentContent.length} characters`);
-          
-          // Show first few lines of content
-          const lines = currentContent.split('\n').slice(0, 5);
-          this.log(`  First few lines:`);
-          lines.forEach((line, index) => {
-            this.log(`    ${index + 1}: ${line.substring(0, 100)}${line.length > 100 ? '...' : ''}`);
-          });
-          
-          // Try to identify what type of content this is
-          try {
-            const parsed = JSON.parse(currentContent);
-            this.log(`  Content type: JSON`);
-            
-            if (parsed.AWSTemplateFormatVersion) {
-              this.log(`  CloudFormation template detected`);
-              this.log(`  Template description: ${parsed.Description || 'N/A'}`);
-              
-              // Look for resources that might indicate what changed
-              if (parsed.Resources) {
-                const resourceCount = Object.keys(parsed.Resources).length;
-                this.log(`  Resource count: ${resourceCount}`);
-                
-                const resourceTypes = [...new Set(Object.values(parsed.Resources).map(r => r.Type))];
-                this.log(`  Resource types: ${resourceTypes.slice(0, 5).join(', ')}${resourceTypes.length > 5 ? '...' : ''}`);
-              }
-            }
-          } catch (e) {
-            this.log(`  Content type: Non-JSON or malformed JSON`);
-          }
-        } else {
-          this.log(`  Could not read current content`);
-        }
-        
-        // Since we can't easily get the committed version, focus on what we can determine
-        this.log(`\nAsset hash analysis:`);
-        this.log(`  Old hash (being removed): ${removedHash}`);
-        this.log(`  New hash (being added): ${addedHash}`);
-        this.log(`  This indicates the content of ${addedAssetInfo.source.path} has changed`);
-        this.log(`  between the committed version and the current build.`)
-      } else {
-        this.log(`Could not find asset info for added hash: ${addedHash}`);
-      }
-    } else if (added.length > 0) {
-      this.log('\nOnly added hashes found (no removals)');
-      const hash = added[0].hash;
-      const assetInfo = this.getAssetInfo(hash);
-      
-      if (assetInfo) {
-        this.log(`Added asset: ${assetInfo.displayName}`);
-        this.log(`Source path: ${assetInfo.source.path}`);
-      }
-    } else if (removed.length > 0) {
-      this.log('\nOnly removed hashes found (no additions)');
-      const hash = removed[0].hash;
-      this.log(`Removed hash: ${hash}`);
+    if (oldCommitInfo) {
+      this.log(`Old blob commit: ${oldCommitInfo.commit}`);
+      this.log(`Old blob message: ${oldCommitInfo.message}`);
+    } else {
+      this.log('Could not find commit for old blob');
     }
     
-    this.log(`\n=== ANALYSIS COMPLETE ===`);
-    this.log(`Full output saved to: ${this.outputFile}`);
+    if (newCommitInfo) {
+      this.log(`New blob commit: ${newCommitInfo.commit}`);
+      this.log(`New blob message: ${newCommitInfo.message}`);
+    } else {
+      this.log('Could not find commit for new blob');
+    }
+    
+    // Step 5: Get file content from both blobs
+    this.log('\n=== STEP 5: GETTING FILE CONTENT FROM BLOBS ===');
+    
+    const oldContent = this.getContentFromBlob(staticTemplateBlob.oldBlob);
+    const newContent = this.getContentFromBlob(staticTemplateBlob.newBlob);
+    
+    if (!oldContent || !newContent) {
+      this.log('Could not retrieve content from one or both blobs');
+      return;
+    }
+    
+    this.log(`Old content length: ${oldContent.length} characters`);
+    this.log(`New content length: ${newContent.length} characters`);
+    
+    // Step 6: Find CDK asset hash differences
+    this.log('\n=== STEP 6: FINDING CDK ASSET HASH DIFFERENCES ===');
+    
+    const hashDiffs = this.findAssetHashDifferences(oldContent, newContent);
+    this.log(`Removed hashes: ${hashDiffs.removed.length}`);
+    this.log(`Added hashes: ${hashDiffs.added.length}`);
+    
+    if (hashDiffs.removed.length > 0) {
+      this.log('Removed hashes:');
+      hashDiffs.removed.forEach(hash => this.log(`  - ${hash}`));
+    }
+    
+    if (hashDiffs.added.length > 0) {
+      this.log('Added hashes:');
+      hashDiffs.added.forEach(hash => this.log(`  + ${hash}`));
+    }
+    
+    // Step 7: Analyze the first asset hash difference
+    if (hashDiffs.added.length > 0) {
+      this.log('\n=== STEP 7: ANALYZING FIRST ASSET HASH DIFFERENCE ===');
+      
+      const firstNewHash = hashDiffs.added[0];
+      this.log(`Analyzing new hash: ${firstNewHash}`);
+      
+      // Get asset info from manifest
+      const assetInfo = this.getAssetInfo(firstNewHash);
+      if (assetInfo) {
+        this.log(`Asset display name: ${assetInfo.displayName}`);
+        this.log(`Asset source path: ${assetInfo.source.path}`);
+        this.log(`Asset packaging: ${assetInfo.source.packaging}`);
+        
+        // Get the current asset file content
+        const assetContent = this.getCurrentAssetContent(assetInfo.source.path);
+        if (assetContent) {
+          this.log(`\n=== CURRENT ASSET FILE CONTENT ===`);
+          this.log(`File: cdk.out/${assetInfo.source.path}`);
+          this.log(`Content length: ${assetContent.length} characters`);
+          this.log(`--- BEGIN CURRENT FILE CONTENT ---`);
+          this.log(assetContent);
+          this.log(`--- END CURRENT FILE CONTENT ---`);
+        } else {
+          this.log(`Could not read current asset file: cdk.out/${assetInfo.source.path}`);
+        }
+        
+        // Try to find the old version of this asset
+        if (hashDiffs.removed.length > 0) {
+          const firstOldHash = hashDiffs.removed[0];
+          this.log(`\n=== ATTEMPTING TO GET OLD ASSET CONTENT ===`);
+          this.log(`Old hash: ${firstOldHash}`);
+          
+          // Since we can't easily get the old asset manifest, we'll try to reconstruct
+          // the old asset file path and get it from the old commit
+          if (oldCommitInfo) {
+            this.log(`Attempting to get old asset content from commit ${oldCommitInfo.commit}`);
+            
+            // Try to get the old asset file by checking out the old commit temporarily
+            try {
+              // First, let's see what files existed in the old commit's cdk.out
+              const oldCdkFiles = execSync(`git ls-tree -r --name-only ${oldCommitInfo.commit} | grep "cdk.out/"`, { encoding: 'utf8' });
+              this.log(`Files in old commit cdk.out:`);
+              this.log(oldCdkFiles);
+              
+              // Look for a file that might correspond to our asset
+              const oldCdkFilesList = oldCdkFiles.trim().split('\n').filter(f => f.length > 0);
+              const possibleOldFile = oldCdkFilesList.find(f => 
+                f.includes('nested.template.json') && 
+                f.includes(assetInfo.displayName.toLowerCase().replace(/[^a-z0-9]/g, ''))
+              );
+              
+              if (possibleOldFile) {
+                this.log(`Found possible old file: ${possibleOldFile}`);
+                const oldAssetContent = execSync(`git show ${oldCommitInfo.commit}:${possibleOldFile}`, { encoding: 'utf8' });
+                
+                this.log(`\n=== OLD ASSET FILE CONTENT ===`);
+                this.log(`File: ${possibleOldFile} (from commit ${oldCommitInfo.commit})`);
+                this.log(`Content length: ${oldAssetContent.length} characters`);
+                this.log(`--- BEGIN OLD FILE CONTENT ---`);
+                this.log(oldAssetContent);
+                this.log(`--- END OLD FILE CONTENT ---`);
+                
+                // Compare the two contents
+                this.log(`\n=== CONTENT COMPARISON ===`);
+                if (assetContent === oldAssetContent) {
+                  this.log(`Contents are identical - this should not happen!`);
+                } else {
+                  this.log(`Contents differ - this explains the hash change`);
+                  this.log(`Old content length: ${oldAssetContent.length}`);
+                  this.log(`New content length: ${assetContent.length}`);
+                  this.log(`Length difference: ${assetContent.length - oldAssetContent.length}`);
+                }
+              } else {
+                this.log(`Could not find corresponding old asset file`);
+              }
+              
+            } catch (error) {
+              this.log(`Error getting old asset content: ${error.message}`);
+            }
+          }
+        }
+        
+      } else {
+        this.log(`Could not find asset info for hash: ${firstNewHash}`);
+      }
+    }
+    
+    this.log('\n=== ANALYSIS COMPLETE ===');
   }
 }
 
