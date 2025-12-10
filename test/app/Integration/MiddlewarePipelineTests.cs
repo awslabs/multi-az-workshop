@@ -8,11 +8,11 @@ using Amazon.CloudWatch.EMF.Logger;
 
 namespace BAMCIS.MultiAZApp.Tests.Integration
 {
-    public class MiddlewarePipelineTests : IClassFixture<WebApplicationFactory<Program>>
+    public class MiddlewarePipelineTests : IClassFixture<TestWebApplicationFactory<Program>>
     {
-        private readonly WebApplicationFactory<Program> _factory;
+        private readonly TestWebApplicationFactory<Program> _factory;
 
-        public MiddlewarePipelineTests(WebApplicationFactory<Program> factory)
+        public MiddlewarePipelineTests(TestWebApplicationFactory<Program> factory)
         {
             _factory = factory;
         }

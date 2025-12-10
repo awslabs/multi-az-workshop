@@ -8,11 +8,11 @@ using AppEnvironment = BAMCIS.MultiAZApp.Utilities.Environment;
 
 namespace BAMCIS.MultiAZApp.Tests.Integration
 {
-    public class EnvironmentIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+    public class EnvironmentIntegrationTests : IClassFixture<TestWebApplicationFactory<Program>>
     {
-        private readonly WebApplicationFactory<Program> _factory;
+        private readonly TestWebApplicationFactory<Program> _factory;
 
-        public EnvironmentIntegrationTests(WebApplicationFactory<Program> factory)
+        public EnvironmentIntegrationTests(TestWebApplicationFactory<Program> factory)
         {
             _factory = factory;
         }

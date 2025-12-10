@@ -4,12 +4,12 @@ using System.Diagnostics;
 
 namespace BAMCIS.MultiAZApp.Tests.Integration
 {
-    public class PerformanceTests : IClassFixture<WebApplicationFactory<Program>>
+    public class PerformanceTests : IClassFixture<TestWebApplicationFactory<Program>>
     {
-        private readonly WebApplicationFactory<Program> _factory;
+        private readonly TestWebApplicationFactory<Program> _factory;
         private readonly HttpClient _client;
 
-        public PerformanceTests(WebApplicationFactory<Program> factory)
+        public PerformanceTests(TestWebApplicationFactory<Program> factory)
         {
             _factory = factory;
             _client = factory.CreateClient();

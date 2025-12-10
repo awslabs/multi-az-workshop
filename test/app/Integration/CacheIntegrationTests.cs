@@ -6,11 +6,11 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace BAMCIS.MultiAZApp.Tests.Integration
 {
-    public class CacheIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+    public class CacheIntegrationTests : IClassFixture<TestWebApplicationFactory<Program>>
     {
-        private readonly WebApplicationFactory<Program> _factory;
+        private readonly TestWebApplicationFactory<Program> _factory;
 
-        public CacheIntegrationTests(WebApplicationFactory<Program> factory)
+        public CacheIntegrationTests(TestWebApplicationFactory<Program> factory)
         {
             _factory = factory;
         }

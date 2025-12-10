@@ -4,12 +4,12 @@ using System.Net;
 
 namespace BAMCIS.MultiAZApp.Tests.Integration
 {
-    public class ErrorHandlingTests : IClassFixture<WebApplicationFactory<Program>>
+    public class ErrorHandlingTests : IClassFixture<TestWebApplicationFactory<Program>>
     {
-        private readonly WebApplicationFactory<Program> _factory;
+        private readonly TestWebApplicationFactory<Program> _factory;
         private readonly HttpClient _client;
 
-        public ErrorHandlingTests(WebApplicationFactory<Program> factory)
+        public ErrorHandlingTests(TestWebApplicationFactory<Program> factory)
         {
             _factory = factory;
             _client = factory.CreateClient();
