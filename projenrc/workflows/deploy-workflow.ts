@@ -15,9 +15,12 @@ export function createDeployWorkflow(github: GitHub): void {
   const deployWorkflow = new GithubWorkflow(github, 'deploy');
 
   deployWorkflow.on({
-    push: {
-      branches: ['main'],
-    },
+    workflowRun: {
+      workflows: ["review", "auto-approve"],
+      types: [
+        "completed"
+      ]
+    }
   });
 
   // Job 1: Check if deployment is needed
