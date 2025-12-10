@@ -48,7 +48,7 @@ export function createDeployWorkflow(github: GitHub): void {
         name: 'Checkout',
         uses: 'actions/checkout@v4',
         with: {
-          ref: '${{ github.event.workflow_run.head_sha }}',
+          'ref': '${{ github.event.workflow_run.head_sha }}',
           'fetch-depth': 0,
         },
       },
