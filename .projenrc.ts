@@ -1,7 +1,7 @@
 import { AwsCdkTypeScriptApp } from 'projen/lib/awscdk';
 import { UpgradeDependenciesSchedule } from 'projen/lib/javascript';
 import { createBuildTasks, createDeployTasks, createPublishTasks } from './projenrc/tasks/';
-import { createBuildWorkflow, createDeployWorkflow, createAutoApproveWorkflow, createPublishWorkflow, customizeReleaseWorkflow } from './projenrc/workflows';
+import { customizeBuildWorkflow, createDeployWorkflow, createAutoApproveWorkflow, createPublishWorkflow, customizeReleaseWorkflow } from './projenrc/workflows';
 
 // Root project that manages the entire multi-az-workshop monorepo
 const project = new AwsCdkTypeScriptApp({
@@ -20,8 +20,21 @@ const project = new AwsCdkTypeScriptApp({
   repository: 'https://github.com/awslabs/multi-az-workshop',
   license: 'Apache-2.0',
 
-  // Disable default build workflow - we'll create a custom one
-  buildWorkflow: false,
+  // Enable default build workflow with custom configuration
+  workflowRunsOn: ['ubuntu-24.04-arm'],
+  buildWorkflow: true,
+  buildWorkflowOptions: {
+    preBuildSteps: [
+      {
+        name: 'Install dotnet',
+        uses: 'actions/setup-dotnet@v4',
+        with: {
+          'dotnet-version': '9.0',
+        },
+      },
+    ],
+    mutableBuild: false,
+  },
   release: true,
 
   // Enable GitHub integration
@@ -94,7 +107,7 @@ const project = new AwsCdkTypeScriptApp({
 project.tasks.addEnvironment('PROJECT_NAME', project.name);
 
 // Create workflows using externalized modules
-createBuildWorkflow(project.github!);
+customizeBuildWorkflow(project);
 createDeployWorkflow(project.github!);
 createAutoApproveWorkflow(project.github!);
 createPublishWorkflow(project.github!);
