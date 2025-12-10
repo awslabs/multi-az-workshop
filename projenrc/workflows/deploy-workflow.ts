@@ -68,6 +68,9 @@ export function createDeployWorkflow(github: GitHub): void {
       contents: JobPermission.READ,
       deployments: JobPermission.WRITE,
     },
+    environment: {
+      name: 'AWS',
+    },
     outputs: {
       deployment_id: {
         stepId: 'create',
@@ -159,6 +162,9 @@ export function createDeployWorkflow(github: GitHub): void {
     runsOn: ['ubuntu-latest'],
     permissions: {
       deployments: JobPermission.WRITE,
+    },
+    environment: {
+      name: 'AWS',
     },
     env: {
       GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}',

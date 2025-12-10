@@ -38,6 +38,8 @@ jobs:
     permissions:
       contents: read
       deployments: write
+    environment:
+      name: AWS
     outputs:
       deployment_id: ${{ steps.create.outputs.deployment_id }}
     env:
@@ -99,6 +101,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       deployments: write
+    environment:
+      name: AWS
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     if: always() && needs.create-deployment.result != 'skipped'
