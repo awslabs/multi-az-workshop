@@ -35,25 +35,43 @@ if [ -f repo.patch ]; then
     CHANGED_HASH=$(git diff --staged static/multi-az-workshop.json | grep -E "[\\+\\-].*[a-f0-9]{64}\\.json" | head -1 | grep -oE "[a-f0-9]{64}" | head -1)
     if [ ! -z "$CHANGED_HASH" ]; then
       echo "Changed asset hash: $CHANGED_HASH" | tee -a debug-output.txt
-      echo "Looking for corresponding file in cdk.out/:" | tee -a debug-output.txt
-      find cdk.out/ -name "*$CHANGED_HASH*" -type f | head -5 | tee -a debug-output.txt
-      ASSET_FILE=$(find cdk.out/ -name "*$CHANGED_HASH*" -type f | head -1)
-      if [ ! -z "$ASSET_FILE" ]; then
-        echo "Content of newly generated $ASSET_FILE:" | tee -a debug-output.txt
-        cat "$ASSET_FILE" >> debug-output.txt
-        echo "" | tee -a debug-output.txt
-        echo "=== COMPARISON WITH COMMITTED VERSION ===" | tee -a debug-output.txt
-        OLD_HASH=$(git show HEAD:static/multi-az-workshop.json | grep -oE "[a-f0-9]{64}\\.json" | head -1 | grep -oE "[a-f0-9]{64}")
-        if [ ! -z "$OLD_HASH" ] && [ "$OLD_HASH" != "$CHANGED_HASH" ]; then
-          echo "Previous committed asset hash: $OLD_HASH" | tee -a debug-output.txt
-          OLD_ASSET_FILE=$(find cdk.out/ -name "*$OLD_HASH*" -type f | head -1)
-          if [ ! -z "$OLD_ASSET_FILE" ]; then
-            echo "Content of previous version $OLD_ASSET_FILE:" | tee -a debug-output.txt
-            cat "$OLD_ASSET_FILE" >> debug-output.txt
+      echo "Looking up asset in manifest file..." | tee -a debug-output.txt
+      if [ -f "cdk.out/multi-az-workshop.assets.json" ]; then
+        ASSET_PATH=$(cat cdk.out/multi-az-workshop.assets.json | jq -r ".files[\\"$CHANGED_HASH\\"].source.path // empty")
+        if [ ! -z "$ASSET_PATH" ]; then
+          ASSET_FILE="cdk.out/$ASSET_PATH"
+          echo "Asset source file: $ASSET_FILE" | tee -a debug-output.txt
+          if [ -f "$ASSET_FILE" ]; then
+            echo "Content of newly generated $ASSET_FILE:" | tee -a debug-output.txt
+            cat "$ASSET_FILE" >> debug-output.txt
+            echo "" | tee -a debug-output.txt
+            echo "=== COMPARISON WITH COMMITTED VERSION ===" | tee -a debug-output.txt
+            OLD_HASH=$(git show HEAD:static/multi-az-workshop.json | grep -oE "[a-f0-9]{64}\\.json" | head -1 | grep -oE "[a-f0-9]{64}")
+            if [ ! -z "$OLD_HASH" ] && [ "$OLD_HASH" != "$CHANGED_HASH" ]; then
+              echo "Previous committed asset hash: $OLD_HASH" | tee -a debug-output.txt
+              OLD_ASSET_PATH=$(cat cdk.out/multi-az-workshop.assets.json | jq -r ".files[\\"$OLD_HASH\\"].source.path // empty")
+              if [ ! -z "$OLD_ASSET_PATH" ]; then
+                OLD_ASSET_FILE="cdk.out/$OLD_ASSET_PATH"
+                echo "Previous asset source file: $OLD_ASSET_FILE" | tee -a debug-output.txt
+                if [ -f "$OLD_ASSET_FILE" ]; then
+                  echo "Content of previous version $OLD_ASSET_FILE:" | tee -a debug-output.txt
+                  cat "$OLD_ASSET_FILE" >> debug-output.txt
+                else
+                  echo "Previous asset file $OLD_ASSET_FILE not found in current cdk.out/" | tee -a debug-output.txt
+                fi
+              else
+                echo "Previous asset hash $OLD_HASH not found in current manifest" | tee -a debug-output.txt
+              fi
+            fi
           else
-            echo "Previous asset file not found in current cdk.out/" | tee -a debug-output.txt
+            echo "Asset file $ASSET_FILE not found" | tee -a debug-output.txt
           fi
+        else
+          echo "Asset hash $CHANGED_HASH not found in manifest" | tee -a debug-output.txt
         fi
+      else
+        echo "Asset manifest file not found" | tee -a debug-output.txt
+      fi
       fi
     fi
   fi
