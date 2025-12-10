@@ -32,8 +32,8 @@ namespace BAMCIS.MultiAZApp.Tests.Integration
                 services.AddSingleton<IWorker, MockCacheRefreshWorker>();
             });
 
-            // Use a test-specific environment
-            builder.UseEnvironment("Testing");
+            // Use Development environment to ensure EMF logs to stdout
+            builder.UseEnvironment("Development");
             
             // Override configuration to prevent any AWS service initialization
             builder.ConfigureAppConfiguration((context, config) =>
