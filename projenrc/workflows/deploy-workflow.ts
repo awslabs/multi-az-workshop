@@ -48,6 +48,7 @@ export function createDeployWorkflow(github: GitHub): void {
         name: 'Checkout',
         uses: 'actions/checkout@v4',
         with: {
+          ref: '${{ github.event.workflow_run.head_sha }}',
           'fetch-depth': 0,
         },
       },
@@ -100,7 +101,7 @@ export function createDeployWorkflow(github: GitHub): void {
         id: 'create',
         run: `
           DEPLOYMENT_ID=$(gh api repos/\${{ github.repository }}/deployments \\
-            -f ref=\${{ github.sha }} \\
+            -f ref=\${{ github.event.workflow_run.head_sha }} \\
             -f environment=AWS \\
             -F auto_merge=false \\
             --jq '.id')
@@ -134,6 +135,9 @@ export function createDeployWorkflow(github: GitHub): void {
       {
         name: 'Checkout',
         uses: 'actions/checkout@v4',
+        with: {
+          ref: '${{ github.event.workflow_run.head_sha }}',
+        },
       },
       {
         name: 'Setup Node.js',
