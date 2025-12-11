@@ -84,10 +84,10 @@ function createWorkshopDeployTask(project: AwsCdkTypeScriptApp): void {
         CHANGE_SET_TYPE=$(cat tmp/change_set_type.txt)
         WAIT_CONDITION=$(cat tmp/wait_condition.txt)
 
-        # Create changeset with error handling and disable rollback for CREATE operations
-        DISABLE_ROLLBACK_FLAG=""
+        # Create changeset with error handling and prevent rollback on failure for CREATE operations
+        ON_FAILURE_FLAG=""
         if [ "$CHANGE_SET_TYPE" = "CREATE" ]; then
-          DISABLE_ROLLBACK_FLAG="--disable-rollback"
+          ON_FAILURE_FLAG="--on-stack-failure DO_NOTHING"
         fi
 
         if ! aws cloudformation create-change-set \\
@@ -99,7 +99,7 @@ function createWorkshopDeployTask(project: AwsCdkTypeScriptApp): void {
             ParameterKey=AssetsBucketName,ParameterValue=$BUCKET \\
             ParameterKey=AssetsBucketPrefix,ParameterValue="$ASSETS_PREFIX/" \\
           --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \\
-          $DISABLE_ROLLBACK_FLAG \\
+          $ON_FAILURE_FLAG \\
           --region $AWS_REGION; then
           echo "Failed to create changeset - cleaning up S3 content"
           aws s3 rm s3://$BUCKET/$ASSETS_PREFIX/ --recursive
