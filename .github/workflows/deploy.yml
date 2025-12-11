@@ -68,7 +68,7 @@ jobs:
                       --jq '.id')
                     echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
                     echo "Created deployment: $DEPLOYMENT_ID"
-  bundle-and-deploy:
+  build-and-deploy:
     needs:
       - check-changes
       - create-deployment
@@ -106,13 +106,13 @@ jobs:
           role-to-assume: ${{ env.DEPLOYMENT_ROLE }}
           aws-region: ${{ env.AWS_REGION }}
           mask-aws-account-id: true
-      - name: Bundle and deploy workshop
+      - name: Build and deploy workshop
         run: npx projen build-and-deploy
   report-deployment:
     needs:
       - check-changes
       - create-deployment
-      - bundle-and-deploy
+      - build-and-deploy
     runs-on: ubuntu-latest
     permissions:
       deployments: write
@@ -123,7 +123,7 @@ jobs:
       - name: Report deployment status
         run: |-
           if [ "${{ needs.check-changes.outputs.should_deploy }}" == "true" ]; then
-                      if [ "${{ needs.bundle-and-deploy.result }}" == "success" ]; then
+                      if [ "${{ needs.build-and-deploy.result }}" == "success" ]; then
                         STATE="success"
                       else
                         STATE="failure"
