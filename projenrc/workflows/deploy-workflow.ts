@@ -187,6 +187,24 @@ export function createDeployWorkflow(github: GitHub): void {
     },
     steps: [
       {
+        name: 'Checkout',
+        uses: 'actions/checkout@v4',
+        with: {
+          ref: '${{ github.event.workflow_run.head_sha }}',
+        },
+      },
+      {
+        name: 'Setup Node.js',
+        uses: 'actions/setup-node@v4',
+        with: {
+          'node-version': '20',
+        },
+      },
+      {
+        name: 'Install dependencies',
+        run: 'yarn install --check-files --frozen-lockfile',
+      },
+      {
         name: 'Download content artifact',
         uses: 'actions/download-artifact@v4',
         with: {
