@@ -245,7 +245,19 @@
       "description": "Build and deploy workshop to AWS (requires BUCKET and AWS_REGION environment variables)",
       "steps": [
         {
-          "spawn": "build"
+          "spawn": "default"
+        },
+        {
+          "spawn": "pre-compile"
+        },
+        {
+          "spawn": "compile"
+        },
+        {
+          "spawn": "post-compile"
+        },
+        {
+          "spawn": "package"
         },
         {
           "spawn": "deploy"
@@ -425,13 +437,13 @@
           "say": "Determining stack status..."
         },
         {
-          "exec": "set +e\n        aws cloudformation describe-stacks --stack-name $PROJECT_NAME --region $AWS_REGION >/dev/null 2>&1\n        EXITCODE=$?\n        set -e\n\n        if [[ $EXITCODE -eq 0 ]]; then\n          echo \"UPDATE\" > tmp/change_set_type.txt\n          echo \"update\" > tmp/wait_condition.txt\n          echo \"Stack exists - will UPDATE\"\n        else\n          echo \"CREATE\" > tmp/change_set_type.txt\n          echo \"create\" > tmp/wait_condition.txt\n          echo \"Stack does not exist - will CREATE\"\n        fi"
+          "exec": "set +e\n        aws cloudformation describe-stacks --stack-name $PROJECT_NAME --region $AWS_REGION >/dev/null 2>&1\n        EXITCODE=$?\n        set -e\n\n        if [ $EXITCODE -eq 0 ]; then\n          echo \"UPDATE\" > tmp/change_set_type.txt\n          echo \"update\" > tmp/wait_condition.txt\n          echo \"Stack exists - will UPDATE\"\n        else\n          echo \"CREATE\" > tmp/change_set_type.txt\n          echo \"create\" > tmp/wait_condition.txt\n          echo \"Stack does not exist - will CREATE\"\n        fi"
         },
         {
           "say": "Deploying CloudFormation stack..."
         },
         {
-          "exec": "# Load variables from files\n        ASSETS_PREFIX=$(cat tmp/assets_prefix.txt)\n        CHANGE_SET_TYPE=$(cat tmp/change_set_type.txt)\n        WAIT_CONDITION=$(cat tmp/wait_condition.txt)\n\n        # Trap to handle cleanup on failure\n        cleanup_on_failure() {\n          echo \"Deployment failed - cleaning up new S3 content\"\n          aws s3 rm s3://$BUCKET/ --recursive --exclude \"*\" --include \"$ASSETS_PREFIX/*\"\n          exit 1\n        }\n        trap cleanup_on_failure ERR\n\n        # Create changeset\n        aws cloudformation create-change-set \\\n          --change-set-type $CHANGE_SET_TYPE \\\n          --stack-name $PROJECT_NAME \\\n          --change-set-name $PROJECT_NAME-$ASSETS_PREFIX \\\n          --template-url https://$BUCKET.s3.$AWS_REGION.amazonaws.com/$ASSETS_PREFIX/$PROJECT_NAME.json \\\n          --parameters \\\n            ParameterKey=AssetsBucketName,ParameterValue=$BUCKET \\\n            ParameterKey=AssetsBucketPrefix,ParameterValue=\"$ASSETS_PREFIX/\" \\\n          --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \\\n          --region $AWS_REGION\n\n        # Wait for changeset creation\n        aws cloudformation wait change-set-create-complete \\\n          --stack-name $PROJECT_NAME \\\n          --change-set-name $PROJECT_NAME-$ASSETS_PREFIX \\\n          --region $AWS_REGION\n\n        # Execute changeset\n        aws cloudformation execute-change-set \\\n          --stack-name $PROJECT_NAME \\\n          --change-set-name $PROJECT_NAME-$ASSETS_PREFIX \\\n          --region $AWS_REGION\n\n        # Wait for stack completion\n        aws cloudformation wait stack-$WAIT_CONDITION-complete \\\n          --stack-name $PROJECT_NAME \\\n          --region $AWS_REGION\n\n        # Remove trap after successful deployment\n        trap - ERR"
+          "exec": "# Load variables from files\n        ASSETS_PREFIX=$(cat tmp/assets_prefix.txt)\n        CHANGE_SET_TYPE=$(cat tmp/change_set_type.txt)\n        WAIT_CONDITION=$(cat tmp/wait_condition.txt)\n\n        # Create changeset with error handling\n        if ! aws cloudformation create-change-set \\\n          --change-set-type $CHANGE_SET_TYPE \\\n          --stack-name $PROJECT_NAME \\\n          --change-set-name $PROJECT_NAME-$ASSETS_PREFIX \\\n          --template-url https://$BUCKET.s3.$AWS_REGION.amazonaws.com/$ASSETS_PREFIX/$PROJECT_NAME.json \\\n          --parameters \\\n            ParameterKey=AssetsBucketName,ParameterValue=$BUCKET \\\n            ParameterKey=AssetsBucketPrefix,ParameterValue=\"$ASSETS_PREFIX/\" \\\n          --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \\\n          --region $AWS_REGION; then\n          echo \"Failed to create changeset - cleaning up S3 content\"\n          aws s3 rm s3://$BUCKET/$ASSETS_PREFIX/ --recursive\n          exit 1\n        fi\n\n        # Wait for changeset creation\n        if ! aws cloudformation wait change-set-create-complete \\\n          --stack-name $PROJECT_NAME \\\n          --change-set-name $PROJECT_NAME-$ASSETS_PREFIX \\\n          --region $AWS_REGION; then\n          echo \"Changeset creation failed - cleaning up S3 content\"\n          aws s3 rm s3://$BUCKET/$ASSETS_PREFIX/ --recursive\n          exit 1\n        fi\n\n        # Execute changeset\n        if ! aws cloudformation execute-change-set \\\n          --stack-name $PROJECT_NAME \\\n          --change-set-name $PROJECT_NAME-$ASSETS_PREFIX \\\n          --region $AWS_REGION; then\n          echo \"Failed to execute changeset - cleaning up S3 content\"\n          aws s3 rm s3://$BUCKET/$ASSETS_PREFIX/ --recursive\n          exit 1\n        fi\n\n        # Wait for stack completion\n        if ! aws cloudformation wait stack-$WAIT_CONDITION-complete \\\n          --stack-name $PROJECT_NAME \\\n          --region $AWS_REGION; then\n          echo \"Stack deployment failed - cleaning up S3 content\"\n          aws s3 rm s3://$BUCKET/$ASSETS_PREFIX/ --recursive\n          exit 1\n        fi"
         },
         {
           "say": "Deployment succeeded!"

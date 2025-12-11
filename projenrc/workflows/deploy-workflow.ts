@@ -112,8 +112,8 @@ export function createDeployWorkflow(github: GitHub): void {
     ],
   });
 
-  // Job 3: Bundle and deploy (only runs if there are src changes)
-  deployWorkflow.addJob('bundle-and-deploy', {
+  // Job 3: Build and deploy (only runs if there are src changes)
+  deployWorkflow.addJob('build-and-deploy', {
     needs: ['check-changes', 'create-deployment'],
     if: 'needs.check-changes.outputs.should_deploy == \'true\'',
     runsOn: ['ubuntu-24.04-arm'],
@@ -167,7 +167,7 @@ export function createDeployWorkflow(github: GitHub): void {
         },
       },
       {
-        name: 'Bundle and deploy workshop',
+        name: 'Build and deploy workshop',
         run: 'npx projen build-and-deploy',
       },
     ],
@@ -175,7 +175,7 @@ export function createDeployWorkflow(github: GitHub): void {
 
   // Job 4: Report deployment status (always runs after create-deployment)
   deployWorkflow.addJob('report-deployment', {
-    needs: ['check-changes', 'create-deployment', 'bundle-and-deploy'],
+    needs: ['check-changes', 'create-deployment', 'build-and-deploy'],
     if: 'always() && needs.create-deployment.result == \'success\'',
     runsOn: ['ubuntu-latest'],
     permissions: {
@@ -189,7 +189,7 @@ export function createDeployWorkflow(github: GitHub): void {
         name: 'Report deployment status',
         run: `
           if [ "\${{ needs.check-changes.outputs.should_deploy }}" == "true" ]; then
-            if [ "\${{ needs.bundle-and-deploy.result }}" == "success" ]; then
+            if [ "\${{ needs.build-and-deploy.result }}" == "success" ]; then
               STATE="success"
             else
               STATE="failure"

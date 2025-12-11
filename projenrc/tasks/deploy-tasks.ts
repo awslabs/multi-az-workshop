@@ -63,7 +63,7 @@ function createWorkshopDeployTask(project: AwsCdkTypeScriptApp): void {
         EXITCODE=$?
         set -e
 
-        if [[ $EXITCODE -eq 0 ]]; then
+        if [ $EXITCODE -eq 0 ]; then
           echo "UPDATE" > tmp/change_set_type.txt
           echo "update" > tmp/wait_condition.txt
           echo "Stack exists - will UPDATE"
@@ -84,16 +84,8 @@ function createWorkshopDeployTask(project: AwsCdkTypeScriptApp): void {
         CHANGE_SET_TYPE=$(cat tmp/change_set_type.txt)
         WAIT_CONDITION=$(cat tmp/wait_condition.txt)
 
-        # Trap to handle cleanup on failure
-        cleanup_on_failure() {
-          echo "Deployment failed - cleaning up new S3 content"
-          aws s3 rm s3://$BUCKET/ --recursive --exclude "*" --include "$ASSETS_PREFIX/*"
-          exit 1
-        }
-        trap cleanup_on_failure ERR
-
-        # Create changeset
-        aws cloudformation create-change-set \\
+        # Create changeset with error handling
+        if ! aws cloudformation create-change-set \\
           --change-set-type $CHANGE_SET_TYPE \\
           --stack-name $PROJECT_NAME \\
           --change-set-name $PROJECT_NAME-$ASSETS_PREFIX \\
@@ -102,27 +94,40 @@ function createWorkshopDeployTask(project: AwsCdkTypeScriptApp): void {
             ParameterKey=AssetsBucketName,ParameterValue=$BUCKET \\
             ParameterKey=AssetsBucketPrefix,ParameterValue="$ASSETS_PREFIX/" \\
           --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \\
-          --region $AWS_REGION
+          --region $AWS_REGION; then
+          echo "Failed to create changeset - cleaning up S3 content"
+          aws s3 rm s3://$BUCKET/$ASSETS_PREFIX/ --recursive
+          exit 1
+        fi
 
         # Wait for changeset creation
-        aws cloudformation wait change-set-create-complete \\
+        if ! aws cloudformation wait change-set-create-complete \\
           --stack-name $PROJECT_NAME \\
           --change-set-name $PROJECT_NAME-$ASSETS_PREFIX \\
-          --region $AWS_REGION
+          --region $AWS_REGION; then
+          echo "Changeset creation failed - cleaning up S3 content"
+          aws s3 rm s3://$BUCKET/$ASSETS_PREFIX/ --recursive
+          exit 1
+        fi
 
         # Execute changeset
-        aws cloudformation execute-change-set \\
+        if ! aws cloudformation execute-change-set \\
           --stack-name $PROJECT_NAME \\
           --change-set-name $PROJECT_NAME-$ASSETS_PREFIX \\
-          --region $AWS_REGION
+          --region $AWS_REGION; then
+          echo "Failed to execute changeset - cleaning up S3 content"
+          aws s3 rm s3://$BUCKET/$ASSETS_PREFIX/ --recursive
+          exit 1
+        fi
 
         # Wait for stack completion
-        aws cloudformation wait stack-$WAIT_CONDITION-complete \\
+        if ! aws cloudformation wait stack-$WAIT_CONDITION-complete \\
           --stack-name $PROJECT_NAME \\
-          --region $AWS_REGION
-
-        # Remove trap after successful deployment
-        trap - ERR
+          --region $AWS_REGION; then
+          echo "Stack deployment failed - cleaning up S3 content"
+          aws s3 rm s3://$BUCKET/$ASSETS_PREFIX/ --recursive
+          exit 1
+        fi
       `.trim(),
       },
       {
@@ -171,7 +176,8 @@ function createMainDeployTask(project: AwsCdkTypeScriptApp): void {
 /**
  * Creates the build-and-deploy shortcut task.
  *
- * This task runs the build task followed by the deploy task.
+ * This task runs a streamlined build (without tests) followed by the deploy task.
+ * Tests are skipped since they should have already been run in the CI pipeline.
  * If either task fails, execution stops and the error is propagated.
  *
  * Requirements: 5.1, 5.3
@@ -181,8 +187,14 @@ function createBuildAndDeployShortcut(project: AwsCdkTypeScriptApp): void {
     description: 'Build and deploy workshop to AWS (requires BUCKET and AWS_REGION environment variables)',
   });
 
-  // Spawn build task first, then deploy task
-  // Projen's spawn mechanism automatically stops on failure
-  buildAndDeployTask.spawn(project.tasks.tryFind('build')!);
+  // Run streamlined build steps (skip tests since they run in CI)
+  buildAndDeployTask.spawn(project.tasks.tryFind('default')!);
+  buildAndDeployTask.spawn(project.tasks.tryFind('pre-compile')!);
+  buildAndDeployTask.spawn(project.tasks.tryFind('compile')!);
+  buildAndDeployTask.spawn(project.tasks.tryFind('post-compile')!);
+  // Skip 'test' step - tests already run in CI
+  buildAndDeployTask.spawn(project.tasks.tryFind('package')!);
+  
+  // Then deploy
   buildAndDeployTask.spawn(project.tasks.tryFind('deploy')!);
 }
