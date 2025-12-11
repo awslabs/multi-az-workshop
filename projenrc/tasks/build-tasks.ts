@@ -206,9 +206,6 @@ function createAssetBuildTasks(project: AwsCdkTypeScriptApp): Task {
       {
         exec: 'rm -rf src/app/output',
       },
-      {
-        exec: 'rm assets/container.tar.gz',
-      },
     ],
   });
 
@@ -231,10 +228,10 @@ function createAssetBuildTasks(project: AwsCdkTypeScriptApp): Task {
         exec: 'docker build --tag $PROJECT_NAME:latest --platform linux/arm64 --build-arg SRC=src --file build/dockerfile src/app/output',
       },
       {
-        exec: 'docker save $PROJECT_NAME:latest | gzip > assets/container.tar.gz',
+        exec: 'docker save $PROJECT_NAME:latest | gzip > /tmp/container.tar.gz',
       },
       {
-        exec: 'zip -j assets/$FILE_NAME assets/container.tar.gz assets/cloudwatch-agent.tar.gz',
+        exec: 'zip -j assets/$FILE_NAME /tmp/container.tar.gz assets/cloudwatch-agent.tar.gz',
       },
       {
         exec: 'cd src/app && zip -r ../../assets/$FILE_NAME docker/',
@@ -246,7 +243,7 @@ function createAssetBuildTasks(project: AwsCdkTypeScriptApp): Task {
         exec: 'rm -rf src/app/output',
       },
       {
-        exec: 'rm assets/container.tar.gz',
+        exec: 'rm /tmp/container.tar.gz',
       },
     ],
   });
@@ -293,9 +290,6 @@ function createCdkAssetProcessingTasks(project: AwsCdkTypeScriptApp): { cdkProce
   const packageAssets = project.addTask('assets:package', {
     description: 'Package the assets for testing and deployment',
     steps: [
-      {
-        exec: 'rm assets/cloudwatch-agent.tar.gz',
-      },
       {
         exec: 'cp static/$PROJECT_NAME.json assets/$PROJECT_NAME.json',
       },
