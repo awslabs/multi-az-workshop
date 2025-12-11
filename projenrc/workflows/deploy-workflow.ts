@@ -158,8 +158,8 @@ export function createDeployWorkflow(github: GitHub): void {
         name: 'Upload content artifact',
         uses: 'actions/upload-artifact@v4',
         with: {
-          name: 'workshop-content',
-          path: 'dist/content.zip',
+          'name': 'workshop-content',
+          'path': 'dist/content.zip',
           'retention-days': 7,
         },
       },
