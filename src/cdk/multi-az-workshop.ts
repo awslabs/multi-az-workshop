@@ -16,6 +16,7 @@ new MultiAZWorkshopStack(app, 'multi-az-workshop', {
     fileAssetsBucketName: '${AssetsBucketName}',
     bucketPrefix: '${AssetsBucketPrefix}',
     qualifier: undefined,
+    generateBootstrapVersionRule: false
   }),
 });
 
