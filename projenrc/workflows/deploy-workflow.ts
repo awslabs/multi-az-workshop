@@ -114,7 +114,7 @@ export function createDeployWorkflow(github: GitHub): void {
 
   // Job 3: Build content (only runs if there are src changes)
   deployWorkflow.addJob('build', {
-    needs: ['check-changes'],
+    needs: ['create-deployment'],
     if: 'needs.check-changes.outputs.should_deploy == \'true\'',
     runsOn: ['ubuntu-24.04-arm'],
     permissions: {
@@ -152,7 +152,7 @@ export function createDeployWorkflow(github: GitHub): void {
       },
       {
         name: 'Build workshop content',
-        run: 'npx projen package',
+        run: 'npx projen build',
       },
       {
         name: 'Upload content artifact',
