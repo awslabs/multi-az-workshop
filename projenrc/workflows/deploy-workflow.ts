@@ -168,7 +168,7 @@ export function createDeployWorkflow(github: GitHub): void {
       },
       {
         name: 'Bundle and deploy workshop',
-        run: 'npx projen bundle-and-deploy',
+        run: 'npx projen build-and-deploy',
       },
     ],
   });
