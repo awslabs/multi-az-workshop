@@ -69,7 +69,7 @@ jobs:
                     echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
                     echo "Created deployment: $DEPLOYMENT_ID"
   build:
-    needs: check-changes
+    needs: create-deployment
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
@@ -93,7 +93,7 @@ jobs:
       - name: Install dependencies
         run: yarn install --check-files --frozen-lockfile
       - name: Build workshop content
-        run: npx projen package
+        run: npx projen build
       - name: Upload content artifact
         uses: actions/upload-artifact@v4
         with:
