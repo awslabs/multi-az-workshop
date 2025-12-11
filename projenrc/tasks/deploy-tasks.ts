@@ -194,7 +194,7 @@ function createBuildAndDeployShortcut(project: AwsCdkTypeScriptApp): void {
   buildAndDeployTask.spawn(project.tasks.tryFind('post-compile')!);
   // Skip 'test' step - tests already run in CI
   buildAndDeployTask.spawn(project.tasks.tryFind('package')!);
-  
+
   // Then deploy
   buildAndDeployTask.spawn(project.tasks.tryFind('deploy')!);
 }
