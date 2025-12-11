@@ -405,9 +405,162 @@ export class EC2FleetStack extends cdk.NestedStack {
       heartbeatTimeout: cdk.Duration.minutes(10),
     });
 
-    // Note: CloudFormation Init configuration would be added here
-    // This is a complex configuration that requires extensive setup
-    // For now, we're creating the basic structure
+    // Add CloudFormation Init configuration
+    const cfnInit = ec2.CloudFormationInit.fromConfigSets({
+      configSets: {
+        setup: [
+          '01_metadata_version',
+          '02_setup_cfn_hup',
+          '03_check_cfn_hup',
+          '04_install_cloudwatch_agent',
+          '05_config_amazon_cloudwatch_agent',
+          '06_restart_amazon_cloudwatch_agent',
+          '07_setup_firewalld',
+          '08_set_database_details',
+          '09_install_docker',
+          '10_setup_web_user',
+          '11_verify_docker',
+          '12_install_codedeploy',
+          '13_start_codedeploy_agent',
+          '14_set_env',
+        ],
+        update: [
+          '05_config_amazon_cloudwatch_agent',
+          '06_restart_amazon_cloudwatch_agent',
+          '08_set_database_details',
+        ],
+      },
+      configs: {
+        '01_metadata_version': new ec2.InitConfig([
+          ec2.InitFile.fromString('/etc/cfn/dummy.version', `VERSION=${props.launchTemplateMetadataVersion ?? '0.01'}`),
+        ]),
+        '02_setup_cfn_hup': new ec2.InitConfig([
+          ec2.InitFile.fromString(
+            '/etc/cfn/cfn-hup.conf',
+            [
+              '[main]',
+              cdk.Fn.sub('stack=${AWS::StackId}'),
+              cdk.Fn.sub('region=${AWS::Region}'),
+              'interval=10',
+              'verbose=true',
+              'umask=022',
+            ].join('\n'),
+            { mode: '000400', owner: 'root', group: 'root' }
+          ),
+          ec2.InitFile.fromString(
+            '/etc/cfn/hooks.d/amazon-cloudwatch-agent-auto-reloader.conf',
+            [
+              '[amazon-cloudwatch-agent-auto-reloader-hook]',
+              'triggers=post.update',
+              `path=Resources.${cdk.Names.uniqueId(asg)}.Metadata.AWS::CloudFormation::Init.05_config_amazon_cloudwatch_agent`,
+              cdk.Fn.sub(`action=/opt/aws/bin/cfn-init --verbose --stack \${AWS::StackId} --resource ${cdk.Names.uniqueId(asg)} --region \${AWS::Region} --configsets update`),
+              'runas=root',
+            ].join('\n'),
+            { mode: '000400', owner: 'root', group: 'root' }
+          ),
+          ec2.InitService.enable('cfn-hup', {
+            enabled: true,
+            ensureRunning: true,
+            serviceManager: ec2.ServiceManager.SYSTEMD,
+          }),
+        ]),
+        '03_check_cfn_hup': new ec2.InitConfig([
+          ec2.InitCommand.shellCommand('systemctl status cfn-hup.service'),
+        ]),
+        '04_install_cloudwatch_agent': new ec2.InitConfig([
+          ec2.InitPackage.yum('amazon-cloudwatch-agent'),
+        ]),
+        '05_config_amazon_cloudwatch_agent': new ec2.InitConfig([
+          ec2.InitFile.fromString(
+            '/opt/aws/amazon-cloudwatch-agent/etc/dummy.version',
+            `VERSION=${props.cloudWatchAgentConfigVersion ?? '0.01'}`,
+            { mode: '000400', owner: 'root', group: 'root' }
+          ),
+        ]),
+        '06_restart_amazon_cloudwatch_agent': new ec2.InitConfig([
+          ec2.InitCommand.shellCommand('/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -m ec2 -a stop'),
+          ec2.InitCommand.shellCommand(
+            cdk.Fn.sub('/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c ssm:${ssm} -s', {
+              ssm: this.cwAgentConfig.parameterName,
+            })
+          ),
+          ec2.InitCommand.shellCommand('/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a status'),
+        ]),
+        '07_setup_firewalld': new ec2.InitConfig([
+          ec2.InitPackage.yum('firewalld'),
+          ec2.InitCommand.shellCommand('systemctl enable firewalld'),
+          ec2.InitCommand.shellCommand('systemctl start firewalld'),
+          ec2.InitCommand.shellCommand('firewall-cmd --state'),
+          ec2.InitCommand.shellCommand(`firewall-cmd --add-port=${port}/tcp --permanent`),
+          ec2.InitCommand.shellCommand('firewall-cmd --reload'),
+          ec2.InitCommand.shellCommand('firewall-cmd --list-all'),
+        ]),
+        '08_set_database_details': new ec2.InitConfig([
+          ec2.InitFile.fromString('/etc/secret', props.database.secret!.secretName, {
+            mode: '000444',
+            owner: 'root',
+            group: 'root',
+          }),
+        ]),
+        '09_install_docker': new ec2.InitConfig([
+          ec2.InitPackage.yum('docker'),
+          ec2.InitCommand.shellCommand('mkdir -p /usr/libexec/docker/cli-plugins'),
+          ec2.InitCommand.shellCommand(
+            `aws s3 cp s3://${props.assetsBucketName}/${props.assetsBucketPrefix}docker-compose /usr/libexec/docker/cli-plugins/docker-compose --region ${cdk.Aws.REGION}`
+          ),
+          ec2.InitCommand.shellCommand('chmod +x /usr/libexec/docker/cli-plugins/docker-compose'),
+          ec2.InitService.enable('docker', {
+            enabled: true,
+            ensureRunning: true,
+            serviceManager: ec2.ServiceManager.SYSTEMD,
+          }),
+        ]),
+        '10_setup_web_user': new ec2.InitConfig([
+          ec2.InitUser.fromName('web', { groups: ['docker'] }),
+        ]),
+        '11_verify_docker': new ec2.InitConfig([
+          ec2.InitCommand.shellCommand('docker ps'),
+        ]),
+        '12_install_codedeploy': new ec2.InitConfig([
+          ec2.InitCommand.shellCommand('yum -y install ruby'),
+          ec2.InitCommand.shellCommand(
+            cdk.Fn.sub('curl https://aws-codedeploy-${AWS::Region}.s3.${AWS::Region}.${AWS::URLSuffix}/latest/install --output /tmp/codedeploy')
+          ),
+          ec2.InitCommand.shellCommand('chmod +x /tmp/codedeploy'),
+          ec2.InitCommand.shellCommand('/tmp/codedeploy auto'),
+          ec2.InitCommand.shellCommand('echo "" >> /etc/codedeploy-agent/conf/codedeployagent.yml'),
+          ec2.InitCommand.shellCommand('echo ":enable_auth_policy: true" >> /etc/codedeploy-agent/conf/codedeployagent.yml'),
+          ec2.InitCommand.shellCommand('service codedeploy-agent stop'),
+          ec2.InitCommand.shellCommand('rm /tmp/codedeploy'),
+        ]),
+        '13_start_codedeploy_agent': new ec2.InitConfig([
+          ec2.InitService.enable('codedeploy-agent', {
+            enabled: true,
+            ensureRunning: true,
+            serviceManager: ec2.ServiceManager.SYSTEMD,
+          }),
+        ]),
+        '14_set_env': new ec2.InitConfig([
+          ec2.InitFile.fromString(
+            '/etc/environment',
+            [
+              `AWS_REGION=${cdk.Aws.REGION}`,
+              `URL_SUFFIX=${cdk.Aws.URL_SUFFIX}`,
+              'ONEBOX=false',
+              `ACCOUNT_ID=${cdk.Aws.ACCOUNT_ID}`,
+            ].join('\n'),
+            { mode: '0755', owner: 'root', group: 'root' }
+          ),
+          ec2.InitFile.fromString('/etc/onebox', 'ONEBOX=false'),
+        ]),
+      },
+    });
+
+    // Apply CloudFormation Init to the Auto Scaling Group
+    asg.applyCloudFormationInit(cfnInit, {
+      configSets: ['setup'],
+      printLog: true,
+    });
 
     asg.attachToApplicationTargetGroup(atg);
 
