@@ -107,7 +107,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           mask-aws-account-id: true
       - name: Bundle and deploy workshop
-        run: npx projen bundle-and-deploy
+        run: npx projen build-and-deploy
   report-deployment:
     needs:
       - check-changes
