@@ -68,22 +68,14 @@ jobs:
                       --jq '.id')
                     echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
                     echo "Created deployment: $DEPLOYMENT_ID"
-  build-and-deploy:
-    needs:
-      - check-changes
-      - create-deployment
+  build:
+    needs: check-changes
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
-      id-token: write
-    environment:
-      name: AWS
     env:
       CI: "true"
       PROJECT_NAME: ${{ github.event.repository.name }}
-      BUCKET: ${{ secrets.BUCKET }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-      DEPLOYMENT_ROLE: ${{ secrets.DEPLOYMENT_ROLE }}
     if: needs.check-changes.outputs.should_deploy == 'true'
     steps:
       - name: Checkout
@@ -100,19 +92,52 @@ jobs:
           dotnet-version: "9.0"
       - name: Install dependencies
         run: yarn install --check-files --frozen-lockfile
+      - name: Build workshop content
+        run: npx projen package
+      - name: Upload content artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: workshop-content
+          path: dist/content.zip
+          retention-days: 7
+  deploy:
+    needs:
+      - check-changes
+      - create-deployment
+      - build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: AWS
+    env:
+      CI: "true"
+      PROJECT_NAME: ${{ github.event.repository.name }}
+      BUCKET: ${{ secrets.BUCKET }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      DEPLOYMENT_ROLE: ${{ secrets.DEPLOYMENT_ROLE }}
+    if: needs.check-changes.outputs.should_deploy == 'true'
+    steps:
+      - name: Download content artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: workshop-content
+          path: dist
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5.1.0
         with:
           role-to-assume: ${{ env.DEPLOYMENT_ROLE }}
           aws-region: ${{ env.AWS_REGION }}
           mask-aws-account-id: true
-      - name: Build and deploy workshop
-        run: npx projen build-and-deploy
+      - name: Deploy workshop to AWS
+        run: npx projen deploy
   report-deployment:
     needs:
       - check-changes
       - create-deployment
-      - build-and-deploy
+      - build
+      - deploy
     runs-on: ubuntu-latest
     permissions:
       deployments: write
@@ -123,7 +148,7 @@ jobs:
       - name: Report deployment status
         run: |-
           if [ "${{ needs.check-changes.outputs.should_deploy }}" == "true" ]; then
-                      if [ "${{ needs.build-and-deploy.result }}" == "success" ]; then
+                      if [ "${{ needs.deploy.result }}" == "success" ]; then
                         STATE="success"
                       else
                         STATE="failure"
