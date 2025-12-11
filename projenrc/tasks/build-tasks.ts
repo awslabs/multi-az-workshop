@@ -254,9 +254,6 @@ function createAssetBuildTasks(project: AwsCdkTypeScriptApp): Task {
   // Combined build-assets task that runs all asset building tasks in order
   const buildAssets = project.addTask('build:assets', {
     description: 'Build all workshop assets',
-    env: {
-      DOCKER_DEFAULT_PLATFORM: 'linux/arm64',
-    },
   });
 
   // Add all asset tasks as dependencies in the correct order

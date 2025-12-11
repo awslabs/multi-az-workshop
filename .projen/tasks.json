@@ -282,9 +282,6 @@
     "build:assets": {
       "name": "build:assets",
       "description": "Build all workshop assets",
-      "env": {
-        "DOCKER_DEFAULT_PLATFORM": "linux/arm64"
-      },
       "steps": [
         {
           "spawn": "assets:create-directories"

@@ -112,24 +112,17 @@ export function createDeployWorkflow(github: GitHub): void {
     ],
   });
 
-  // Job 3: Build and deploy (only runs if there are src changes)
-  deployWorkflow.addJob('build-and-deploy', {
-    needs: ['check-changes', 'create-deployment'],
+  // Job 3: Build content (only runs if there are src changes)
+  deployWorkflow.addJob('build', {
+    needs: ['check-changes'],
     if: 'needs.check-changes.outputs.should_deploy == \'true\'',
     runsOn: ['ubuntu-24.04-arm'],
     permissions: {
       contents: JobPermission.READ,
-      idToken: JobPermission.WRITE,
-    },
-    environment: {
-      name: 'AWS',
     },
     env: {
       CI: 'true',
       PROJECT_NAME: '${{ github.event.repository.name }}',
-      BUCKET: '${{ secrets.BUCKET }}',
-      AWS_REGION: '${{ secrets.AWS_REGION }}',
-      DEPLOYMENT_ROLE: '${{ secrets.DEPLOYMENT_ROLE }}',
     },
     steps: [
       {
@@ -158,6 +151,50 @@ export function createDeployWorkflow(github: GitHub): void {
         run: 'yarn install --check-files --frozen-lockfile',
       },
       {
+        name: 'Build workshop content',
+        run: 'npx projen package',
+      },
+      {
+        name: 'Upload content artifact',
+        uses: 'actions/upload-artifact@v4',
+        with: {
+          name: 'workshop-content',
+          path: 'dist/content.zip',
+          'retention-days': 7,
+        },
+      },
+    ],
+  });
+
+  // Job 4: Deploy to AWS (depends on build job)
+  deployWorkflow.addJob('deploy', {
+    needs: ['check-changes', 'create-deployment', 'build'],
+    if: 'needs.check-changes.outputs.should_deploy == \'true\'',
+    runsOn: ['ubuntu-latest'],
+    permissions: {
+      contents: JobPermission.READ,
+      idToken: JobPermission.WRITE,
+    },
+    environment: {
+      name: 'AWS',
+    },
+    env: {
+      CI: 'true',
+      PROJECT_NAME: '${{ github.event.repository.name }}',
+      BUCKET: '${{ secrets.BUCKET }}',
+      AWS_REGION: '${{ secrets.AWS_REGION }}',
+      DEPLOYMENT_ROLE: '${{ secrets.DEPLOYMENT_ROLE }}',
+    },
+    steps: [
+      {
+        name: 'Download content artifact',
+        uses: 'actions/download-artifact@v4',
+        with: {
+          name: 'workshop-content',
+          path: 'dist',
+        },
+      },
+      {
         name: 'Configure AWS credentials',
         uses: 'aws-actions/configure-aws-credentials@v5.1.0',
         with: {
@@ -167,15 +204,15 @@ export function createDeployWorkflow(github: GitHub): void {
         },
       },
       {
-        name: 'Build and deploy workshop',
-        run: 'npx projen build-and-deploy',
+        name: 'Deploy workshop to AWS',
+        run: 'npx projen deploy',
       },
     ],
   });
 
-  // Job 4: Report deployment status (always runs after create-deployment)
+  // Job 5: Report deployment status (always runs after create-deployment)
   deployWorkflow.addJob('report-deployment', {
-    needs: ['check-changes', 'create-deployment', 'build-and-deploy'],
+    needs: ['check-changes', 'create-deployment', 'build', 'deploy'],
     if: 'always() && needs.create-deployment.result == \'success\'',
     runsOn: ['ubuntu-latest'],
     permissions: {
@@ -189,7 +226,7 @@ export function createDeployWorkflow(github: GitHub): void {
         name: 'Report deployment status',
         run: `
           if [ "\${{ needs.check-changes.outputs.should_deploy }}" == "true" ]; then
-            if [ "\${{ needs.build-and-deploy.result }}" == "success" ]; then
+            if [ "\${{ needs.deploy.result }}" == "success" ]; then
               STATE="success"
             else
               STATE="failure"
