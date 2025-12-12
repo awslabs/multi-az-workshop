@@ -40,14 +40,16 @@ namespace BAMCIS.MultiAZApp.Tests.Utilities
         [Fact]
         public void Probe_WithValidMetadata_ReturnsTrue()
         {
+            // Setup mock for token request (PUT)
             _mockFetcher.Setup(f => f.FetchString(
-                It.IsAny<Uri>(),
+                It.Is<Uri>(u => u.ToString().Contains("api/token")),
                 "PUT",
                 It.IsAny<Dictionary<string, string>>()))
                 .Returns("test-token");
 
+            // Setup mock for metadata request (GET)
             _mockFetcher.Setup(f => f.FetchString(
-                It.IsAny<Uri>(),
+                It.Is<Uri>(u => u.ToString().Contains("instance-identity/document")),
                 "GET",
                 It.IsAny<Dictionary<string, string>>()))
                 .Returns("{\"instanceId\":\"i-123\"}");
