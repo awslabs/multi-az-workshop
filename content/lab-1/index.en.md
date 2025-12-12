@@ -112,7 +112,7 @@ The following sections provide additional details about the synthetic canaries a
 If you'd like to see how the canaries are configured, you can go to the [AWS Lambda console](https://console.aws.amazon.com/lambda/home#/functions). Look for the function with a name similar to *`multi-az-workshop-multiaz-CanaryFunctioncanary...`*. The code package is too large to examine in the console, but if you'd like to explore it, you can download it. 
 
 ::::expand{header="Instructions for downloading canary source code" variant="container"}
-Go to the [CloudFormation console](https://console.aws.amazon.com/cloudformation/home#/stacks?filteringText=&filteringStatus=active&viewNested=true) and then click on the stack named like *`multi-az-workshop-multiazobservabilityNeste-instrumentedserviceCanaryNestedStackCanary-...`* and click on it. Click the *`Template`* tab at the top to see the CloudFormation template used to deploy the Lambda function. Scroll down until you see the `AWS::Lambda::Function` resource.
+Go to the [CloudFormation console](https://console.aws.amazon.com/cloudformation/home#/stacks?filteringText=&filteringStatus=active&viewNested=true) and then click on the stack named like *`multiazobservabilityNeste-instrumentedserviceCanaryNestedStackCanary-...`* and click on it. Click the *`Template`* tab at the top to see the CloudFormation template used to deploy the Lambda function. Scroll down until you see the `AWS::Lambda::Function` resource.
 
 ![lambda-function-template](/static/lambda-function-template.png)
 
