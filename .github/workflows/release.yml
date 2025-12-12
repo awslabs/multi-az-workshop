@@ -85,30 +85,30 @@ jobs:
           GITHUB_REF: ${{ github.sha }}
         run: |-
           errout=$(mktemp)
-                    RELEASE_TAG=$(cat dist/releasetag.txt)
-                    
-                    # Check if this is a prerelease by looking for hyphen in tag (e.g., v1.0.0-alpha)
-                    if [[ "$RELEASE_TAG" == *"-"* ]]; then
-                      echo "Creating prerelease: $RELEASE_TAG"
-                      gh release create "$RELEASE_TAG" \
-                        -R $GITHUB_REPOSITORY \
-                        -F dist/changelog.md \
-                        -t "$RELEASE_TAG" \
-                        --target $GITHUB_REF \
-                        --prerelease \
-                        dist/content.zip 2> $errout && true
-                    else
-                      echo "Creating release: $RELEASE_TAG"
-                      gh release create "$RELEASE_TAG" \
-                        -R $GITHUB_REPOSITORY \
-                        -F dist/changelog.md \
-                        -t "$RELEASE_TAG" \
-                        --target $GITHUB_REF \
-                        dist/content.zip 2> $errout && true
-                    fi
-                    
-                    exitcode=$?
-                    if [ $exitcode -ne 0 ] && ! grep -q "Release.tag_name already exists" $errout; then
-                      cat $errout
-                      exit $exitcode
-                    fi
+                RELEASE_TAG=$(cat dist/releasetag.txt)
+                
+                # Check if this is a prerelease by looking for hyphen in tag (e.g., v1.0.0-alpha)
+                if [[ "$RELEASE_TAG" == *"-"* ]]; then
+                  echo "Creating prerelease: $RELEASE_TAG"
+                  gh release create "$RELEASE_TAG" \
+                    --title "$RELEASE_TAG" \
+                    --prerelease \
+                    -R $GITHUB_REPOSITORY \
+                    -F dist/changelog.md \
+                    --target $GITHUB_REF \
+                    dist/content.zip 2> $errout && true
+                else
+                  echo "Creating release: $RELEASE_TAG"
+                  gh release create "$RELEASE_TAG" \
+                    --title "$RELEASE_TAG" \
+                    -R $GITHUB_REPOSITORY \
+                    -F dist/changelog.md \
+                    --target $GITHUB_REF \
+                    dist/content.zip 2> $errout && true
+                fi
+                
+                exitcode=$?
+                if [ $exitcode -ne 0 ] && ! grep -q "Release.tag_name already exists" $errout; then
+                  cat $errout
+                  exit $exitcode
+                fi
