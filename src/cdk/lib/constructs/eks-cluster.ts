@@ -169,10 +169,8 @@ export class EKSCluster extends Construct {
       },
     ]);
 
-    (logRoleManifest.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
-      'ServiceTimeout',
-      '300',
-    );
+    const logRoleResource = logRoleManifest.node.findChild('Resource') as cdk.CustomResource;
+    (logRoleResource.node.defaultChild as cdk.CfnResource).addPropertyOverride('ServiceTimeout', '300');
 
     const podDeleterManifest = cluster.addManifest('PodDeleterRole', [
       {
@@ -191,10 +189,8 @@ export class EKSCluster extends Construct {
       },
     ]);
 
-    (podDeleterManifest.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
-      'ServiceTimeout',
-      '300',
-    );
+    const podDeleterResource = podDeleterManifest.node.findChild('Resource') as cdk.CustomResource;
+    (podDeleterResource.node.defaultChild as cdk.CfnResource).addPropertyOverride('ServiceTimeout', '300');
 
     const networkingRoleManifest = cluster.addManifest('NetworkingRole', [
       {
@@ -213,10 +209,8 @@ export class EKSCluster extends Construct {
       },
     ]);
 
-    (networkingRoleManifest.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
-      'ServiceTimeout',
-      '300',
-    );
+    const networkingRoleResource = networkingRoleManifest.node.findChild('Resource') as cdk.CustomResource;
+    (networkingRoleResource.node.defaultChild as cdk.CfnResource).addPropertyOverride('ServiceTimeout', '300');
 
     const logRoleBindingManifest = cluster.addManifest('LogsRoleBinding', [
       {
@@ -242,10 +236,8 @@ export class EKSCluster extends Construct {
     ]);
 
     logRoleBindingManifest.node.addDependency(logRoleManifest);
-    (logRoleBindingManifest.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
-      'ServiceTimeout',
-      '300',
-    );
+    const logRoleBindingResource = logRoleBindingManifest.node.findChild('Resource') as cdk.CustomResource;
+    (logRoleBindingResource.node.defaultChild as cdk.CfnResource).addPropertyOverride('ServiceTimeout', '300');
 
     const networkingRoleBindingManifest = cluster.addManifest('NetworkingRoleBinding', [
       {
@@ -271,10 +263,8 @@ export class EKSCluster extends Construct {
     ]);
 
     networkingRoleBindingManifest.node.addDependency(networkingRoleManifest);
-    (networkingRoleBindingManifest.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
-      'ServiceTimeout',
-      '300',
-    );
+    const networkingRoleBindingResource = networkingRoleBindingManifest.node.findChild('Resource') as cdk.CustomResource;
+    (networkingRoleBindingResource.node.defaultChild as cdk.CfnResource).addPropertyOverride('ServiceTimeout', '300');
 
     const podDeleterRoleBindingManifest = cluster.addManifest('PodDeleterRoleBinding', [
       {
@@ -299,11 +289,9 @@ export class EKSCluster extends Construct {
       },
     ]);
 
-    podDeleterRoleBindingManifest.node.addDependency(networkingRoleManifest);
-    (podDeleterRoleBindingManifest.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
-      'ServiceTimeout',
-      '300',
-    );
+    podDeleterRoleBindingManifest.node.addDependency(podDeleterManifest);
+    const podDeleterRoleBindingResource = podDeleterRoleBindingManifest.node.findChild('Resource') as cdk.CustomResource;
+    (podDeleterRoleBindingResource.node.defaultChild as cdk.CfnResource).addPropertyOverride('ServiceTimeout', '300');
 
     // Create IAM role for EKS worker nodes
     const eksWorkerRole = new iam.Role(this, 'EKSWorkerRole', {
