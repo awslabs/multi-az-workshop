@@ -84,13 +84,10 @@ function createWorkshopDeployTask(project: AwsCdkTypeScriptApp): void {
         CHANGE_SET_TYPE=$(cat tmp/change_set_type.txt)
         WAIT_CONDITION=$(cat tmp/wait_condition.txt)
 
-        # Create changeset with error handling and prevent rollback on failure for CREATE operations
-        ON_FAILURE_FLAG=""
-        if [ "$CHANGE_SET_TYPE" = "CREATE" ]; then
-          ON_FAILURE_FLAG="--on-stack-failure DO_NOTHING"
-        fi
-
-        if ! aws cloudformation create-change-set \\
+        # Create changeset (matching working test.yml logic)
+        echo "Creating changeset of type: $CHANGE_SET_TYPE"
+        
+        aws cloudformation create-change-set \\
           --change-set-type $CHANGE_SET_TYPE \\
           --stack-name $PROJECT_NAME \\
           --change-set-name $PROJECT_NAME-$ASSETS_PREFIX \\
@@ -98,33 +95,23 @@ function createWorkshopDeployTask(project: AwsCdkTypeScriptApp): void {
           --parameters \\
             ParameterKey=AssetsBucketName,ParameterValue=$BUCKET \\
             ParameterKey=AssetsBucketPrefix,ParameterValue="$ASSETS_PREFIX/" \\
-          --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \\
-          $ON_FAILURE_FLAG \\
-          --region $AWS_REGION; then
-          echo "Failed to create changeset - cleaning up S3 content"
-          aws s3 rm s3://$BUCKET/$ASSETS_PREFIX/ --recursive
-          exit 1
-        fi
+            ParameterKey=ParticipantRoleName,ParameterValue=Admin \\
+          --capabilities CAPABILITY_IAM \\
+          --region $AWS_REGION
 
         # Wait for changeset creation
-        if ! aws cloudformation wait change-set-create-complete \\
+        echo "Waiting for change set to be created..."
+        aws cloudformation wait change-set-create-complete \\
           --stack-name $PROJECT_NAME \\
           --change-set-name $PROJECT_NAME-$ASSETS_PREFIX \\
-          --region $AWS_REGION; then
-          echo "Changeset creation failed - cleaning up S3 content"
-          aws s3 rm s3://$BUCKET/$ASSETS_PREFIX/ --recursive
-          exit 1
-        fi
+          --region $AWS_REGION
 
         # Execute changeset
-        if ! aws cloudformation execute-change-set \\
+        echo "Executing change set..."
+        aws cloudformation execute-change-set \\
           --stack-name $PROJECT_NAME \\
           --change-set-name $PROJECT_NAME-$ASSETS_PREFIX \\
-          --region $AWS_REGION; then
-          echo "Failed to execute changeset - cleaning up S3 content"
-          aws s3 rm s3://$BUCKET/$ASSETS_PREFIX/ --recursive
-          exit 1
-        fi
+          --region $AWS_REGION
 
         # Wait for stack completion
         if ! aws cloudformation wait stack-$WAIT_CONDITION-complete \\

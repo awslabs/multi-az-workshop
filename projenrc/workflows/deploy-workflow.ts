@@ -123,6 +123,7 @@ export function createDeployWorkflow(github: GitHub): void {
     env: {
       CI: 'true',
       PROJECT_NAME: '${{ github.event.repository.name }}',
+      AWS_REGION: '${{ secrets.AWS_REGION }}',
     },
     steps: [
       {
