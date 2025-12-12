@@ -297,7 +297,7 @@ export class MultiAZWorkshopStack extends cdk.Stack {
       loadBalancer: this.loadBalancer,
       vpc: this.networkStack.vpc,
       serverLogGroups: [frontEndLogGroup],
-      targetGroups: [this.ec2Stack.targetGroup],
+      targetGroups: targetGroups,
     });
 
     // Create multi-AZ observability nested stack
