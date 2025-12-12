@@ -1,0 +1,22 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: azi
+spec:
+  host: multi-az-workshop-service
+  trafficPolicy:
+    loadBalancer:
+      localityLbSetting:
+        enabled: true
+        distribute:
+          - from: "ap-southeast-1/ap-southeast-1a/*"
+            to:
+              "ap-southeast-1/ap-southeast-1a/*": 100
+          - from: "ap-southeast-1/ap-southeast-1b/*"
+            to:
+              "ap-southeast-1/ap-southeast-1b/*": 100
+          - from: "ap-southeast-1/ap-southeast-1c/*"
+            to:
+              "ap-southeast-1/ap-southeast-1c/*": 100

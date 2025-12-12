@@ -1,0 +1,790 @@
+{
+  "tasks": {
+    "assets:arm64-container": {
+      "name": "assets:arm64-container",
+      "description": "Build arm64 container",
+      "env": {
+        "FILE_NAME": "app_deploy.zip"
+      },
+      "steps": [
+        {
+          "exec": "rm -rf src/app/output"
+        },
+        {
+          "exec": "mkdir -p src/app/output/src"
+        },
+        {
+          "exec": "cd src/app && dotnet publish --configuration Release --runtime linux-musl-arm64 --output output/src -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained"
+        },
+        {
+          "exec": "docker build --tag $PROJECT_NAME:latest --platform linux/arm64 --build-arg SRC=src --file build/dockerfile src/app/output"
+        },
+        {
+          "exec": "docker save $PROJECT_NAME:latest | gzip > assets/container.tar.gz"
+        },
+        {
+          "exec": "zip -j assets/$FILE_NAME assets/container.tar.gz assets/cloudwatch-agent.tar.gz"
+        },
+        {
+          "exec": "cd src/app && zip -r ../../assets/$FILE_NAME docker/"
+        },
+        {
+          "exec": "cd src/app/docker && zip ../../../assets/$FILE_NAME appspec.yml"
+        },
+        {
+          "exec": "rm -rf src/app/output"
+        }
+      ]
+    },
+    "assets:arm64-container-fail": {
+      "name": "assets:arm64-container-fail",
+      "description": "Build failing arm64 container",
+      "env": {
+        "FILE_NAME": "app_deploy_fail.zip"
+      },
+      "steps": [
+        {
+          "exec": "rm -rf src/app/output"
+        },
+        {
+          "exec": "mkdir -p src/app/output/src"
+        },
+        {
+          "exec": "cd src/app && dotnet publish --configuration Release --runtime linux-musl-arm64 --output output/src -p:DefineConstants=\"FAIL\" -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained"
+        },
+        {
+          "exec": "docker build --tag $PROJECT_NAME:latest --platform linux/arm64 --build-arg SRC=src --file build/dockerfile src/app/output"
+        },
+        {
+          "exec": "docker save $PROJECT_NAME:latest | gzip > /tmp/container.tar.gz"
+        },
+        {
+          "exec": "zip -j assets/$FILE_NAME /tmp/container.tar.gz assets/cloudwatch-agent.tar.gz"
+        },
+        {
+          "exec": "cd src/app && zip -r ../../assets/$FILE_NAME docker/"
+        },
+        {
+          "exec": "cd src/app/docker && zip ../../../assets/$FILE_NAME appspec.yml"
+        },
+        {
+          "exec": "rm -rf src/app/output"
+        },
+        {
+          "exec": "rm /tmp/container.tar.gz"
+        }
+      ]
+    },
+    "assets:cdk-process": {
+      "name": "assets:cdk-process",
+      "description": "Processes the synthesized CDK files to make them ready for deployment and copies them to assets folder",
+      "steps": [
+        {
+          "exec": "chmod +x build/package.py"
+        },
+        {
+          "exec": "build/package.py $PROJECT_NAME ."
+        }
+      ]
+    },
+    "assets:cloudwatch-agent": {
+      "name": "assets:cloudwatch-agent",
+      "description": "Pull CloudWatch agent container image",
+      "steps": [
+        {
+          "exec": "docker pull public.ecr.aws/cloudwatch-agent/cloudwatch-agent:latest && docker tag public.ecr.aws/cloudwatch-agent/cloudwatch-agent:latest cloudwatch-agent/cloudwatch-agent:latest && docker save cloudwatch-agent/cloudwatch-agent:latest | gzip > assets/cloudwatch-agent.tar.gz"
+        }
+      ]
+    },
+    "assets:create-directories": {
+      "name": "assets:create-directories",
+      "description": "Create required directories for asset building",
+      "steps": [
+        {
+          "exec": "rm -rf assets && mkdir -p assets"
+        },
+        {
+          "exec": "rm -rf dist && mkdir -p dist"
+        }
+      ]
+    },
+    "assets:destination-rules": {
+      "name": "assets:destination-rules",
+      "description": "Copy destination rules to assets",
+      "steps": [
+        {
+          "exec": "cp src/cdk/configs/destination-rule.yaml assets/"
+        },
+        {
+          "exec": "for region in us-east-1 us-east-2 us-west-2 eu-west-1 ap-southeast-1 ap-southeast-2; do [ -f \"src/cdk/configs/destination-rule-${region}.yaml\" ] && cp \"src/cdk/configs/destination-rule-${region}.yaml\" \"assets/\"; done"
+        }
+      ]
+    },
+    "assets:docker-compose": {
+      "name": "assets:docker-compose",
+      "description": "Download docker compose binary",
+      "steps": [
+        {
+          "exec": "curl -SL https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-aarch64 -o assets/docker-compose"
+        }
+      ]
+    },
+    "assets:helm-layer": {
+      "name": "assets:helm-layer",
+      "description": "Build helm lambda layer",
+      "steps": [
+        {
+          "exec": "eval \"$(node build/load-versions.js)\" && curl --location https://get.helm.sh/helm-v$HELM-linux-arm64.tar.gz --output assets/helm.tar.gz"
+        },
+        {
+          "exec": "mkdir -p assets/helm"
+        },
+        {
+          "exec": "tar -zxvf assets/helm.tar.gz --strip-components=1 --directory assets/helm linux-arm64/helm"
+        },
+        {
+          "exec": "chmod 0755 assets/helm/helm"
+        },
+        {
+          "exec": "cd assets && zip -r helm-layer.zip helm/"
+        },
+        {
+          "exec": "rm -rf assets/helm.tar.gz assets/helm"
+        }
+      ]
+    },
+    "assets:istio-charts": {
+      "name": "assets:istio-charts",
+      "description": "Download Istio helm charts",
+      "steps": [
+        {
+          "exec": "eval \"$(node build/load-versions.js)\" && for chart in base istiod gateway cni; do curl --location https://istio-release.storage.googleapis.com/charts/${chart}-$ISTIO.tgz --output assets/${chart}-$ISTIO.tgz; done"
+        }
+      ]
+    },
+    "assets:istio-containers": {
+      "name": "assets:istio-containers",
+      "description": "Pull Istio container images",
+      "steps": [
+        {
+          "exec": "eval \"$(node build/load-versions.js)\" && for image in install-cni proxyv2 pilot; do docker pull docker.io/istio/${image}:$ISTIO && docker save istio/${image}:$ISTIO | gzip > assets/${image}.tar.gz; done"
+        }
+      ]
+    },
+    "assets:kubectl": {
+      "name": "assets:kubectl",
+      "description": "Download kubectl binary",
+      "steps": [
+        {
+          "exec": "eval \"$(node build/load-versions.js)\" && curl --location https://dl.k8s.io/release/v$KUBECTL/bin/linux/arm64/kubectl --output assets/kubectl"
+        }
+      ]
+    },
+    "assets:lb-controller-chart": {
+      "name": "assets:lb-controller-chart",
+      "description": "Download AWS LB controller helm chart",
+      "steps": [
+        {
+          "exec": "eval \"$(node build/load-versions.js)\" && curl --location https://aws.github.io/eks-charts/aws-load-balancer-controller-$LB_CONTROLLER_HELM.tgz --output assets/aws-load-balancer-controller-$LB_CONTROLLER_HELM.tgz"
+        }
+      ]
+    },
+    "assets:lb-controller-container": {
+      "name": "assets:lb-controller-container",
+      "description": "Pull AWS LB controller container image",
+      "steps": [
+        {
+          "exec": "eval \"$(node build/load-versions.js)\" && docker pull public.ecr.aws/eks/aws-load-balancer-controller:$LB_CONTROLLER_CONTAINER-linux_arm64 && docker save public.ecr.aws/eks/aws-load-balancer-controller:$LB_CONTROLLER_CONTAINER-linux_arm64 | gzip > assets/aws-load-balancer-controller.tar.gz"
+        }
+      ]
+    },
+    "assets:package": {
+      "name": "assets:package",
+      "description": "Package the assets for testing and deployment",
+      "steps": [
+        {
+          "exec": "cp static/$PROJECT_NAME.json assets/$PROJECT_NAME.json"
+        },
+        {
+          "exec": "cd assets && zip -r ../dist/content.zip ."
+        }
+      ]
+    },
+    "build": {
+      "name": "build",
+      "description": "Full release build",
+      "steps": [
+        {
+          "spawn": "default"
+        },
+        {
+          "spawn": "pre-compile"
+        },
+        {
+          "spawn": "compile"
+        },
+        {
+          "spawn": "post-compile"
+        },
+        {
+          "spawn": "test"
+        },
+        {
+          "spawn": "package"
+        }
+      ]
+    },
+    "build-and-deploy": {
+      "name": "build-and-deploy",
+      "description": "Build and deploy workshop to AWS (requires BUCKET and AWS_REGION environment variables)",
+      "steps": [
+        {
+          "spawn": "default"
+        },
+        {
+          "spawn": "pre-compile"
+        },
+        {
+          "spawn": "compile"
+        },
+        {
+          "spawn": "post-compile"
+        },
+        {
+          "spawn": "package"
+        },
+        {
+          "spawn": "deploy"
+        }
+      ]
+    },
+    "build:app": {
+      "name": "build:app",
+      "description": "Build .NET application",
+      "steps": [
+        {
+          "exec": "rm -rf src/app/output"
+        },
+        {
+          "exec": "mkdir -p src/app/output/src"
+        },
+        {
+          "exec": "dotnet publish src/app/multi-az-workshop-application.csproj --configuration Release --runtime linux-musl-arm64 --output src/app/output/src -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained"
+        }
+      ]
+    },
+    "build:assets": {
+      "name": "build:assets",
+      "description": "Build all workshop assets",
+      "steps": [
+        {
+          "spawn": "assets:create-directories"
+        },
+        {
+          "spawn": "assets:helm-layer"
+        },
+        {
+          "spawn": "assets:destination-rules"
+        },
+        {
+          "spawn": "assets:kubectl"
+        },
+        {
+          "spawn": "assets:istio-charts"
+        },
+        {
+          "spawn": "assets:lb-controller-chart"
+        },
+        {
+          "spawn": "assets:istio-containers"
+        },
+        {
+          "spawn": "assets:lb-controller-container"
+        },
+        {
+          "spawn": "assets:cloudwatch-agent"
+        },
+        {
+          "spawn": "assets:docker-compose"
+        },
+        {
+          "spawn": "assets:arm64-container"
+        },
+        {
+          "spawn": "assets:arm64-container-fail"
+        }
+      ]
+    },
+    "bump": {
+      "name": "bump",
+      "description": "Bumps version based on latest git tag and generates a changelog entry",
+      "env": {
+        "OUTFILE": "package.json",
+        "CHANGELOG": "dist/changelog.md",
+        "BUMPFILE": "dist/version.txt",
+        "RELEASETAG": "dist/releasetag.txt",
+        "RELEASE_TAG_PREFIX": "",
+        "BUMP_PACKAGE": "commit-and-tag-version@^12"
+      },
+      "steps": [
+        {
+          "builtin": "release/bump-version"
+        }
+      ],
+      "condition": "git log --oneline -1 | grep -qv \"chore(release):\""
+    },
+    "bundle": {
+      "name": "bundle",
+      "description": "Prepare assets"
+    },
+    "clobber": {
+      "name": "clobber",
+      "description": "hard resets to HEAD of origin and cleans the local repo",
+      "env": {
+        "BRANCH": "$(git branch --show-current)"
+      },
+      "steps": [
+        {
+          "exec": "git checkout -b scratch",
+          "name": "save current HEAD in \"scratch\" branch"
+        },
+        {
+          "exec": "git checkout $BRANCH"
+        },
+        {
+          "exec": "git fetch origin",
+          "name": "fetch latest changes from origin"
+        },
+        {
+          "exec": "git reset --hard origin/$BRANCH",
+          "name": "hard reset to origin commit"
+        },
+        {
+          "exec": "git clean -fdx",
+          "name": "clean all untracked files"
+        },
+        {
+          "say": "ready to rock! (unpushed commits are under the \"scratch\" branch)"
+        }
+      ],
+      "condition": "git diff --exit-code > /dev/null"
+    },
+    "compile": {
+      "name": "compile",
+      "description": "Only compile",
+      "steps": [
+        {
+          "spawn": "build:app"
+        },
+        {
+          "spawn": "build:assets"
+        }
+      ]
+    },
+    "default": {
+      "name": "default",
+      "description": "Synthesize project files",
+      "steps": [
+        {
+          "exec": "ts-node --project tsconfig.dev.json .projenrc.ts"
+        }
+      ]
+    },
+    "deploy": {
+      "name": "deploy",
+      "description": "Deploy workshop to AWS (requires BUCKET and AWS_REGION environment variables)",
+      "steps": [
+        {
+          "spawn": "deploy:workshop"
+        }
+      ]
+    },
+    "deploy:workshop": {
+      "name": "deploy:workshop",
+      "description": "Deploy workshop to AWS using CloudFormation (requires BUCKET and AWS_REGION env vars)",
+      "steps": [
+        {
+          "say": "Preparing deployment..."
+        },
+        {
+          "exec": "rm -rf tmp && mkdir -p tmp"
+        },
+        {
+          "exec": "unzip -q dist/content.zip -d tmp"
+        },
+        {
+          "say": "Setting deployment timestamp..."
+        },
+        {
+          "exec": "date --utc +\"%Y-%m-%dT%H-%M-%SZ\" > tmp/assets_prefix.txt"
+        },
+        {
+          "say": "Uploading assets to S3..."
+        },
+        {
+          "exec": "aws s3 cp tmp s3://${BUCKET}/$(cat tmp/assets_prefix.txt)/ --recursive"
+        },
+        {
+          "say": "Determining stack status..."
+        },
+        {
+          "exec": "set +e\n        aws cloudformation describe-stacks --stack-name $PROJECT_NAME --region $AWS_REGION >/dev/null 2>&1\n        EXITCODE=$?\n        set -e\n\n        if [ $EXITCODE -eq 0 ]; then\n          echo \"UPDATE\" > tmp/change_set_type.txt\n          echo \"update\" > tmp/wait_condition.txt\n          echo \"Stack exists - will UPDATE\"\n        else\n          echo \"CREATE\" > tmp/change_set_type.txt\n          echo \"create\" > tmp/wait_condition.txt\n          echo \"Stack does not exist - will CREATE\"\n        fi"
+        },
+        {
+          "say": "Deploying CloudFormation stack..."
+        },
+        {
+          "exec": "# Load variables from files\n        ASSETS_PREFIX=$(cat tmp/assets_prefix.txt)\n        CHANGE_SET_TYPE=$(cat tmp/change_set_type.txt)\n        WAIT_CONDITION=$(cat tmp/wait_condition.txt)\n\n        # Create changeset (matching working test.yml logic)\n        echo \"Creating changeset of type: $CHANGE_SET_TYPE\"\n        \n        aws cloudformation create-change-set \\\n          --change-set-type $CHANGE_SET_TYPE \\\n          --stack-name $PROJECT_NAME \\\n          --change-set-name $PROJECT_NAME-$ASSETS_PREFIX \\\n          --template-url https://$BUCKET.s3.$AWS_REGION.amazonaws.com/$ASSETS_PREFIX/$PROJECT_NAME.json \\\n          --parameters \\\n            ParameterKey=AssetsBucketName,ParameterValue=$BUCKET \\\n            ParameterKey=AssetsBucketPrefix,ParameterValue=\"$ASSETS_PREFIX/\" \\\n            ParameterKey=ParticipantRoleName,ParameterValue=Admin \\\n          --capabilities CAPABILITY_IAM \\\n          --region $AWS_REGION\n\n        # Wait for changeset creation\n        echo \"Waiting for change set to be created...\"\n        aws cloudformation wait change-set-create-complete \\\n          --stack-name $PROJECT_NAME \\\n          --change-set-name $PROJECT_NAME-$ASSETS_PREFIX \\\n          --region $AWS_REGION\n\n        # Execute changeset\n        echo \"Executing change set...\"\n        aws cloudformation execute-change-set \\\n          --stack-name $PROJECT_NAME \\\n          --change-set-name $PROJECT_NAME-$ASSETS_PREFIX \\\n          --region $AWS_REGION\n\n        # Wait for stack completion\n        if ! aws cloudformation wait stack-$WAIT_CONDITION-complete \\\n          --stack-name $PROJECT_NAME \\\n          --region $AWS_REGION; then\n          echo \"Stack deployment failed - cleaning up S3 content\"\n          aws s3 rm s3://$BUCKET/$ASSETS_PREFIX/ --recursive\n          exit 1\n        fi"
+        },
+        {
+          "say": "Deployment succeeded!"
+        },
+        {
+          "exec": "ASSETS_PREFIX=$(cat tmp/assets_prefix.txt)\n        echo \"Cleaning up old S3 content due to successful deployment\"\n        aws s3 rm s3://$BUCKET/ --recursive --exclude \"$ASSETS_PREFIX/*\""
+        },
+        {
+          "say": "Deployment complete!"
+        }
+      ]
+    },
+    "destroy": {
+      "name": "destroy",
+      "description": "Destroys your cdk app in the AWS cloud",
+      "steps": [
+        {
+          "exec": "cdk destroy",
+          "receiveArgs": true
+        }
+      ]
+    },
+    "diff": {
+      "name": "diff",
+      "description": "Diffs the currently deployed app against your code",
+      "steps": [
+        {
+          "exec": "cdk diff"
+        }
+      ]
+    },
+    "eject": {
+      "name": "eject",
+      "description": "Remove projen from the project",
+      "env": {
+        "PROJEN_EJECTING": "true"
+      },
+      "steps": [
+        {
+          "spawn": "default"
+        }
+      ]
+    },
+    "eslint": {
+      "name": "eslint",
+      "description": "Runs eslint against the codebase",
+      "steps": [
+        {
+          "exec": "eslint --ext .ts,.tsx --fix --no-error-on-unmatched-pattern $@ src test src/cdk build-tools .projenrc.ts projenrc",
+          "receiveArgs": true
+        }
+      ]
+    },
+    "install": {
+      "name": "install",
+      "description": "Install project dependencies and update lockfile (non-frozen)",
+      "steps": [
+        {
+          "exec": "yarn install --check-files"
+        }
+      ]
+    },
+    "install:ci": {
+      "name": "install:ci",
+      "description": "Install project dependencies using frozen lockfile",
+      "steps": [
+        {
+          "exec": "yarn install --check-files --frozen-lockfile"
+        }
+      ]
+    },
+    "package": {
+      "name": "package",
+      "description": "Creates the distribution package",
+      "steps": [
+        {
+          "exec": "mkdir -p dist"
+        },
+        {
+          "say": "Processing CDK assets..."
+        },
+        {
+          "spawn": "assets:cdk-process"
+        },
+        {
+          "say": "Packaging assets..."
+        },
+        {
+          "spawn": "assets:package"
+        }
+      ]
+    },
+    "post-compile": {
+      "name": "post-compile",
+      "description": "Runs after successful compilation",
+      "steps": [
+        {
+          "spawn": "synth:silent"
+        }
+      ]
+    },
+    "post-upgrade": {
+      "name": "post-upgrade",
+      "description": "Runs after upgrading dependencies"
+    },
+    "pre-compile": {
+      "name": "pre-compile",
+      "description": "Prepare the project for compilation"
+    },
+    "publish": {
+      "name": "publish",
+      "description": "Publish workshop content to S3 and Workshop Studio (requires WORKSHOP_ID, REMOTE_REPO, EMAIL, USER_NAME, AWS credentials)",
+      "steps": [
+        {
+          "spawn": "publish:upload-assets"
+        },
+        {
+          "spawn": "publish:push-workshop"
+        }
+      ]
+    },
+    "publish:push-workshop": {
+      "name": "publish:push-workshop",
+      "description": "Push workshop content to Workshop Studio repository (requires REMOTE_REPO, EMAIL, USER_NAME env vars)",
+      "steps": [
+        {
+          "say": "Preparing to push to Workshop Studio..."
+        },
+        {
+          "exec": "rm -rf tmp && mkdir -p tmp"
+        },
+        {
+          "say": "Cloning Workshop Studio repository..."
+        },
+        {
+          "exec": "git clone $REMOTE_REPO tmp/workshop-studio"
+        },
+        {
+          "say": "Copying workshop content..."
+        },
+        {
+          "exec": "rm -rf tmp/workshop-studio/content tmp/workshop-studio/static"
+        },
+        {
+          "exec": "cp -r content tmp/workshop-studio/"
+        },
+        {
+          "exec": "cp -r static tmp/workshop-studio/"
+        },
+        {
+          "exec": "cp contentspec.yaml tmp/workshop-studio/"
+        },
+        {
+          "say": "Checking for changes..."
+        },
+        {
+          "exec": "cd tmp/workshop-studio\n        git config user.email \"$EMAIL\"\n        git config user.name \"$USER_NAME\"\n        git add .\n        \n        # Check if there are any changes to commit\n        if git diff --staged --quiet; then\n          echo \"No changes to commit - skipping push\"\n        else\n          echo \"Changes detected - committing and pushing\"\n          COMMIT_SHA=$(git rev-parse HEAD)\n          git commit -m \"Update workshop content from commit $COMMIT_SHA\"\n          git push\n          echo \"Successfully pushed changes to Workshop Studio\"\n        fi"
+        },
+        {
+          "say": "Workshop Studio push complete!"
+        },
+        {
+          "exec": "rm -rf tmp"
+        }
+      ]
+    },
+    "publish:upload-assets": {
+      "name": "publish:upload-assets",
+      "description": "Upload workshop assets to Workshop Studio S3 bucket (requires AWS credentials)",
+      "steps": [
+        {
+          "say": "Preparing assets for upload..."
+        },
+        {
+          "exec": "rm -rf tmp && mkdir -p tmp"
+        },
+        {
+          "exec": "unzip -q dist/content.zip -d tmp"
+        },
+        {
+          "say": "Uploading assets to S3..."
+        },
+        {
+          "exec": "aws s3 cp tmp s3://ws-assets-prod-iad-r-iad-ed304a55c2ca1aee.s3.us-east-1.amazonaws.com/public/$WORKSHOP_ID/ --recursive"
+        },
+        {
+          "say": "Asset upload complete!"
+        },
+        {
+          "exec": "rm -rf tmp"
+        }
+      ]
+    },
+    "release": {
+      "name": "release",
+      "description": "Prepare a release from \"main\" branch",
+      "env": {
+        "RELEASE": "true"
+      },
+      "steps": [
+        {
+          "exec": "rm -fr dist"
+        },
+        {
+          "spawn": "bump"
+        },
+        {
+          "spawn": "build"
+        },
+        {
+          "spawn": "unbump"
+        },
+        {
+          "exec": "git diff --ignore-space-at-eol --exit-code"
+        }
+      ]
+    },
+    "synth": {
+      "name": "synth",
+      "description": "Synthesizes your cdk app into cdk.out",
+      "steps": [
+        {
+          "exec": "cdk synth"
+        }
+      ]
+    },
+    "synth:silent": {
+      "name": "synth:silent",
+      "description": "Synthesizes your cdk app into cdk.out and suppresses the template in stdout (part of \"yarn build\")",
+      "steps": [
+        {
+          "exec": "cdk synth -q"
+        }
+      ]
+    },
+    "test": {
+      "name": "test",
+      "description": "Run tests",
+      "steps": [
+        {
+          "exec": "jest --passWithNoTests --updateSnapshot",
+          "receiveArgs": true
+        },
+        {
+          "spawn": "eslint"
+        },
+        {
+          "spawn": "test:app:unit"
+        },
+        {
+          "spawn": "test:app:integration"
+        }
+      ]
+    },
+    "test:app:integration": {
+      "name": "test:app:integration",
+      "description": "Run .NET integration tests",
+      "env": {
+        "AWS_EC2_METADATA_DISABLED": "true",
+        "AWS_ACCESS_KEY_ID": "fake",
+        "AWS_SECRET_ACCESS_KEY": "fake",
+        "AWS_DEFAULT_REGION": "us-east-1"
+      },
+      "steps": [
+        {
+          "exec": "dotnet test test/app --filter \"FullyQualifiedName~Integration\" --configuration Release --logger \"console;verbosity=detailed\""
+        }
+      ]
+    },
+    "test:app:unit": {
+      "name": "test:app:unit",
+      "description": "Run .NET unit tests",
+      "env": {
+        "AWS_EC2_METADATA_DISABLED": "true",
+        "AWS_ACCESS_KEY_ID": "fake",
+        "AWS_SECRET_ACCESS_KEY": "fake",
+        "AWS_DEFAULT_REGION": "us-east-1"
+      },
+      "steps": [
+        {
+          "exec": "dotnet test test/app --filter \"FullyQualifiedName!~Integration\" --configuration Release --logger \"console;verbosity=detailed\""
+        }
+      ]
+    },
+    "test:watch": {
+      "name": "test:watch",
+      "description": "Run jest in watch mode",
+      "steps": [
+        {
+          "exec": "jest --watch"
+        }
+      ]
+    },
+    "unbump": {
+      "name": "unbump",
+      "description": "Restores version to 0.0.0",
+      "env": {
+        "OUTFILE": "package.json",
+        "CHANGELOG": "dist/changelog.md",
+        "BUMPFILE": "dist/version.txt",
+        "RELEASETAG": "dist/releasetag.txt",
+        "RELEASE_TAG_PREFIX": "",
+        "BUMP_PACKAGE": "commit-and-tag-version@^12"
+      },
+      "steps": [
+        {
+          "builtin": "release/reset-version"
+        }
+      ]
+    },
+    "upgrade": {
+      "name": "upgrade",
+      "description": "upgrade dependencies",
+      "env": {
+        "CI": "0"
+      },
+      "steps": [
+        {
+          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --dep=dev,peer,prod,optional --filter=@types/jest,@types/node,esbuild,eslint-import-resolver-typescript,eslint-plugin-import,jest,projen,ts-jest,ts-node,typescript"
+        },
+        {
+          "exec": "yarn install --check-files"
+        },
+        {
+          "exec": "yarn upgrade @aws-cdk/lambda-layer-kubectl-v31 @cdklabs/multi-az-observability @types/jest @types/node @typescript-eslint/eslint-plugin @typescript-eslint/parser aws-cdk commit-and-tag-version esbuild eslint-import-resolver-typescript eslint-plugin-import eslint fast-check jest jest-junit projen ts-jest ts-node typescript aws-cdk-lib constructs"
+        },
+        {
+          "exec": "npx projen"
+        },
+        {
+          "spawn": "post-upgrade"
+        }
+      ]
+    },
+    "watch": {
+      "name": "watch",
+      "description": "Watches changes in your source code and rebuilds and deploys to the current account",
+      "steps": [
+        {
+          "exec": "cdk deploy --hotswap"
+        },
+        {
+          "exec": "cdk watch"
+        }
+      ]
+    }
+  },
+  "env": {
+    "PATH": "$(npx -c \"node --print process.env.PATH\")",
+    "PROJECT_NAME": "multi-az-workshop"
+  },
+  "//": "~~ Generated by projen. To modify, edit .projenrc.ts and run \"npx projen\"."
+}
