@@ -270,19 +270,17 @@ export class EKSApplication extends Construct {
     );
 
     // Create CloudWatch agent config map
-    const agentConfigMap = props.cluster.addManifest('CloudWatchAgentConfigMap', [
-      {
-        apiVersion: 'v1',
-        kind: 'ConfigMap',
-        metadata: {
-          name: 'cwagentemfconfig',
-          namespace: props.namespace,
-        },
-        data: {
-          'cwagentconfig.json': `{"agent":{"omit_hostname":true,"region":"${cdk.Aws.REGION}"},"logs":{"metrics_collected":{"emf":{}}},"traces":{"traces_collected":{"xray":{},"otlp":{}} } }`,
-        },
+    const agentConfigMap = props.cluster.addManifest('CloudWatchAgentConfigMap', {
+      apiVersion: 'v1',
+      kind: 'ConfigMap',
+      metadata: {
+        name: 'cwagentemfconfig',
+        namespace: props.namespace,
       },
-    ]);
+      data: {
+        'cwagentconfig.json': `{"agent":{"omit_hostname":true,"region":"${cdk.Aws.REGION}"},"logs":{"metrics_collected":{"emf":{}}},"traces":{"traces_collected":{"xray":{},"otlp":{}} } }`,
+      },
+    });
     agentConfigMap.node.addDependency(appNamespace);
     (agentConfigMap.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
       'ServiceTimeout',
