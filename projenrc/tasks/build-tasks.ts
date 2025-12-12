@@ -97,7 +97,7 @@ function createAssetBuildTasks(project: AwsCdkTypeScriptApp): Task {
         exec: 'rm -rf assets && mkdir -p assets',
       },
       {
-        exec: 'rm -rf dist && mkdir -p dist',
+        exec: 'mkdir -p dist',
       },
     ],
   });
