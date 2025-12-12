@@ -147,147 +147,135 @@ export class EKSCluster extends Construct {
     });
 
     // Create RBAC roles and bindings
-    const logRoleManifest = cluster.addManifest('LogsRole', [
-      {
-        apiVersion: 'rbac.authorization.k8s.io/v1',
-        kind: 'ClusterRole',
-        metadata: {
-          name: 'log-viewer',
-        },
-        rules: [
-          {
-            apiGroups: [''],
-            resources: ['pods', 'pods/log', 'pods/exec'],
-            verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
-          },
-          {
-            apiGroups: ['apps'],
-            resources: ['deployments'],
-            verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
-          },
-        ],
+    const logRoleManifest = cluster.addManifest('LogsRole', {
+      apiVersion: 'rbac.authorization.k8s.io/v1',
+      kind: 'ClusterRole',
+      metadata: {
+        name: 'log-viewer',
       },
-    ]);
+      rules: [
+        {
+          apiGroups: [''],
+          resources: ['pods', 'pods/log', 'pods/exec'],
+          verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
+        },
+        {
+          apiGroups: ['apps'],
+          resources: ['deployments'],
+          verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
+        },
+      ],
+    });
 
     const logRoleResource = logRoleManifest.node.findChild('Resource') as cdk.CustomResource;
     (logRoleResource.node.defaultChild as cdk.CfnResource).addPropertyOverride('ServiceTimeout', '300');
 
-    const podDeleterManifest = cluster.addManifest('PodDeleterRole', [
-      {
-        apiVersion: 'rbac.authorization.k8s.io/v1',
-        kind: 'ClusterRole',
-        metadata: {
-          name: 'pod-deleter',
-        },
-        rules: [
-          {
-            apiGroups: [''],
-            resources: ['pods'],
-            verbs: ['get', 'list', 'delete'],
-          },
-        ],
+    const podDeleterManifest = cluster.addManifest('PodDeleterRole', {
+      apiVersion: 'rbac.authorization.k8s.io/v1',
+      kind: 'ClusterRole',
+      metadata: {
+        name: 'pod-deleter',
       },
-    ]);
+      rules: [
+        {
+          apiGroups: [''],
+          resources: ['pods'],
+          verbs: ['get', 'list', 'delete'],
+        },
+      ],
+    });
 
     const podDeleterResource = podDeleterManifest.node.findChild('Resource') as cdk.CustomResource;
     (podDeleterResource.node.defaultChild as cdk.CfnResource).addPropertyOverride('ServiceTimeout', '300');
 
-    const networkingRoleManifest = cluster.addManifest('NetworkingRole', [
-      {
-        apiVersion: 'rbac.authorization.k8s.io/v1',
-        kind: 'ClusterRole',
-        metadata: {
-          name: 'networking-manager',
-        },
-        rules: [
-          {
-            apiGroups: ['networking.istio.io'],
-            resources: ['destinationrules'],
-            verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
-          },
-        ],
+    const networkingRoleManifest = cluster.addManifest('NetworkingRole', {
+      apiVersion: 'rbac.authorization.k8s.io/v1',
+      kind: 'ClusterRole',
+      metadata: {
+        name: 'networking-manager',
       },
-    ]);
+      rules: [
+        {
+          apiGroups: ['networking.istio.io'],
+          resources: ['destinationrules'],
+          verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
+        },
+      ],
+    });
 
     const networkingRoleResource = networkingRoleManifest.node.findChild('Resource') as cdk.CustomResource;
     (networkingRoleResource.node.defaultChild as cdk.CfnResource).addPropertyOverride('ServiceTimeout', '300');
 
-    const logRoleBindingManifest = cluster.addManifest('LogsRoleBinding', [
-      {
-        apiVersion: 'rbac.authorization.k8s.io/v1',
-        kind: 'ClusterRoleBinding',
-        metadata: {
-          name: 'log-viewer-global',
-          namespace: 'kube-system',
-        },
-        roleRef: {
-          apiGroup: 'rbac.authorization.k8s.io',
-          kind: 'ClusterRole',
-          name: 'log-viewer',
-        },
-        subjects: [
-          {
-            kind: 'Group',
-            name: 'system:authenticated',
-            apiGroup: 'rbac.authorization.k8s.io',
-          },
-        ],
+    const logRoleBindingManifest = cluster.addManifest('LogsRoleBinding', {
+      apiVersion: 'rbac.authorization.k8s.io/v1',
+      kind: 'ClusterRoleBinding',
+      metadata: {
+        name: 'log-viewer-global',
+        namespace: 'kube-system',
       },
-    ]);
+      roleRef: {
+        apiGroup: 'rbac.authorization.k8s.io',
+        kind: 'ClusterRole',
+        name: 'log-viewer',
+      },
+      subjects: [
+        {
+          kind: 'Group',
+          name: 'system:authenticated',
+          apiGroup: 'rbac.authorization.k8s.io',
+        },
+      ],
+    });
 
     logRoleBindingManifest.node.addDependency(logRoleManifest);
     const logRoleBindingResource = logRoleBindingManifest.node.findChild('Resource') as cdk.CustomResource;
     (logRoleBindingResource.node.defaultChild as cdk.CfnResource).addPropertyOverride('ServiceTimeout', '300');
 
-    const networkingRoleBindingManifest = cluster.addManifest('NetworkingRoleBinding', [
-      {
-        apiVersion: 'rbac.authorization.k8s.io/v1',
-        kind: 'ClusterRoleBinding',
-        metadata: {
-          name: 'networking-manager-global',
-          namespace: 'multi-az-workshop',
-        },
-        roleRef: {
-          apiGroup: 'rbac.authorization.k8s.io',
-          kind: 'ClusterRole',
-          name: 'networking-manager',
-        },
-        subjects: [
-          {
-            kind: 'Group',
-            name: 'system:authenticated',
-            apiGroup: 'rbac.authorization.k8s.io',
-          },
-        ],
+    const networkingRoleBindingManifest = cluster.addManifest('NetworkingRoleBinding', {
+      apiVersion: 'rbac.authorization.k8s.io/v1',
+      kind: 'ClusterRoleBinding',
+      metadata: {
+        name: 'networking-manager-global',
+        namespace: 'multi-az-workshop',
       },
-    ]);
+      roleRef: {
+        apiGroup: 'rbac.authorization.k8s.io',
+        kind: 'ClusterRole',
+        name: 'networking-manager',
+      },
+      subjects: [
+        {
+          kind: 'Group',
+          name: 'system:authenticated',
+          apiGroup: 'rbac.authorization.k8s.io',
+        },
+      ],
+    });
 
     networkingRoleBindingManifest.node.addDependency(networkingRoleManifest);
     const networkingRoleBindingResource = networkingRoleBindingManifest.node.findChild('Resource') as cdk.CustomResource;
     (networkingRoleBindingResource.node.defaultChild as cdk.CfnResource).addPropertyOverride('ServiceTimeout', '300');
 
-    const podDeleterRoleBindingManifest = cluster.addManifest('PodDeleterRoleBinding', [
-      {
-        apiVersion: 'rbac.authorization.k8s.io/v1',
-        kind: 'ClusterRoleBinding',
-        metadata: {
-          name: 'pod-deleter-global',
-          namespace: 'multi-az-workshop',
-        },
-        roleRef: {
-          apiGroup: 'rbac.authorization.k8s.io',
-          kind: 'ClusterRole',
-          name: 'pod-deleter',
-        },
-        subjects: [
-          {
-            kind: 'Group',
-            name: 'system:authenticated',
-            apiGroup: 'rbac.authorization.k8s.io',
-          },
-        ],
+    const podDeleterRoleBindingManifest = cluster.addManifest('PodDeleterRoleBinding', {
+      apiVersion: 'rbac.authorization.k8s.io/v1',
+      kind: 'ClusterRoleBinding',
+      metadata: {
+        name: 'pod-deleter-global',
+        namespace: 'multi-az-workshop',
       },
-    ]);
+      roleRef: {
+        apiGroup: 'rbac.authorization.k8s.io',
+        kind: 'ClusterRole',
+        name: 'pod-deleter',
+      },
+      subjects: [
+        {
+          kind: 'Group',
+          name: 'system:authenticated',
+          apiGroup: 'rbac.authorization.k8s.io',
+        },
+      ],
+    });
 
     podDeleterRoleBindingManifest.node.addDependency(podDeleterManifest);
     const podDeleterRoleBindingResource = podDeleterRoleBindingManifest.node.findChild('Resource') as cdk.CustomResource;
