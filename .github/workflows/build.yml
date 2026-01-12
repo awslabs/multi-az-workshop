@@ -15,7 +15,7 @@ jobs:
       CI: "true"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
@@ -32,10 +32,11 @@ jobs:
         run: |-
           git add .
           git diff --staged --patch --exit-code > repo.patch || echo "self_mutation_happened=true" >> $GITHUB_OUTPUT
+        shell: bash
         working-directory: ./
       - name: Upload patch
         if: steps.self_mutation.outputs.self_mutation_happened
-        uses: actions/upload-artifact@v4.4.0
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: repo.patch
           path: repo.patch
