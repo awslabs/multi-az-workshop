@@ -7,8 +7,6 @@ import { GithubWorkflow } from 'projen/lib/github';
 import type { GitHub } from 'projen/lib/github';
 import { JobPermission } from 'projen/lib/github/workflows-model';
 
-const workshopId = 'e9383b42-6c6f-416b-b50a-9313e476e372';
-
 /**
  * Creates the publish workflow
  * @param github The GitHub project instance
@@ -65,45 +63,39 @@ export function createPublishWorkflow(github: GitHub): void {
       AWS_ACCESS_KEY_ID: '${{ inputs.aws_access_key_id }}',
       AWS_SECRET_ACCESS_KEY: '${{ inputs.aws_secret_access_key }}',
       AWS_SESSION_TOKEN: '${{ inputs.aws_session_token }}',
-      WORKSHOP_ID: workshopId,
+      ASSETS_LOCATION: '${{ secrets.ASSETS_LOCATION }}',
     },
     steps: [
       {
         name: 'Get latest release info',
         id: 'release-info',
-        run: `
-          # Get the latest release
-          RELEASE_INFO=$(gh api repos/\${{ github.repository }}/releases/latest)
-          
-          RELEASE_TAG=$(echo "$RELEASE_INFO" | jq -r '.tag_name')
-          RELEASE_SHA=$(echo "$RELEASE_INFO" | jq -r '.target_commitish')
-          
-          echo "Latest release: $RELEASE_TAG"
-          echo "Release SHA: $RELEASE_SHA"
-          
-          echo "tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
-          echo "sha=$RELEASE_SHA" >> $GITHUB_OUTPUT
-        `.trim(),
+        run: `# Get the latest release
+RELEASE_INFO=$(gh api repos/\${{ github.repository }}/releases/latest)
+
+RELEASE_TAG=$(echo "$RELEASE_INFO" | jq -r '.tag_name')
+RELEASE_SHA=$(echo "$RELEASE_INFO" | jq -r '.target_commitish')
+
+echo "Latest release: $RELEASE_TAG"
+echo "Release SHA: $RELEASE_SHA"
+
+echo "tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
+echo "sha=$RELEASE_SHA" >> $GITHUB_OUTPUT`,
       },
       {
         name: 'Download content.zip from release',
-        run: `
-          # Download the content.zip asset from the latest release
-          gh release download \${{ steps.release-info.outputs.tag }} \\
-            --pattern 'content.zip' \\
-            --dir ./
-        `.trim(),
+        run: `# Download the content.zip asset from the latest release
+gh release download \${{ steps.release-info.outputs.tag }} \\
+  --pattern 'content.zip' \\
+  --dir ./`,
       },
       {
         name: 'Extract content.zip',
-        run: `
-          mkdir -p extracted
-          unzip -q content.zip -d extracted
-        `.trim(),
+        run: `mkdir -p extracted
+unzip -q content.zip -d extracted`,
       },
       {
         name: 'Upload assets to S3',
-        run: 'aws s3 sync extracted s3://ws-assets-us-east-1/$WORKSHOP_ID --delete',
+        run: 'aws s3 sync extracted "$ASSETS_LOCATION" --delete',
       },
     ],
   });
@@ -119,10 +111,11 @@ export function createPublishWorkflow(github: GitHub): void {
       GH_TOKEN: '${{ github.token }}',
       USER_NAME: '${{ github.triggering_actor }}',
       EMAIL: '${{ inputs.email }}',
-      WORKSHOP_ID: workshopId,
-      REMOTE_REPO: 'advanced-multi-az-resilience-patterns',
+      REMOTE_REPO: '${{ secrets.REMOTE_REPO }}',
       AWS_DEFAULT_REGION: 'us-east-1',
       WS_REPO_SOURCE: 's3',
+      PLUGIN: '${{ secrets.PLUGIN }}',
+      PACKAGE: '${{ secrets.GIT_PACKAGE }}',
       AWS_ACCESS_KEY_ID: '${{ inputs.aws_access_key_id }}',
       AWS_SECRET_ACCESS_KEY: '${{ inputs.aws_secret_access_key }}',
       AWS_SESSION_TOKEN: '${{ inputs.aws_session_token }}',
@@ -136,44 +129,40 @@ export function createPublishWorkflow(github: GitHub): void {
         },
       },
       {
-        name: 'Install git-remote-workshopstudio',
-        run: `
-          pip config set global.trusted-host plugin.us-east-1.prod.workshops.aws
-pip config set global.extra-index-url https://plugin.us-east-1.prod.workshops.aws
-pipx install git-remote-workshopstudio
-git config --global user.email $EMAIL
-git config --global user.name "$USER_NAME"
-        `.trim(),
+        name: 'Install git tools',
+        run: `pip config set global.trusted-host "$PLUGIN"
+pip config set global.extra-index-url https://"$PLUGIN"
+pipx install "$PACKAGE"
+git config --global user.email "$EMAIL"
+git config --global user.name "$USER_NAME"`,
       },
       {
         name: 'Push workshop content',
-        run: `
-          # Clone Workshop Studio repository
-          git clone --branch mainline workshopstudio://ws-content-$WORKSHOP_ID/$REMOTE_REPO \${{ github.workspace }}/workshop-repo
-          
-          cd \${{ github.workspace }}/workshop-repo
-          
-          # Remove all existing content except .git
-          find . -path ./.git -prune -o ! -name . ! -name .. -exec rm -rf {} + 2> /dev/null
-          
-          # Copy content, static, and contentspec.yaml from the checked out release
-          cp -r \${{ github.workspace }}/content ./
-          cp -r \${{ github.workspace }}/static ./
-          cp \${{ github.workspace }}/contentspec.yaml ./
-          
-          # Check for changes and commit if any exist
-          set +e
-          git diff --quiet
-          if [ $? -eq 1 ]; then
-            set -e
-            git add -A
-            git commit -m "Published from release \${{ needs.upload-assets.outputs.release_tag }}"
-            git push
-            echo "✅ Workshop content published successfully"
-          else
-            echo "ℹ️ No changes detected, nothing to commit"
-          fi
-        `.trim(),
+        run: `# Clone Workshop Studio repository
+git clone --branch mainline "$REMOTE_REPO" \${{ github.workspace }}/workshop-repo
+
+cd \${{ github.workspace }}/workshop-repo
+
+# Remove all existing content except .git
+find . -path ./.git -prune -o ! -name . ! -name .. -exec rm -rf {} + 2> /dev/null
+
+# Copy content, static, and contentspec.yaml from the checked out release
+cp -r \${{ github.workspace }}/content ./
+cp -r \${{ github.workspace }}/static ./
+cp \${{ github.workspace }}/contentspec.yaml ./
+
+# Check for changes and commit if any exist
+set +e
+git diff --quiet
+if [ $? -eq 1 ]; then
+  set -e
+  git add -A
+  git commit -m "Published from release \${{ needs.upload-assets.outputs.release_tag }}"
+  git push
+  echo "✅ Workshop content published successfully"
+else
+  echo "ℹ️ No changes detected, nothing to commit"
+fi`,
       },
     ],
   });
