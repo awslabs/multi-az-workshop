@@ -55,9 +55,8 @@ export interface EKSClusterProps {
 
   /**
    * Kubernetes version
-   * @default "1.32"
    */
-  readonly version?: string;
+  readonly version: eks.KubernetesVersion;
 }
 
 /**
@@ -76,8 +75,6 @@ export class EKSCluster extends Construct {
 
   constructor(scope: Construct, id: string, props: EKSClusterProps) {
     super(scope, id);
-
-    const version = props.version ?? '1.32';
 
     // Create security group for control plane
     const controlPlaneSG = new ec2.SecurityGroup(this, 'EKSClusterControlPlaneSecurityGroup', {
@@ -104,7 +101,7 @@ export class EKSCluster extends Construct {
       vpc: props.vpc,
       vpcSubnets: [{ subnetType: ec2.SubnetType.PRIVATE_ISOLATED }],
       defaultCapacity: 0,
-      version: eks.KubernetesVersion.of(version),
+      version: props.version,
       placeClusterHandlerInVpc: false,
       endpointAccess: eks.EndpointAccess.PUBLIC_AND_PRIVATE,
       kubectlLayer: kubectlLayer,

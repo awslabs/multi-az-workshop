@@ -15,6 +15,7 @@ import { EKSApplication } from '../constructs/eks-application';
 import { EKSCluster, InstanceArchitecture } from '../constructs/eks-cluster';
 import { Istio } from '../constructs/istio';
 import { NestedStackWithSource } from '../constructs/nested-stack-with-source';
+import { KubernetesVersion } from 'aws-cdk-lib/aws-eks';
 
 /**
  * Props for EKS Stack
@@ -92,7 +93,7 @@ export class EKSStack extends NestedStackWithSource {
       vpc: props.vpc,
       loadBalancerSecurityGroup: props.loadBalancerSecurityGroup,
       clusterName: 'multi-az-workshop-eks-cluster',
-      version: versions.EKS,
+      version: KubernetesVersion.of(versions.EKS),
     });
 
     // Fix up nested stacks for kubectl and cluster resource providers
