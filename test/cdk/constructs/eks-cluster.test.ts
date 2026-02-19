@@ -4,6 +4,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { Match } from 'aws-cdk-lib/assertions';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as eks from 'aws-cdk-lib/aws-eks';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import { EKSCluster, InstanceArchitecture } from '../../../src/cdk/lib/constructs/eks-cluster';
@@ -56,6 +57,7 @@ describe('EKSCluster', () => {
       adminRole: sharedAdminRole,
       loadBalancerSecurityGroup: sharedLoadBalancerSecurityGroup,
       clusterName: 'test-cluster',
+      version: eks.KubernetesVersion.of('1.35'),
     });
 
     sharedTemplate = synthesizeStack(sharedStack);
@@ -108,7 +110,7 @@ describe('EKSCluster', () => {
         adminRole,
         loadBalancerSecurityGroup,
         clusterName: 'test-cluster',
-        version: '1.31',
+        version: eks.KubernetesVersion.of('1.35'),
       });
 
       customVersionTemplate = synthesizeStack(customVersionStack);
@@ -152,6 +154,7 @@ describe('EKSCluster', () => {
         adminRole,
         loadBalancerSecurityGroup,
         clusterName: 'test-cluster',
+        version: eks.KubernetesVersion.of('1.35'),
       });
 
       armTemplate = synthesizeStack(armStack);
@@ -225,6 +228,7 @@ describe('EKSCluster', () => {
         adminRole,
         loadBalancerSecurityGroup,
         clusterName: 'my-test-cluster',
+        version: eks.KubernetesVersion.of('1.35'),
       });
 
       customNameTemplate = synthesizeStack(customNameStack);
@@ -416,6 +420,7 @@ describe('EKSCluster', () => {
         adminRole,
         loadBalancerSecurityGroup,
         clusterName: 'test-cluster',
+        version: eks.KubernetesVersion.of('1.35'),
       });
     });
 

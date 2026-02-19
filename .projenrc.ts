@@ -9,7 +9,7 @@ const project = new AwsCdkTypeScriptApp({
   description: 'The multi-AZ resilience patterns workshop',
   defaultReleaseBranch: 'main',
   projenrcTs: true,
-  cdkVersion: '2.227.0',
+  cdkVersion: '2.238.0',
   appEntrypoint: 'cdk/multi-az-workshop.ts',
   srcdir: 'src',
 
