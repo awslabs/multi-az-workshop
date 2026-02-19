@@ -57,7 +57,7 @@ describe('EKSCluster', () => {
       adminRole: sharedAdminRole,
       loadBalancerSecurityGroup: sharedLoadBalancerSecurityGroup,
       clusterName: 'test-cluster',
-      version: eks.KubernetesVersion.V1_35,
+      version: eks.KubernetesVersion.of('1.35'),
     });
 
     sharedTemplate = synthesizeStack(sharedStack);
@@ -110,7 +110,7 @@ describe('EKSCluster', () => {
         adminRole,
         loadBalancerSecurityGroup,
         clusterName: 'test-cluster',
-        version: eks.KubernetesVersion.V1_35,
+        version: eks.KubernetesVersion.of('1.35'),
       });
 
       customVersionTemplate = synthesizeStack(customVersionStack);
@@ -154,7 +154,7 @@ describe('EKSCluster', () => {
         adminRole,
         loadBalancerSecurityGroup,
         clusterName: 'test-cluster',
-        version: eks.KubernetesVersion.V1_35,
+        version: eks.KubernetesVersion.of('1.35'),
       });
 
       armTemplate = synthesizeStack(armStack);
@@ -228,7 +228,7 @@ describe('EKSCluster', () => {
         adminRole,
         loadBalancerSecurityGroup,
         clusterName: 'my-test-cluster',
-        version: eks.KubernetesVersion.V1_35,
+        version: eks.KubernetesVersion.of('1.35'),
       });
 
       customNameTemplate = synthesizeStack(customNameStack);
@@ -420,7 +420,7 @@ describe('EKSCluster', () => {
         adminRole,
         loadBalancerSecurityGroup,
         clusterName: 'test-cluster',
-        version: eks.KubernetesVersion.V1_35,
+        version: eks.KubernetesVersion.of('1.35'),
       });
     });
 
