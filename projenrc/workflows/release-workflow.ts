@@ -21,12 +21,24 @@ export function customizeReleaseWorkflow(project: AwsCdkTypeScriptApp): void {
   // Add path filters to the release workflow
   // This ensures the workflow only runs when workshop content changes
   if (releaseWorkflow.file) {
-    releaseWorkflow.file.addOverride('on.push.paths', [
-      'src/**',
-      'content/**',
-      'static/**',
-      'contentspec.yaml',
-    ]);
+    // Remove the push trigger and replace with pull_request closed trigger
+    releaseWorkflow.file.addDeletionOverride('on.push');
+    releaseWorkflow.file.addOverride('on.pull_request', {
+      types: ['closed'],
+      branches: ['main'],
+      paths: [
+        'src/**',
+        'content/**',
+        'static/**',
+        'contentspec.yaml',
+      ],
+    });
+
+    // Add merged check to the release job so it only runs on actual merges
+    releaseWorkflow.file.addOverride(
+      'jobs.release.if',
+      "github.event.pull_request.merged == true",
+    );
 
     // Override the final release step to attach content.zip and handle prerelease detection
     releaseWorkflow.file.addOverride('jobs.release_github.steps.3.run', `

@@ -2,7 +2,10 @@
 
 name: release
 on:
-  push:
+  workflow_dispatch: {}
+  pull_request:
+    types:
+      - closed
     branches:
       - main
     paths:
@@ -10,7 +13,6 @@ on:
       - content/**
       - static/**
       - contentspec.yaml
-  workflow_dispatch: {}
 concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: false
@@ -60,6 +62,7 @@ jobs:
           name: build-artifact
           path: dist
           overwrite: true
+    if: github.event.pull_request.merged == true
   release_github:
     name: Publish to GitHub Releases
     needs: release
