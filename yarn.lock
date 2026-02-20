@@ -33,6 +33,11 @@
   resolved "https://registry.yarnpkg.com/@aws-cdk/lambda-layer-kubectl-v32/-/lambda-layer-kubectl-v32-2.0.0.tgz#c9f97d9ad6906223d4ce3ff1c92d61a450b9252c"
   integrity sha512-kPE8+1ihINWDEd9om8kNBOh8LxEyHa8ZK5teYHy/DhZNVhO3tY3l3/NprKLfD44ep5kJZyHNRrIzYhyD/wIqtA==
 
+"@aws-cdk/lambda-layer-kubectl-v33@2.0.0":
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/@aws-cdk/lambda-layer-kubectl-v33/-/lambda-layer-kubectl-v33-2.0.0.tgz#0c521ad987bb3ac597a4b4ebeece8fd2721ca000"
+  integrity sha512-osA3wkwWK2OfpymTcCZKhgaKSca9PQSr+7xi+UevKFRHtMdxHgygC345hdDpCtZlMmX9pKjtFpRUxeRrbGHMEw==
+
 "@aws-cdk/lambda-layer-kubectl-v35@2.0.0":
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/@aws-cdk/lambda-layer-kubectl-v35/-/lambda-layer-kubectl-v35-2.0.0.tgz#6f2b1dcfd668f9abc08d0d841af28cd6a3b6ebc7"
