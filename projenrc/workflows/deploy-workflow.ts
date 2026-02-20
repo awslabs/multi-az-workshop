@@ -16,18 +16,17 @@ export function createDeployWorkflow(github: GitHub): void {
 
   deployWorkflow.on({
     workflowRun: {
-      workflows: ['review', 'auto-approve'],
+      workflows: ['auto-approve'],
       types: [
         'completed',
-      ],
-      branches: ['main'],
+      ]
     },
   });
 
   // Job 1: Check if deployment is needed
   deployWorkflow.addJob('check-changes', {
     runsOn: ['ubuntu-latest'],
-    if: 'github.event.workflow_run.conclusion == \'success\'',
+    if: "github.event.workflow_run.conclusion == 'success'",
     permissions: {},
     outputs: {
       should_deploy: {
