@@ -16,7 +16,7 @@ export function createDeployWorkflow(github: GitHub): void {
 
   deployWorkflow.on({
     workflowRun: {
-      workflows: ['review', 'auto-approve'],
+      workflows: ['auto-approve'],
       types: [
         'completed',
       ],
@@ -26,6 +26,7 @@ export function createDeployWorkflow(github: GitHub): void {
   // Job 1: Check if deployment is needed
   deployWorkflow.addJob('check-changes', {
     runsOn: ['ubuntu-latest'],
+    if: "github.event.workflow_run.conclusion == 'success'",
     permissions: {},
     outputs: {
       should_deploy: {
@@ -34,16 +35,6 @@ export function createDeployWorkflow(github: GitHub): void {
       },
     },
     steps: [
-      {
-        name: 'Verify workflow success',
-        run: `
-          # First, verify the auto-approve workflow completed successfully
-          if [[ "\${{ github.event.workflow_run.conclusion }}" != "success" ]]; then
-            echo "Auto-approve workflow did not complete successfully"
-            exit 1
-          fi
-        `.trim(),
-      },
       {
         name: 'Checkout',
         uses: 'actions/checkout@v4',
