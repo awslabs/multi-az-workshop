@@ -62,6 +62,7 @@
   "devDependencies": {
     "@aws-cdk/lambda-layer-kubectl-v32": "2.0.0",
     "@aws-cdk/lambda-layer-kubectl-v33": "2.0.0",
+    "@aws-cdk/lambda-layer-kubectl-v34": "2.0.0",
     "@aws-cdk/lambda-layer-kubectl-v35": "2.0.0",
     "@cdklabs/multi-az-observability": "0.0.1-alpha.60",
     "@stylistic/eslint-plugin": "^2",

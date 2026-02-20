@@ -11,6 +11,11 @@
       "type": "build"
     },
     {
+      "name": "@aws-cdk/lambda-layer-kubectl-v34",
+      "version": "2.0.0",
+      "type": "build"
+    },
+    {
       "name": "@aws-cdk/lambda-layer-kubectl-v35",
       "version": "2.0.0",
       "type": "build"
