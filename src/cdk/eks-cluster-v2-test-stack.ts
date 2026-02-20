@@ -180,7 +180,7 @@ vpc.addInterfaceEndpoint('stepfunctionssync', {
   open: true,
 });
 
-const adminRole = iam.Role.fromRoleName(stack, 'AdminRole', 'REPLACE_WITH_ROLE_NAME');
+const adminRole = iam.Role.fromRoleName(stack, 'AdminRole', 'Admin');
 
 const lbSecurityGroup = new ec2.SecurityGroup(stack, 'LBSecurityGroup', {
   vpc,
