@@ -11,30 +11,6 @@ import { EKSStack } from '../../../src/cdk/lib/nested-stacks/eks-stack';
 import { createMockUploaderFunction } from '../../helpers';
 import { synthesizeStack, findResourcesByType } from '../../helpers/stack-helpers';
 
-// Mock the EKSStack module to avoid file system dependencies
-jest.mock('../../../src/cdk/lib/nested-stacks/eks-stack', () => {
-  const actual = jest.requireActual('../../../src/cdk/lib/nested-stacks/eks-stack');
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const fs = require('fs');
-  const originalReadFileSync = fs.readFileSync;
-
-  // Override readFileSync only for this module
-  fs.readFileSync = jest.fn((path: any, options?: any) => {
-    if (path.toString().includes('versions.json')) {
-      return JSON.stringify({
-        EKS: '1.35',
-        HELM: '4.1.1',
-        KUBECTL: '1.35.0',
-        ISTIO: '1.29.0',
-        AWS_LOAD_BALANCER_CONTROLLER: '3.0.0',
-      });
-    }
-    return originalReadFileSync(path, options);
-  });
-
-  return actual;
-});
-
 
 describe('EKSStack', () => {
   let app: App;

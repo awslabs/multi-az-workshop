@@ -10,7 +10,7 @@ import { DatabaseStack } from '../../../src/cdk/lib/nested-stacks/database-stack
 import { synthesizeStack, findResourcesByType } from '../../helpers/stack-helpers';
 
 // Load versions from build configuration
-const versionsPath = path.join(__dirname, '..', '..', '..', 'build', 'versions.json');
+const versionsPath = path.join(process.cwd(), 'build', 'versions.json');
 const versions = JSON.parse(fs.readFileSync(versionsPath, 'utf-8'));
 const postgresVersion = rds.AuroraPostgresEngineVersion.of(
   versions.POSTGRES,
