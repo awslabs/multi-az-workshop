@@ -144,6 +144,7 @@ export class MultiAZWorkshopStack extends cdk.Stack {
     // Read versions from build configuration
     const versionsPath = path.join(__dirname, '..', '..', '..', 'build', 'versions.json');
     const versions = JSON.parse(fs.readFileSync(versionsPath, 'utf-8'));
+    console.log(JSON.stringify(versions));
 
     // Create Database Stack
     this.databaseStack = new DatabaseStack(this, 'database', {
