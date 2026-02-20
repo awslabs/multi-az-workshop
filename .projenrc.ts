@@ -13,6 +13,18 @@ const project = new AwsCdkTypeScriptApp({
   appEntrypoint: 'cdk/multi-az-workshop.ts',
   srcdir: 'src',
 
+  // TypeScript compiler options
+  tsconfig: {
+    compilerOptions: {
+      isolatedModules: true,
+    },
+  },
+  tsconfigDev: {
+    compilerOptions: {
+      isolatedModules: true,
+    },
+  },
+
   // Project metadata
   authorName: 'Michael Haken',
   authorEmail: 'mhaken@amazon.com',
@@ -59,7 +71,7 @@ const project = new AwsCdkTypeScriptApp({
   devDeps: [
     '@types/node',
     '@cdklabs/multi-az-observability@0.0.1-alpha.60',
-    '@aws-cdk/lambda-layer-kubectl-v35@^2.0.0',
+    '@aws-cdk/lambda-layer-kubectl-v35@2.0.0',
     'fast-check@^3.15.0',
   ],
 
