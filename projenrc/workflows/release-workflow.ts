@@ -37,7 +37,7 @@ export function customizeReleaseWorkflow(project: AwsCdkTypeScriptApp): void {
     // Add merged check to the release job so it only runs on actual merges
     releaseWorkflow.file.addOverride(
       'jobs.release.if',
-      "github.event.pull_request.merged == true",
+      'github.event.pull_request.merged == true',
     );
 
     // Override the final release step to attach content.zip and handle prerelease detection
