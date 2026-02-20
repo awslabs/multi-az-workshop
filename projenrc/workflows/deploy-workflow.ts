@@ -19,7 +19,7 @@ export function createDeployWorkflow(github: GitHub): void {
       workflows: ['auto-approve'],
       types: [
         'completed',
-      ]
+      ],
     },
   });
 
