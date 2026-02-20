@@ -160,7 +160,7 @@ export class EKSClusterV2 extends Construct {
             privateSubnets: props.vpc.selectSubnets({ subnetType: ec2.SubnetType.PRIVATE_ISOLATED }).subnets,
         },
         
-        mastersRole: props.adminRole
+        //mastersRole: props.adminRole
     });
 
     cluster.node.addDependency(clusterLogGroup);
