@@ -34,6 +34,10 @@ import { SelfManagedHttpEndpointS3Stack } from './nested-stacks/self-managed-htt
 import { SSMRandomFaultStack } from './nested-stacks/ssm-random-fault-stack';
 import { EvacuationMethod } from './types';
 import { createService } from './utils/service-factory';
+import * as fs from 'fs';
+import * as path from 'path';
+import { AuroraPostgresEngineVersion } from 'aws-cdk-lib/aws-rds';
+import { KubernetesVersion } from 'aws-cdk-lib/aws-eks';
 
 /**
  * Properties for the MultiAZWorkshopStack
@@ -137,9 +141,15 @@ export class MultiAZWorkshopStack extends cdk.Stack {
       availabilityZoneNames,
     });
 
+    // Read versions from build configuration
+    const versionsPath = path.join(__dirname, '..', '..', '..', 'build', 'versions.json');
+    const versions = JSON.parse(fs.readFileSync(versionsPath, 'utf-8'));
+    console.log(JSON.stringify(versions));
+
     // Create Database Stack
     this.databaseStack = new DatabaseStack(this, 'database', {
       vpc: this.networkStack.vpc,
+      version: AuroraPostgresEngineVersion.of(versions.POSTGRES, versions.POSTGRES.split('.')[0]),
     });
 
     // Create ECR Uploader Stack (shared Lambda function)
@@ -200,6 +210,9 @@ export class MultiAZWorkshopStack extends cdk.Stack {
       adminRoleName: participantRoleName.valueAsString,
       iamResourcePath: '/front-end/eks-fleet/',
       uploaderFunction: this.ecrUploaderStack.uploaderFunction,
+      eksVersion: KubernetesVersion.of(versions.EKS),
+      istioVersion: versions.ISTIO,
+      awsLoadBalancerControllerVersion: versions.AWS_LOAD_BALANCER_CONTROLLER
     });
 
     this.eksStack.node.addDependency(this.azTaggerStack);

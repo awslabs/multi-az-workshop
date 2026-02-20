@@ -29,7 +29,8 @@
     "moduleResolution": "nodenext",
     "typeRoots": [
       "./node_modules/@types"
-    ]
+    ],
+    "isolatedModules": true
   },
   "include": [
     "src/**/*.ts"

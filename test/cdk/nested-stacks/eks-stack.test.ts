@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import { App, Stack } from 'aws-cdk-lib';
 import { Template, Match } from 'aws-cdk-lib/assertions';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as eks from 'aws-cdk-lib/aws-eks';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import { IPAddressType } from '../../../src/cdk/lib/constructs/ip-address-type';
@@ -9,31 +10,6 @@ import { VpcIpV6, IVpcIpV6 } from '../../../src/cdk/lib/constructs/vpc-ipv6-cons
 import { EKSStack } from '../../../src/cdk/lib/nested-stacks/eks-stack';
 import { createMockUploaderFunction } from '../../helpers';
 import { synthesizeStack, findResourcesByType } from '../../helpers/stack-helpers';
-
-// Mock the EKSStack module to avoid file system dependencies
-jest.mock('../../../src/cdk/lib/nested-stacks/eks-stack', () => {
-  const actual = jest.requireActual('../../../src/cdk/lib/nested-stacks/eks-stack');
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const fs = require('fs');
-  const originalReadFileSync = fs.readFileSync;
-
-  // Override readFileSync only for this module
-  fs.readFileSync = jest.fn((path: any, options?: any) => {
-    if (path.toString().includes('versions.json')) {
-      return JSON.stringify({
-        EKS: '1.32',
-        HELM: '3.16.3',
-        KUBECTL: '1.32.0',
-        ISTIO: '1.24.1',
-        LB_CONTROLLER_HELM: '1.10.1',
-        LB_CONTROLLER_CONTAINER: 'v2.8.1',
-      });
-    }
-    return originalReadFileSync(path, options);
-  });
-
-  return actual;
-});
 
 
 describe('EKSStack', () => {
@@ -119,6 +95,9 @@ describe('EKSStack', () => {
       loadBalancerSecurityGroup,
       adminRoleName,
       uploaderFunction,
+      eksVersion: eks.KubernetesVersion.of('1.35'),
+      istioVersion: '1.29.0',
+      awsLoadBalancerControllerVersion: '3.0.0',
     });
     sharedTemplate = Template.fromStack(sharedEksStack);
     sharedParentTemplate = Template.fromStack(parentStack);

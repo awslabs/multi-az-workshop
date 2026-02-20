@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { KubectlV31Layer } from '@aws-cdk/lambda-layer-kubectl-v31';
+import { KubectlV35Layer } from '@aws-cdk/lambda-layer-kubectl-v35';
 import * as cdk from 'aws-cdk-lib';
 import { Match } from 'aws-cdk-lib/assertions';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
@@ -35,9 +35,9 @@ describe('Istio', () => {
     // Create EKS cluster
     sharedCluster = new eks.Cluster(sharedStack, 'Cluster', {
       vpc: sharedVpc,
-      version: eks.KubernetesVersion.V1_31,
+      version: eks.KubernetesVersion.of('1.35'),
       defaultCapacity: 0,
-      kubectlLayer: new KubectlV31Layer(sharedStack, 'KubectlLayer'),
+      kubectlLayer: new KubectlV35Layer(sharedStack, 'KubectlLayer'),
     });
 
     // Create assets bucket
@@ -129,9 +129,9 @@ describe('Istio', () => {
       });
     });
 
-    test('uses default version 1.24.1', () => {
+    test('uses default version 1.29.0', () => {
       assertResourceProperties(sharedTemplate, 'Custom::AWSCDK-EKS-HelmChart', {
-        Version: '1.24.1',
+        Version: '1.29.0',
       });
     });
   });
@@ -242,9 +242,9 @@ describe('Istio', () => {
       const vpc = createMockVpc(stack);
       const cluster = new eks.Cluster(stack, 'Cluster', {
         vpc,
-        version: eks.KubernetesVersion.V1_31,
+        version: eks.KubernetesVersion.of('1.35'),
         defaultCapacity: 0,
-        kubectlLayer: new KubectlV31Layer(stack, 'KubectlLayer'),
+        kubectlLayer: new KubectlV35Layer(stack, 'KubectlLayer'),
       });
       const assetsBucket = new s3.Bucket(stack, 'AssetsBucket', {
         removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -320,9 +320,9 @@ describe('Istio', () => {
   });
 
   describe('version compatibility', () => {
-    test('works with version 1.24.1', () => {
+    test('works with version 1.29.0', () => {
       assertResourceProperties(sharedTemplate, 'Custom::AWSCDK-EKS-HelmChart', {
-        Version: '1.24.1',
+        Version: '1.29.0',
       });
     });
 
@@ -337,9 +337,9 @@ describe('Istio', () => {
         const vpc = createMockVpc(customVersionStack);
         const cluster = new eks.Cluster(customVersionStack, 'Cluster', {
           vpc,
-          version: eks.KubernetesVersion.V1_31,
+          version: eks.KubernetesVersion.of('1.35'),
           defaultCapacity: 0,
-          kubectlLayer: new KubectlV31Layer(customVersionStack, 'KubectlLayer'),
+          kubectlLayer: new KubectlV35Layer(customVersionStack, 'KubectlLayer'),
         });
         const assetsBucket = new s3.Bucket(customVersionStack, 'AssetsBucket', {
           removalPolicy: cdk.RemovalPolicy.DESTROY,

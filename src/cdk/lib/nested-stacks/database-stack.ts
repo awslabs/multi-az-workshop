@@ -14,6 +14,11 @@ export interface DatabaseStackProps extends cdk.NestedStackProps {
    * VPC where the database will be deployed
    */
   readonly vpc: IVpcIpV6;
+
+  /**
+   * The postgres engine version
+   */
+  readonly version: rds.AuroraPostgresEngineVersion;
 }
 
 /**
@@ -33,7 +38,7 @@ export class DatabaseStack extends cdk.NestedStack {
       vpc: props.vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       engine: rds.DatabaseClusterEngine.auroraPostgres({
-        version: rds.AuroraPostgresEngineVersion.VER_16_8,
+        version: props.version,
       }),
       writer: rds.ClusterInstance.provisioned('writer', {
         instanceType: ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE4_GRAVITON, ec2.InstanceSize.MEDIUM),

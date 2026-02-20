@@ -23,16 +23,10 @@ export interface AwsLoadBalancerControllerProps {
   readonly containerAndRepoBuilder: ContainerAndRepo;
 
   /**
-   * Container version for the AWS Load Balancer Controller
-   * @default "v2.8.1"
+   * Version for the AWS Load Balancer Controller
+   * @default "3.0.0"
    */
-  readonly containerVersion?: string;
-
-  /**
-   * Helm chart version for the AWS Load Balancer Controller
-   * @default "1.10.1"
-   */
-  readonly helmVersion?: string;
+  readonly version?: string;
 }
 
 /**
@@ -47,8 +41,7 @@ export class AwsLoadBalancerController extends HelmRepoAndChartConstruct {
   constructor(scope: Construct, id: string, props: AwsLoadBalancerControllerProps) {
     super(scope, id);
 
-    const containerVersion = props.containerVersion ?? 'v2.8.1';
-    const helmVersion = props.helmVersion ?? '1.10.1';
+    const version = props.version ?? '3.0.0';
 
     // Create IAM role for the load balancer controller
     const lbControllerRole = new iam.Role(this, 'AwsLoadBalancerControllerRole', {
@@ -57,7 +50,7 @@ export class AwsLoadBalancerController extends HelmRepoAndChartConstruct {
     });
 
     // Create IAM policy for the load balancer controller
-    const loadBalancerControllerManagedPolicy = this.createAwsLoadBalancerControllerIAMPolicy(containerVersion);
+    const loadBalancerControllerManagedPolicy = this.createAwsLoadBalancerControllerIAMPolicy();
     lbControllerRole.addManagedPolicy(loadBalancerControllerManagedPolicy);
 
     // Create service account
@@ -97,7 +90,7 @@ export class AwsLoadBalancerController extends HelmRepoAndChartConstruct {
     // Create Helm chart repository
     const loadBalancerControllerHelmChartRepo = props.containerAndRepoBuilder.createRepoAndHelmChart({
       helmChartName: 'aws-load-balancer-controller',
-      version: helmVersion,
+      version: version,
       repositoryName: 'aws-load-balancer-controller',
     } as RepoAndHelmChartProps);
 
@@ -113,12 +106,12 @@ export class AwsLoadBalancerController extends HelmRepoAndChartConstruct {
       repository: 'oci://' + loadBalancerControllerHelmChartRepo.repository.repositoryUri,
       namespace: 'kube-system',
       wait: true,
-      version: helmVersion,
+      version: version,
       values: {
         clusterName: props.cluster.clusterName,
         image: {
           repository: cdk.Fn.sub('${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/eks/aws-load-balancer-controller'),
-          tag: `${containerVersion}-linux_arm64`,
+          tag: `v${version}-linux_arm64`,
         },
         enableCertManager: false,
         replicaCount: 1,
@@ -145,7 +138,7 @@ export class AwsLoadBalancerController extends HelmRepoAndChartConstruct {
    * Creates the IAM policy for the AWS Load Balancer Controller by fetching
    * the policy document from the GitHub repository
    */
-  private createAwsLoadBalancerControllerIAMPolicy(_version: string): iam.ManagedPolicy {
+  private createAwsLoadBalancerControllerIAMPolicy(): iam.ManagedPolicy {
     // Note: In the C# version, this fetches the policy from GitHub at synthesis time.
     // In TypeScript, we'll use a custom resource to fetch it, but for now we'll
     // create a placeholder that should be replaced with the actual policy.

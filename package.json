@@ -60,7 +60,8 @@
     "organization": false
   },
   "devDependencies": {
-    "@aws-cdk/lambda-layer-kubectl-v31": "^2.0.0",
+    "@aws-cdk/lambda-layer-kubectl-v32": "2.0.0",
+    "@aws-cdk/lambda-layer-kubectl-v35": "2.0.0",
     "@cdklabs/multi-az-observability": "0.0.1-alpha.60",
     "@stylistic/eslint-plugin": "^2",
     "@types/jest": "^30.0.0",

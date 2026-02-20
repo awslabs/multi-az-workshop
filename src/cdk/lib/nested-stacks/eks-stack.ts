@@ -1,8 +1,6 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import * as fs from 'fs';
-import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
@@ -57,6 +55,21 @@ export interface EKSStackProps extends cdk.NestedStackProps {
    * Shared ECR uploader Lambda function
    */
   readonly uploaderFunction: lambda.IFunction;
+
+   /**
+   * The cluster version to deploy
+   */
+  readonly eksVersion: KubernetesVersion;
+
+  /**
+   * Istio version to install
+   */
+  readonly istioVersion: string;
+
+  /**
+   * The version of the AWS Load Balancer Controller
+   */
+  readonly awsLoadBalancerControllerVersion: string;
 }
 
 /**
@@ -73,11 +86,6 @@ export class EKSStack extends NestedStackWithSource {
 
     const cpuArch = props.cpuArch ?? InstanceArchitecture.ARM_64;
 
-    // Read versions from build configuration
-    // When running with ts-node, __dirname is src/cdk/lib/nested-stacks, so we need to go up 4 levels
-    const versionsPath = path.join(__dirname, '..', '..', '..', '..', 'build', 'versions.json');
-    const versions = JSON.parse(fs.readFileSync(versionsPath, 'utf-8'));
-
     // Create container and repository builder
     const repoHelmContainerCreator = new ContainerAndRepo(this, 'container-and-repo-builder', {
       uploaderFunction: props.uploaderFunction,
@@ -93,7 +101,7 @@ export class EKSStack extends NestedStackWithSource {
       vpc: props.vpc,
       loadBalancerSecurityGroup: props.loadBalancerSecurityGroup,
       clusterName: 'multi-az-workshop-eks-cluster',
-      version: KubernetesVersion.of(versions.EKS),
+      version: props.eksVersion,
     });
 
     // Fix up nested stacks for kubectl and cluster resource providers
@@ -103,15 +111,14 @@ export class EKSStack extends NestedStackWithSource {
     const istio = new Istio(this, 'Istio', {
       cluster: cluster.cluster,
       containerAndRepoBuilder: repoHelmContainerCreator,
-      version: versions.ISTIO,
+      version: props.istioVersion
     });
 
     // Install AWS Load Balancer Controller
     const lbController = new AwsLoadBalancerController(this, 'AwsLoadBalancerController', {
       cluster: cluster.cluster,
       containerAndRepoBuilder: repoHelmContainerCreator,
-      containerVersion: versions.LB_CONTROLLER_CONTAINER,
-      helmVersion: versions.LB_CONTROLLER_HELM,
+      version: props.awsLoadBalancerControllerVersion
     });
     lbController.node.addDependency(istio.waitableNode);
 

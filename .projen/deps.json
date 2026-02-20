@@ -1,8 +1,13 @@
 {
   "dependencies": [
     {
-      "name": "@aws-cdk/lambda-layer-kubectl-v31",
-      "version": "^2.0.0",
+      "name": "@aws-cdk/lambda-layer-kubectl-v32",
+      "version": "2.0.0",
+      "type": "build"
+    },
+    {
+      "name": "@aws-cdk/lambda-layer-kubectl-v35",
+      "version": "2.0.0",
       "type": "build"
     },
     {

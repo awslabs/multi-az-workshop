@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { KubectlV31Layer } from '@aws-cdk/lambda-layer-kubectl-v31';
+import { KubectlV35Layer } from '@aws-cdk/lambda-layer-kubectl-v35';
 import * as cdk from 'aws-cdk-lib';
 import { Match } from 'aws-cdk-lib/assertions';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
@@ -39,9 +39,9 @@ describe('EKSApplication', () => {
     // Create EKS cluster
     cluster = new eks.Cluster(stack, 'Cluster', {
       vpc,
-      version: eks.KubernetesVersion.V1_31,
+      version: eks.KubernetesVersion.of('1.35'),
       defaultCapacity: 0,
-      kubectlLayer: new KubectlV31Layer(stack, 'KubectlLayer'),
+      kubectlLayer: new KubectlV35Layer(stack, 'KubectlLayer'),
     });
 
     // Create database cluster
