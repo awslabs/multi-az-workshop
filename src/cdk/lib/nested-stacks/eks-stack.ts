@@ -101,7 +101,7 @@ export class EKSStack extends NestedStackWithSource {
       vpc: props.vpc,
       loadBalancerSecurityGroup: props.loadBalancerSecurityGroup,
       clusterName: 'multi-az-workshop-eks-cluster',
-      version: props.eksVersion
+      version: props.eksVersion,
     });
 
     // Fix up nested stacks for kubectl and cluster resource providers
