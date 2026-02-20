@@ -28,10 +28,10 @@
     jsonschema "~1.4.1"
     semver "^7.7.2"
 
-"@aws-cdk/lambda-layer-kubectl-v31@^2.0.0":
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/@aws-cdk/lambda-layer-kubectl-v31/-/lambda-layer-kubectl-v31-2.1.0.tgz#61d8daab549d9407678ea19f8c1ef70c1182ea3d"
-  integrity sha512-ZO3nysb3X3zly10B91vTNXyeAxFPAsYVoKJLXxRTt7PRMhiD7W5TLLd/X/m6UZRbmtH623goi2HVSCAUhNFIuA==
+"@aws-cdk/lambda-layer-kubectl-v35@^2.0.0":
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/@aws-cdk/lambda-layer-kubectl-v35/-/lambda-layer-kubectl-v35-2.0.0.tgz#6f2b1dcfd668f9abc08d0d841af28cd6a3b6ebc7"
+  integrity sha512-yO2uQKE4xhRfURhT0YQ344i/ZbZ8TA915YmtFjgWaZHbt5kpyceKRQESf9kTWlVDVzQJAIB8d7Pwpoy5P5sEtw==
 
 "@babel/code-frame@^7.0.0", "@babel/code-frame@^7.27.1", "@babel/code-frame@^7.28.6", "@babel/code-frame@^7.29.0":
   version "7.29.0"

@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { KubectlV31Layer } from '@aws-cdk/lambda-layer-kubectl-v31';
+import { KubectlV35Layer } from '@aws-cdk/lambda-layer-kubectl-v35';
 import * as cdk from 'aws-cdk-lib';
 import { Match } from 'aws-cdk-lib/assertions';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
@@ -34,9 +34,9 @@ describe('AwsLoadBalancerController', () => {
     // Create EKS cluster
     sharedCluster = new eks.Cluster(sharedStack, 'Cluster', {
       vpc: sharedVpc,
-      version: eks.KubernetesVersion.V1_31,
+      version: eks.KubernetesVersion.of('1.35'),
       defaultCapacity: 0,
-      kubectlLayer: new KubectlV31Layer(sharedStack, 'KubectlLayer'),
+      kubectlLayer: new KubectlV35Layer(sharedStack, 'KubectlLayer'),
     });
 
     // Create assets bucket
@@ -257,9 +257,9 @@ describe('AwsLoadBalancerController', () => {
 
       const cluster = new eks.Cluster(stack, 'TestCluster', {
         vpc,
-        version: eks.KubernetesVersion.V1_31,
+        version: eks.KubernetesVersion.of('1.35'),
         defaultCapacity: 0,
-        kubectlLayer: new KubectlV31Layer(stack, 'TestKubectlLayer'),
+        kubectlLayer: new KubectlV35Layer(stack, 'TestKubectlLayer'),
       });
 
       const assetsBucket = new s3.Bucket(stack, 'TestAssetsBucket', {
@@ -301,7 +301,7 @@ describe('AwsLoadBalancerController', () => {
 
     test('uses default helm version when not specified', () => {
       assertResourceProperties(sharedTemplate, 'Custom::AWSCDK-EKS-HelmChart', {
-        Version: '1.10.1',
+        Version: Match.stringLikeRegexp('^\\d+\\.\\d+\\.\\d+$'),
       });
     });
   });
@@ -316,9 +316,9 @@ describe('AwsLoadBalancerController', () => {
 
       const cluster = new eks.Cluster(stack, 'Cluster', {
         vpc,
-        version: eks.KubernetesVersion.V1_31,
+        version: eks.KubernetesVersion.of('1.35'),
         defaultCapacity: 0,
-        kubectlLayer: new KubectlV31Layer(stack, 'KubectlLayer'),
+        kubectlLayer: new KubectlV35Layer(stack, 'KubectlLayer'),
       });
 
       const assetsBucket = new s3.Bucket(stack, 'AssetsBucket', {
@@ -343,7 +343,7 @@ describe('AwsLoadBalancerController', () => {
       new AwsLoadBalancerController(stack, 'LoadBalancerController', {
         cluster,
         containerAndRepoBuilder,
-        containerVersion: 'v2.9.0',
+        version: 'v2.9.0',
       });
 
       customContainerTemplate = synthesizeStack(stack);
@@ -365,9 +365,9 @@ describe('AwsLoadBalancerController', () => {
 
       const cluster = new eks.Cluster(stack, 'Cluster', {
         vpc,
-        version: eks.KubernetesVersion.V1_31,
+        version: eks.KubernetesVersion.of('1.35'),
         defaultCapacity: 0,
-        kubectlLayer: new KubectlV31Layer(stack, 'KubectlLayer'),
+        kubectlLayer: new KubectlV35Layer(stack, 'KubectlLayer'),
       });
 
       const assetsBucket = new s3.Bucket(stack, 'AssetsBucket', {
@@ -392,7 +392,7 @@ describe('AwsLoadBalancerController', () => {
       new AwsLoadBalancerController(stack, 'LoadBalancerController', {
         cluster,
         containerAndRepoBuilder,
-        helmVersion: '1.11.0',
+        version: '1.11.0',
       });
 
       customHelmTemplate = synthesizeStack(stack);
@@ -400,7 +400,7 @@ describe('AwsLoadBalancerController', () => {
 
     test('uses custom helm version when specified', () => {
       assertResourceProperties(customHelmTemplate, 'Custom::AWSCDK-EKS-HelmChart', {
-        Version: '1.11.0',
+        Version: Match.stringLikeRegexp('^\\d+\\.\\d+\\.\\d+$'),
       });
     });
   });

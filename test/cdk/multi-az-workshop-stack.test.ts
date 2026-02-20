@@ -21,12 +21,12 @@ jest.mock('fs', () => {
     readFileSync: jest.fn((path: any, options?: any) => {
       if (path.toString().includes('versions.json')) {
         return JSON.stringify({
-          EKS: '1.32',
-          HELM: '3.16.3',
-          KUBECTL: '1.32.0',
-          ISTIO: '1.24.1',
-          LB_CONTROLLER_HELM: '1.10.1',
-          LB_CONTROLLER_CONTAINER: 'v2.8.1',
+          EKS: '1.35',
+          HELM: '4.1.1',
+          KUBECTL: '1.35.0',
+          ISTIO: '1.29.0',
+          AWS_LOAD_BALANCER_CONTROLLER: '3.0.0',
+          POSTGRES: '16.8',
         });
       }
       return originalReadFileSync(path, options);

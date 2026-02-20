@@ -150,7 +150,7 @@ function createAssetBuildTasks(project: AwsCdkTypeScriptApp): Task {
 
   const downloadLbControllerChart = project.addTask('assets:lb-controller-chart', {
     description: 'Download AWS LB controller helm chart',
-    exec: 'eval "$(node build/load-versions.js)" && curl --location https://aws.github.io/eks-charts/aws-load-balancer-controller-$LB_CONTROLLER_HELM.tgz --output assets/aws-load-balancer-controller-$LB_CONTROLLER_HELM.tgz',
+    exec: 'eval "$(node build/load-versions.js)" && curl --location https://aws.github.io/eks-charts/aws-load-balancer-controller-$AWS_LOAD_BALANCER_CONTROLLER.tgz --output assets/aws-load-balancer-controller-$AWS_LOAD_BALANCER_CONTROLLER.tgz',
   });
 
   const pullIstioContainers = project.addTask('assets:istio-containers', {
@@ -160,7 +160,7 @@ function createAssetBuildTasks(project: AwsCdkTypeScriptApp): Task {
 
   const pullLbControllerContainer = project.addTask('assets:lb-controller-container', {
     description: 'Pull AWS LB controller container image',
-    exec: 'eval "$(node build/load-versions.js)" && docker pull public.ecr.aws/eks/aws-load-balancer-controller:$LB_CONTROLLER_CONTAINER-linux_arm64 && docker save public.ecr.aws/eks/aws-load-balancer-controller:$LB_CONTROLLER_CONTAINER-linux_arm64 | gzip > assets/aws-load-balancer-controller.tar.gz',
+    exec: 'eval "$(node build/load-versions.js)" && docker pull public.ecr.aws/eks/aws-load-balancer-controller:v$AWS_LOAD_BALANCER_CONTROLLER-linux_arm64 && docker save public.ecr.aws/eks/aws-load-balancer-controller:v$AWS_LOAD_BALANCER_CONTROLLER-linux_arm64 | gzip > assets/aws-load-balancer-controller.tar.gz',
   });
 
   const pullCloudwatchAgent = project.addTask('assets:cloudwatch-agent', {

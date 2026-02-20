@@ -1,6 +1,7 @@
 import { App, Stack } from 'aws-cdk-lib';
 import { Template, Match } from 'aws-cdk-lib/assertions';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as rds from 'aws-cdk-lib/aws-rds';
 import { IPAddressType } from '../../../src/cdk/lib/constructs/ip-address-type';
 import { VpcIpV6, IVpcIpV6 } from '../../../src/cdk/lib/constructs/vpc-ipv6-construct';
 import { DatabaseStack } from '../../../src/cdk/lib/nested-stacks/database-stack';
@@ -41,12 +42,12 @@ describe('DatabaseStack', () => {
 
   describe('stack creation', () => {
     test('synthesizes without errors', () => {
-      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc });
+      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc, version: rds.AuroraPostgresEngineVersion.VER_16_8 });
       expect(() => synthesizeStack(dbStack)).not.toThrow();
     });
 
     test('creates nested stack resource', () => {
-      new DatabaseStack(parentStack, 'DatabaseStack', { vpc });
+      new DatabaseStack(parentStack, 'DatabaseStack', { vpc, version: rds.AuroraPostgresEngineVersion.VER_16_8 });
       const template = Template.fromStack(parentStack);
       template.resourceCountIs('AWS::CloudFormation::Stack', 1);
     });
@@ -54,13 +55,13 @@ describe('DatabaseStack', () => {
 
   describe('Aurora PostgreSQL cluster creation', () => {
     test('creates Aurora database cluster', () => {
-      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc });
+      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc, version: rds.AuroraPostgresEngineVersion.VER_16_8 });
       const template = Template.fromStack(dbStack);
       template.resourceCountIs('AWS::RDS::DBCluster', 1);
     });
 
     test('configures PostgreSQL engine with version 16.1', () => {
-      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc });
+      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc, version: rds.AuroraPostgresEngineVersion.VER_16_8 });
       const template = Template.fromStack(dbStack);
 
       template.hasResourceProperties('AWS::RDS::DBCluster', {
@@ -70,7 +71,7 @@ describe('DatabaseStack', () => {
     });
 
     test('creates cluster instance with correct instance type', () => {
-      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc });
+      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc, version: rds.AuroraPostgresEngineVersion.VER_16_8 });
       const template = Template.fromStack(dbStack);
 
       template.hasResourceProperties('AWS::RDS::DBInstance', {
@@ -80,7 +81,7 @@ describe('DatabaseStack', () => {
     });
 
     test('sets database name to workshop', () => {
-      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc });
+      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc, version: rds.AuroraPostgresEngineVersion.VER_16_8 });
       const template = Template.fromStack(dbStack);
 
       template.hasResourceProperties('AWS::RDS::DBCluster', {
@@ -89,7 +90,7 @@ describe('DatabaseStack', () => {
     });
 
     test('sets removal policy to DESTROY', () => {
-      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc });
+      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc, version: rds.AuroraPostgresEngineVersion.VER_16_8 });
       const template = Template.fromStack(dbStack);
 
       // Verify the cluster can be deleted (no deletion protection)
@@ -101,7 +102,7 @@ describe('DatabaseStack', () => {
 
   describe('VPC and subnet placement', () => {
     test('places database in isolated subnets', () => {
-      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc });
+      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc, version: rds.AuroraPostgresEngineVersion.VER_16_8 });
       const template = Template.fromStack(dbStack);
 
       // Verify subnet group has subnet IDs
@@ -113,14 +114,14 @@ describe('DatabaseStack', () => {
     });
 
     test('creates DB subnet group', () => {
-      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc });
+      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc, version: rds.AuroraPostgresEngineVersion.VER_16_8 });
       const template = Template.fromStack(dbStack);
 
       template.resourceCountIs('AWS::RDS::DBSubnetGroup', 1);
     });
 
     test('associates cluster with subnet group', () => {
-      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc });
+      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc, version: rds.AuroraPostgresEngineVersion.VER_16_8 });
       const template = Template.fromStack(dbStack);
 
       const clusters = findResourcesByType(template, 'AWS::RDS::DBCluster');
@@ -132,14 +133,14 @@ describe('DatabaseStack', () => {
 
   describe('security group and connection rules', () => {
     test('creates security group for database', () => {
-      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc });
+      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc, version: rds.AuroraPostgresEngineVersion.VER_16_8 });
       const template = Template.fromStack(dbStack);
 
       template.resourceCountIs('AWS::EC2::SecurityGroup', 1);
     });
 
     test('allows connections from VPC CIDR on port 5432', () => {
-      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc });
+      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc, version: rds.AuroraPostgresEngineVersion.VER_16_8 });
       const template = Template.fromStack(dbStack);
 
       // Check for inline ingress rules in security group
@@ -158,7 +159,7 @@ describe('DatabaseStack', () => {
     });
 
     test('associates security group with cluster', () => {
-      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc });
+      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc, version: rds.AuroraPostgresEngineVersion.VER_16_8 });
       const template = Template.fromStack(dbStack);
 
       template.hasResourceProperties('AWS::RDS::DBCluster', {
@@ -174,7 +175,7 @@ describe('DatabaseStack', () => {
     });
 
     test('security group references VPC', () => {
-      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc });
+      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc, version: rds.AuroraPostgresEngineVersion.VER_16_8 });
       const template = Template.fromStack(dbStack);
 
       const securityGroups = findResourcesByType(template, 'AWS::EC2::SecurityGroup');
@@ -185,25 +186,25 @@ describe('DatabaseStack', () => {
 
   describe('public interface', () => {
     test('exposes database cluster as public property', () => {
-      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc });
+      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc, version: rds.AuroraPostgresEngineVersion.VER_16_8 });
       expect(dbStack.database).toBeDefined();
       expect(dbStack.database.clusterIdentifier).toBeDefined();
     });
 
     test('database cluster has endpoint address', () => {
-      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc });
+      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc, version: rds.AuroraPostgresEngineVersion.VER_16_8 });
       expect(dbStack.database.clusterEndpoint).toBeDefined();
     });
 
     test('database cluster has connections property', () => {
-      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc });
+      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc, version: rds.AuroraPostgresEngineVersion.VER_16_8 });
       expect(dbStack.database.connections).toBeDefined();
     });
   });
 
   describe('CloudFormation resources', () => {
     test('creates all required resource types', () => {
-      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc });
+      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc, version: rds.AuroraPostgresEngineVersion.VER_16_8 });
       const template = Template.fromStack(dbStack);
 
       template.resourceCountIs('AWS::RDS::DBCluster', 1);
@@ -213,14 +214,14 @@ describe('DatabaseStack', () => {
     });
 
     test('creates secret for database credentials', () => {
-      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc });
+      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc, version: rds.AuroraPostgresEngineVersion.VER_16_8 });
       const template = Template.fromStack(dbStack);
 
       template.resourceCountIs('AWS::SecretsManager::Secret', 1);
     });
 
     test('attaches secret to cluster', () => {
-      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc });
+      const dbStack = new DatabaseStack(parentStack, 'DatabaseStack', { vpc, version: rds.AuroraPostgresEngineVersion.VER_16_8 });
       const template = Template.fromStack(dbStack);
 
       template.resourceCountIs('AWS::SecretsManager::SecretTargetAttachment', 1);

@@ -1,11 +1,12 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { KubectlV31Layer } from '@aws-cdk/lambda-layer-kubectl-v31';
+import { KubectlV35Layer } from '@aws-cdk/lambda-layer-kubectl-v35';
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as eks from 'aws-cdk-lib/aws-eks';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
@@ -87,7 +88,7 @@ export class EKSCluster extends Construct {
     controlPlaneSG.addIngressRule(controlPlaneSG, ec2.Port.allIcmp());
 
     // Create kubectl layer
-    const kubectlLayer = new KubectlV31Layer(this, 'KubectlV31Layer');
+    const kubectlLayer: ILayerVersion = new KubectlV35Layer(this, 'KubectlV35Layer');
 
     // Create log group for cluster logs
     const clusterLogGroup = new logs.LogGroup(this, 'cluster-log-group', {
