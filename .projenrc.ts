@@ -103,7 +103,7 @@ const project = new AwsCdkTypeScriptApp({
 
     // CDK specific
     'static/multi-az-workshop.json',
-    'cdk.out/',
+    'cdk.out*/',
 
     // Build artifacts
     'src/app/bin',
