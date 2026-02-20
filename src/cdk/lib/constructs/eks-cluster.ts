@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //import { KubectlV35Layer } from '@aws-cdk/lambda-layer-kubectl-v35';
-import { KubectlV32Layer } from '@aws-cdk/lambda-layer-kubectl-v32';
+//import { KubectlV32Layer } from '@aws-cdk/lambda-layer-kubectl-v32';
+import { KubectlV33Layer } from '@aws-cdk/lambda-layer-kubectl-v33';
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as eks from 'aws-cdk-lib/aws-eks';
@@ -90,7 +91,8 @@ export class EKSCluster extends Construct {
 
     // Create kubectl layer
     //const kubectlLayer: ILayerVersion = new KubectlV35Layer(this, 'KubectlV35Layer');
-    const kubectlLayer: ILayerVersion = new KubectlV32Layer(this, 'KubectlV32Layer');
+    //const kubectlLayer: ILayerVersion = new KubectlV32Layer(this, 'KubectlV32Layer');
+    const kubectlLayer: ILayerVersion = new KubectlV33Layer(this, 'KubectlV33Layer');
 
     // Create log group for cluster logs
     const clusterLogGroup = new logs.LogGroup(this, 'cluster-log-group', {
