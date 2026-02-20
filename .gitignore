@@ -39,7 +39,7 @@ test-reports/
 tsconfig.tsbuildinfo
 .kiro/
 static/multi-az-workshop.json
-cdk.out/
+cdk.out*/
 src/app/bin
 src/app/obj
 src/app/output/

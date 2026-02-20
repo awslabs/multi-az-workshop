@@ -1,9 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-//import { KubectlV35Layer } from '@aws-cdk/lambda-layer-kubectl-v35';
-import { KubectlV34Layer } from '@aws-cdk/lambda-layer-kubectl-v34';
-//import { KubectlV33Layer } from '@aws-cdk/lambda-layer-kubectl-v33';
+import { KubectlV35Layer } from '@aws-cdk/lambda-layer-kubectl-v35';
+//import { KubectlV34Layer } from '@aws-cdk/lambda-layer-kubectl-v34';
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as eks from 'aws-cdk-lib/aws-eks';
@@ -90,10 +89,9 @@ export class EKSCluster extends Construct {
     controlPlaneSG.addIngressRule(controlPlaneSG, ec2.Port.allIcmp());
 
     // Create kubectl layer
-    //const kubectlLayer: ILayerVersion = new KubectlV35Layer(this, 'KubectlV35Layer');
-    const kubectlLayer: ILayerVersion = new KubectlV34Layer(this, 'KubectlV34Layer');
-    //const kubectlLayer: ILayerVersion = new KubectlV33Layer(this, 'KubectlV33Layer');
-
+    const kubectlLayer: ILayerVersion = new KubectlV35Layer(this, 'KubectlV35Layer');
+    //const kubectlLayer: ILayerVersion = new KubectlV34Layer(this, 'KubectlV34Layer');
+    
     // Create log group for cluster logs
     const clusterLogGroup = new logs.LogGroup(this, 'cluster-log-group', {
       logGroupName: `/aws/eks/${props.clusterName}/cluster`,
