@@ -10,6 +10,7 @@ const project = new AwsCdkTypeScriptApp({
   defaultReleaseBranch: 'main',
   projenrcTs: true,
   cdkVersion: '2.239.0',
+  constructsVersion: '10.5.0',
   appEntrypoint: 'cdk/multi-az-workshop.ts',
   srcdir: 'src',
 
@@ -72,9 +73,6 @@ const project = new AwsCdkTypeScriptApp({
     '@types/node',
     '@cdklabs/multi-az-observability@0.0.1-alpha.60',
     '@aws-cdk/lambda-layer-kubectl-v35@2.0.0',
-    '@aws-cdk/lambda-layer-kubectl-v34@2.0.0',
-    '@aws-cdk/lambda-layer-kubectl-v33@2.0.0',
-    '@aws-cdk/lambda-layer-kubectl-v32@2.0.0',
     'fast-check@^3.15.0',
     '@aws-cdk/aws-eks-v2-alpha@2.239.0-alpha.0',
   ],
