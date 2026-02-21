@@ -1,7 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { KubectlV34Layer as KubectlLayer } from '@aws-cdk/lambda-layer-kubectl-v34';
+//import { KubectlV34Layer as KubectlLayer } from '@aws-cdk/lambda-layer-kubectl-v34';
+import { KubectlV35Layer as KubectlLayer } from '@aws-cdk/lambda-layer-kubectl-v35';
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as eks from 'aws-cdk-lib/aws-eks';
