@@ -157,6 +157,14 @@ export class EKSClusterV2 extends Construct {
             kubectlLayer: new KubectlV35Layer(this, "KubectlLayer"),
             privateSubnets: props.vpc.selectSubnets({ subnetType: ec2.SubnetType.PRIVATE_ISOLATED }).subnets,
         },
+
+        clusterLogging: [
+          eks.ClusterLoggingTypes.CONTROLLER_MANAGER,
+          eks.ClusterLoggingTypes.AUTHENTICATOR,
+          eks.ClusterLoggingTypes.API,
+          eks.ClusterLoggingTypes.AUDIT,
+          eks.ClusterLoggingTypes.SCHEDULER,
+        ],
     });
 
     cluster.node.addDependency(clusterLogGroup);
