@@ -148,12 +148,6 @@ export class EKSClusterV2 extends Construct {
         defaultCapacity: 0,
         defaultCapacityType: eks.DefaultCapacityType.NODEGROUP,
 
-        albController: {
-            //version: eks.AlbControllerVersion.of("3.0.0"),
-            //policy: this.createAwsLoadBalancerControllerIAMPolicy(),
-            version: eks.AlbControllerVersion.V2_8_2
-        },
-
         kubectlProviderOptions: {
             kubectlLayer: new KubectlV35Layer(this, "KubectlLayer"),
             privateSubnets: props.vpc.selectSubnets({ subnetType: ec2.SubnetType.PRIVATE_ISOLATED }).subnets,
