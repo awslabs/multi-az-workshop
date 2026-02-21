@@ -194,9 +194,14 @@ function createBuildAndDeployShortcut(project: AwsCdkTypeScriptApp): void {
 }
 
 /**
- * Creates a task to deploy the standalone EKS Cluster V2 test stack.
+ * Creates tasks for the standalone EKS Cluster V2 test stack.
  */
 function createEksV2TestDeployTask(project: AwsCdkTypeScriptApp): void {
+  project.addTask('synth:eks-v2-test', {
+    description: 'Synthesize the EKS Cluster V2 test stack',
+    exec: 'CDK_OUTDIR=cdk.out.test npx ts-node -P tsconfig.dev.json src/cdk/eks-cluster-v2-test-stack.ts',
+  });
+
   project.addTask('deploy:eks-v2-test', {
     description: 'Deploy the EKS Cluster V2 test stack to AWS via CloudFormation',
     env: {
@@ -204,6 +209,7 @@ function createEksV2TestDeployTask(project: AwsCdkTypeScriptApp): void {
       EKS_TEST_PROFILE: 'multi-az-workshop',
       EKS_TEST_REGION: 'us-east-2',
       EKS_TEST_BUCKET: 'multi-az-workshop-us-east-2-386526219917',
+      EKS_TEST_ROLE: 'CloudFormationDeploymentRole',
     },
     steps: [
       {
@@ -263,6 +269,7 @@ function createEksV2TestDeployTask(project: AwsCdkTypeScriptApp): void {
             ParameterKey=AssetsBucketName,ParameterValue=$EKS_TEST_BUCKET \\
             ParameterKey=AssetsBucketPrefix,ParameterValue="$ASSETS_PREFIX/" \\
           --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \\
+          --role-arn arn:aws:iam::$(aws sts get-caller-identity --profile $EKS_TEST_PROFILE --query Account --output text):role/$EKS_TEST_ROLE \\
           --profile $EKS_TEST_PROFILE \\
           --region $EKS_TEST_REGION
 

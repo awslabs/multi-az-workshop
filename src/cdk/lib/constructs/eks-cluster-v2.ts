@@ -67,23 +67,19 @@ export class EKSClusterV2 extends Construct {
    */
   public readonly cluster: eks.ICluster;
 
-  /**
-   * The managed node group
-   */
-  public readonly nodegroup: eks.Nodegroup;
-
   constructor(scope: Construct, id: string, props: EKSClusterProps) {
     super(scope, id);
 
-    // Create security group for control plane
-    //const controlPlaneSG = new ec2.SecurityGroup(this, 'EKSClusterControlPlaneSecurityGroup', {
-    //  description: 'Allow inbound access from this Security Group',
-    //  vpc: props.vpc,
-    //});
+    //Worker node security group
+    const workerSecurityGroup: ec2.ISecurityGroup = new ec2.SecurityGroup(this, "WorkerNodeSecurityGroup", {
+        description: "Allows inbound access from the load balancer",
+        vpc: props.vpc
+    });
 
-    //controlPlaneSG.addIngressRule(controlPlaneSG, ec2.Port.allUdp());
-    //controlPlaneSG.addIngressRule(controlPlaneSG, ec2.Port.allTcp());
-    //controlPlaneSG.addIngressRule(controlPlaneSG, ec2.Port.allIcmp());
+    workerSecurityGroup.addIngressRule(
+      ec2.Peer.securityGroupId(props.loadBalancerSecurityGroup.securityGroupId),
+      ec2.Port.tcp(5000)
+    );
 
     // Create IAM role for EKS worker nodes
     const eksWorkerRole = new iam.Role(this, 'EKSWorkerRole', {
@@ -98,6 +94,7 @@ export class EKSClusterV2 extends Construct {
     eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchAgentServerPolicy'));
     eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AWSSecretsManagerClientReadOnlyAccess'));
 
+    // Allow support for IPv6 if needed
     eksWorkerRole.addManagedPolicy(
       new iam.ManagedPolicy(this, 'EKSWorkerCNIIPv6ManagedPolicy', {
         statements: [
@@ -110,6 +107,7 @@ export class EKSClusterV2 extends Construct {
       }),
     );
 
+    // Allow the worker nodes to pull down the istio destination rules file from S3
     eksWorkerRole.addManagedPolicy(
       new iam.ManagedPolicy(this, 'EKSWorkerS3ManagedPolicy', {
         statements: [
@@ -122,6 +120,7 @@ export class EKSClusterV2 extends Construct {
       }),
     );
 
+    // Get parameters used in the workshop, i.e. cluster name and s3 bucket
     eksWorkerRole.addManagedPolicy(
       new iam.ManagedPolicy(this, 'EKSWorkerSSMManagedPolicy', {
         statements: [
@@ -148,7 +147,6 @@ export class EKSClusterV2 extends Construct {
         version: props.version,
         defaultCapacity: 0,
         defaultCapacityType: eks.DefaultCapacityType.NODEGROUP,
-        //securityGroup: controlPlaneSG,
 
         //albController: {
         //    version: eks.AlbControllerVersion.of("3.0.0"),
@@ -159,8 +157,6 @@ export class EKSClusterV2 extends Construct {
             kubectlLayer: new KubectlV35Layer(this, "KubectlLayer"),
             privateSubnets: props.vpc.selectSubnets({ subnetType: ec2.SubnetType.PRIVATE_ISOLATED }).subnets,
         },
-        
-        //mastersRole: props.adminRole
     });
 
     cluster.node.addDependency(clusterLogGroup);
@@ -171,10 +167,12 @@ export class EKSClusterV2 extends Construct {
       stringValue: cluster.clusterName,
     });
 
-    // Create launch template for node group
+    // Create launch template for node group so that we can specify
+    // IMDSv2 settings directly and specify disk encryption
     const lt = new ec2.LaunchTemplate(this, 'NodeGroupLaunchTemplate', {
       httpPutResponseHopLimit: 2,
       httpTokens: ec2.LaunchTemplateHttpTokens.REQUIRED,
+      securityGroup: workerSecurityGroup,
       blockDevices: [
         {
           deviceName: '/dev/xvda',
@@ -185,14 +183,19 @@ export class EKSClusterV2 extends Construct {
       ],
     });
 
+    // When the security group is specified in the launch template,
+    // EKS doesn't automatically add the cluster security group to
+    // the instance
+    lt.addSecurityGroup(cluster.clusterSecurityGroup);
+
     // Create managed node group
-    this.nodegroup = cluster.addNodegroupCapacity('ManagedNodeGroup', {
+    cluster.addNodegroupCapacity('ManagedNodeGroup', {
       amiType:
         props.cpuArch === InstanceArchitecture.ARM_64
           ? eks.NodegroupAmiType.AL2023_ARM_64_STANDARD
           : eks.NodegroupAmiType.AL2023_X86_64_STANDARD,
       capacityType: eks.CapacityType.ON_DEMAND,
-      enableNodeAutoRepair: true,
+      enableNodeAutoRepair: true,   
       minSize: 3,
       maxSize: 3,
       instanceTypes: [
@@ -213,16 +216,6 @@ export class EKSClusterV2 extends Construct {
       cluster,
       addonName: 'eks-pod-identity-agent',
     });
- 
-    // Add ingress rules to cluster security group
-    cluster.clusterSecurityGroup.addIngressRule(
-      ec2.Peer.securityGroupId(props.loadBalancerSecurityGroup.securityGroupId),
-      ec2.Port.tcp(5000),
-    );
-    //cluster.clusterSecurityGroup.addIngressRule(
-    //  ec2.Peer.securityGroupId(cluster.clusterSecurityGroup.securityGroupId),
-    //  ec2.Port.tcp(5000),
-    //);
 
     cluster.grantAccess(
       "ParticipantRoleReadOnlyAccess", 

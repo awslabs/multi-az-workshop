@@ -46,6 +46,7 @@
     "publish:upload-assets": "npx projen publish:upload-assets",
     "release": "npx projen release",
     "synth": "npx projen synth",
+    "synth:eks-v2-test": "npx projen synth:eks-v2-test",
     "synth:silent": "npx projen synth:silent",
     "test": "npx projen test",
     "test:app:integration": "npx projen test:app:integration",
