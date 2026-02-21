@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { KubectlV34Layer } from '@aws-cdk/lambda-layer-kubectl-v34';
+import { KubectlV34Layer as KubectlLayer } from '@aws-cdk/lambda-layer-kubectl-v34';
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as eks from 'aws-cdk-lib/aws-eks';
@@ -101,7 +101,7 @@ export class EKSCluster extends Construct {
       version: props.version,
       placeClusterHandlerInVpc: false,
       endpointAccess: eks.EndpointAccess.PUBLIC_AND_PRIVATE,
-      kubectlLayer: new KubectlV34Layer(this, 'KubectlLayer'),
+      kubectlLayer: new KubectlLayer(this, 'KubectlLayer'),
       securityGroup: controlPlaneSG,
       mastersRole: props.adminRole,
       clusterName: props.clusterName,

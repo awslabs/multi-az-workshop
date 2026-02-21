@@ -72,7 +72,7 @@ const project = new AwsCdkTypeScriptApp({
   devDeps: [
     '@types/node',
     '@cdklabs/multi-az-observability@0.0.1-alpha.60',
-    '@aws-cdk/lambda-layer-kubectl-v34@2.0.0',
+    '@aws-cdk/lambda-layer-kubectl-v34@^2.0.0',
     'fast-check@^3.15.0',
     '@aws-cdk/aws-eks-v2-alpha@2.239.0-alpha.0',
   ],
