@@ -11,6 +11,11 @@
       "type": "build"
     },
     {
+      "name": "@aws-cdk/lambda-layer-kubectl-v35",
+      "version": "^2.0.0",
+      "type": "build"
+    },
+    {
       "name": "@cdklabs/multi-az-observability",
       "version": "0.0.1-alpha.60",
       "type": "build"
