@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { KubectlV35Layer } from '@aws-cdk/lambda-layer-kubectl-v35';
+import { KubectlV35Layer as KubectlLayer } from '@aws-cdk/lambda-layer-kubectl-v35';
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as eks from '@aws-cdk/aws-eks-v2-alpha';
@@ -9,6 +9,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
+import { Asset } from 'aws-cdk-lib/aws-s3-assets';
 
 /**
  * Instance architecture for EKS nodes
@@ -26,11 +27,6 @@ export interface EKSClusterProps {
    * VPC to deploy the cluster in
    */
   readonly vpc: ec2.IVpc;
-
-  /**
-   * Database cluster for the application
-   */
-  //readonly databaseCluster: rds.IDatabaseCluster;
 
   /**
    * CPU architecture for the worker nodes
@@ -149,7 +145,7 @@ export class EKSClusterV2 extends Construct {
         defaultCapacityType: eks.DefaultCapacityType.NODEGROUP,
 
         kubectlProviderOptions: {
-            kubectlLayer: new KubectlV35Layer(this, "KubectlLayer"),
+            kubectlLayer: new KubectlLayer(this, "KubectlLayer"),
             privateSubnets: props.vpc.selectSubnets({ subnetType: ec2.SubnetType.PRIVATE_ISOLATED }).subnets,
         },
 
@@ -218,6 +214,16 @@ export class EKSClusterV2 extends Construct {
     new eks.Addon(this, 'PodIdentityAgentAddOn', {
       cluster,
       addonName: 'eks-pod-identity-agent',
+    });
+
+
+    cluster.addHelmChart("IstioBase", {
+      chartAsset: new Asset(this, "IstioBaseAsset", {
+         path: "/Users/mhaken/Downloads/base-1.29.0.zip"
+      }),
+      namespace: "istio-system",
+      createNamespace: true,
+      wait: true
     });
 
     cluster.grantAccess(
