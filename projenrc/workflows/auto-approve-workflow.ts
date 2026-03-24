@@ -1,7 +1,6 @@
 /**
  * Auto-approve workflow configuration
- * Automatically approves PRs with the auto-approve label from authorized users.
- * Triggered after the build workflow completes on a PR.
+ * Automatically approves PRs with the auto-approve label from authorized users
  */
 
 import { GithubWorkflow } from 'projen/lib/github';
@@ -19,9 +18,14 @@ export function createAutoApproveWorkflow(github: GitHub): void {
   const autoApproveWorkflow = new GithubWorkflow(github, 'auto-approve');
 
   autoApproveWorkflow.on({
-    workflowRun: {
-      workflows: ['build'],
-      types: ['completed'],
+    pullRequest: {
+      types: [
+        'labeled',
+        'opened',
+        'synchronize',
+        'reopened',
+        'ready_for_review',
+      ],
     },
   });
 
@@ -32,74 +36,67 @@ export function createAutoApproveWorkflow(github: GitHub): void {
       actions: JobPermission.READ,
       checks: JobPermission.READ,
     },
-    if: `github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request'`,
+    if: `contains(github.event.pull_request.labels.*.name, 'auto-approve') && contains('${AUTHORIZED_APPROVERS.join(',')}', github.event.pull_request.user.login)`,
     env: {
+      SHA: '${{ github.event.pull_request.head.sha }}',
       GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}',
+      TIMEOUT: '600',
+      INTERVAL: '10',
+      WORKFLOW_NAME: 'build',
+      TERMINATING_STATUS: 'completed,action_required,cancelled,failure,neutral,skipped,stale,success,timed_out',
     },
     steps: [
       {
-        name: 'Get PR details',
-        id: 'pr',
+        name: 'Wait for Build to Complete',
+        id: 'wait-for-build',
         run: `
-          # Get the PR associated with this workflow run
-          PR_NUMBER=$(gh api /repos/\${{ github.repository }}/actions/runs/\${{ github.event.workflow_run.id }} \\
-            --jq '.pull_requests[0].number')
+          START_TIME=$(date +%s)
 
-          if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" == "null" ]; then
-            echo "No PR found for this workflow run"
-            echo "found=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+          while true; do
+            # Fetch latest workflow run matching SHA and workflow name
+            WORKFLOW_RUN=$(gh api /repos/\${{ github.repository }}/actions/runs \\
+            --jq ".workflow_runs | map(select(.head_sha == \\"$SHA\\" and .name == \\"$WORKFLOW_NAME\\")) | sort_by(.run_number) | reverse | first")
+            
+            if [ -z "$WORKFLOW_RUN" ]; then
+              echo "No build workflow run found for commit $SHA."
+              echo "conclusion=success" >> "$GITHUB_OUTPUT"
+              break
+            else
+              STATUS=$(echo "$WORKFLOW_RUN" | jq -r '.conclusion')
+              RUN_NUMBER=$(echo "$WORKFLOW_RUN" | jq -r '.run_number')
+              RUN_ID=$(echo "$WORKFLOW_RUN" | jq -r '.id')
+              RUN_ATTEMPT=$(echo "$WORKFLOW_RUN" | jq -r '.run_attempt')
+              WORKFLOW_ID=$(echo "$WORKFLOW_RUN" | jq -r '.workflow_id')
 
-          PR_DATA=$(gh api /repos/\${{ github.repository }}/pulls/$PR_NUMBER)
-          PR_AUTHOR=$(echo "$PR_DATA" | jq -r '.user.login')
-          PR_LABELS=$(echo "$PR_DATA" | jq -r '[.labels[].name] | join(",")')
-          PR_SHA=$(echo "$PR_DATA" | jq -r '.head.sha')
+              echo "Build SHA: $SHA"
+              echo "Build workflow run: $RUN_ID"
+              echo "Build workflow status: $STATUS"
 
-          echo "PR #$PR_NUMBER by $PR_AUTHOR with labels: $PR_LABELS"
-          echo "found=true" >> "$GITHUB_OUTPUT"
-          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
-          echo "author=$PR_AUTHOR" >> "$GITHUB_OUTPUT"
-          echo "labels=$PR_LABELS" >> "$GITHUB_OUTPUT"
-          echo "sha=$PR_SHA" >> "$GITHUB_OUTPUT"
-        `.trim(),
-      },
-      {
-        name: 'Check eligibility',
-        id: 'eligible',
-        if: "steps.pr.outputs.found == 'true'",
-        run: `
-          AUTHOR="\${{ steps.pr.outputs.author }}"
-          LABELS="\${{ steps.pr.outputs.labels }}"
-          AUTHORIZED="${AUTHORIZED_APPROVERS.join(',')}"
+              if [[ ",$TERMINATING_STATUS," == *",$STATUS,"* ]]; then
+                echo "Build workflow finished with conclusion: $STATUS"
+                echo "conclusion=$STATUS" >> "$GITHUB_OUTPUT"
+                break
+              fi
+            fi
 
-          if [[ ",$LABELS," != *",auto-approve,"* ]]; then
-            echo "PR does not have auto-approve label"
-            echo "eligible=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+            # Check if timeout has been reached
+            ELAPSED=$(( $(date +%s) - START_TIME ))
+            if [ $ELAPSED -ge $TIMEOUT ]; then
+              echo "Timeout reached. Build workflow did not succeed within $TIMEOUT seconds."
+              echo "conclusion=timed_out" >> "$GITHUB_OUTPUT"
+              break
+            fi
 
-          if [[ ",$AUTHORIZED," != *",$AUTHOR,"* ]]; then
-            echo "Author $AUTHOR is not in authorized approvers list"
-            echo "eligible=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "PR is eligible for auto-approve"
-          echo "eligible=true" >> "$GITHUB_OUTPUT"
+            sleep $INTERVAL
+          done
         `.trim(),
       },
       {
         name: 'Wait for Required Checks to Complete',
         id: 'wait-for-required-checks',
-        if: "steps.eligible.outputs.eligible == 'true'",
-        env: {
-          SHA: '${{ steps.pr.outputs.sha }}',
-          TIMEOUT: '600',
-          INTERVAL: '10',
-        },
         run: `
           START_TIME=$(date +%s)
+
           SELF_JOB_NAME="approve"
 
           while true; do
@@ -127,6 +124,9 @@ export function createAutoApproveWorkflow(github: GitHub): void {
               echo "✅ All required checks (excluding this job) have completed successfully."
               echo "conclusion=success" >> "$GITHUB_OUTPUT"
               break
+            else
+              echo "⏳ Still waiting on the following checks:"
+              echo "$PENDING_CHECKS" | jq -r '.[] | "- \\(.name): \\(.status)"'
             fi
 
             ELAPSED=$(( $(date +%s) - START_TIME ))
@@ -141,11 +141,13 @@ export function createAutoApproveWorkflow(github: GitHub): void {
         `.trim(),
       },
       {
-        name: 'Fail If Checks Failed',
+        name: 'Fail If Checks or Build Failed',
         id: 'fail',
-        if: "steps.eligible.outputs.eligible == 'true' && steps.wait-for-required-checks.outputs.conclusion != 'success'",
+        if: `steps.wait-for-build.outputs.conclusion != 'success' ||
+steps.wait-for-required-checks.outputs.conclusion != 'success'`,
         run: `
-          echo "❌ Required checks did not succeed."
+          echo "❌ Build or required checks did not succeed."
+          echo "Build status: \${{ steps.wait-for-build.outputs.conclusion }}"
           echo "Checks status: \${{ steps.wait-for-required-checks.outputs.conclusion }}"
           exit 1
         `.trim(),
@@ -154,10 +156,9 @@ export function createAutoApproveWorkflow(github: GitHub): void {
         name: 'Auto-Approve PR',
         id: 'auto-approve',
         uses: 'hmarr/auto-approve-action@v2.2.1',
-        if: "steps.eligible.outputs.eligible == 'true' && steps.wait-for-required-checks.outputs.conclusion == 'success'",
+        if: 'contains(\'success,neutral,skipped\', steps.wait-for-build.outputs.conclusion)',
         with: {
           'github-token': '${{ secrets.GITHUB_TOKEN }}',
-          'pull-request-number': '${{ steps.pr.outputs.number }}',
         },
       },
     ],
