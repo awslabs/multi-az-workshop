@@ -22,12 +22,15 @@ export function createDeployWorkflow(github: GitHub): void {
         'completed',
       ],
     },
+    pullRequestReview: {
+      types: ['submitted'],
+    },
   });
 
   // Job 1: Check if deployment is needed
   deployWorkflow.addJob('check-changes', {
     runsOn: ['ubuntu-latest'],
-    if: "github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'",
+    if: "github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved')",
     permissions: {},
     outputs: {
       should_deploy: {
@@ -48,6 +51,10 @@ export function createDeployWorkflow(github: GitHub): void {
             echo "Manual trigger - will deploy from main"
             echo "should_deploy=true" >> $GITHUB_OUTPUT
             echo "ref=main" >> $GITHUB_OUTPUT
+          elif [ "\${{ github.event_name }}" == "pull_request_review" ]; then
+            echo "Triggered by PR approval"
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+            echo "ref=\${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
           else
             echo "Triggered by auto-approve workflow"
             echo "should_deploy=true" >> $GITHUB_OUTPUT
