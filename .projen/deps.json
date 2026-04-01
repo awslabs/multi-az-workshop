@@ -2,7 +2,7 @@
   "dependencies": [
     {
       "name": "@aws-cdk/aws-eks-v2-alpha",
-      "version": "2.239.0-alpha.0",
+      "version": "2.240.0-alpha.0",
       "type": "build"
     },
     {
@@ -96,8 +96,18 @@
       "type": "build"
     },
     {
+      "name": "fast-xml-parser",
+      "version": "^5.5.7",
+      "type": "override"
+    },
+    {
+      "name": "flatted",
+      "version": "^3.4.2",
+      "type": "override"
+    },
+    {
       "name": "aws-cdk-lib",
-      "version": "^2.239.0",
+      "version": "2.244.0",
       "type": "runtime"
     },
     {

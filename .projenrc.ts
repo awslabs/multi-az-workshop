@@ -9,7 +9,8 @@ const project = new AwsCdkTypeScriptApp({
   description: 'The multi-AZ resilience patterns workshop',
   defaultReleaseBranch: 'main',
   projenrcTs: true,
-  cdkVersion: '2.239.0',
+  cdkVersion: '2.244.0',
+  cdkVersionPinning: true,
   constructsVersion: '10.5.0',
   appEntrypoint: 'cdk/multi-az-workshop.ts',
   srcdir: 'src',
@@ -74,7 +75,7 @@ const project = new AwsCdkTypeScriptApp({
     '@cdklabs/multi-az-observability@0.0.1-alpha.60',
     '@aws-cdk/lambda-layer-kubectl-v35@^2.0.0',
     'fast-check@^3.15.0',
-    '@aws-cdk/aws-eks-v2-alpha@2.239.0-alpha.0',
+    '@aws-cdk/aws-eks-v2-alpha@2.240.0-alpha.0',
   ],
   deps: [],
   peerDeps: [],
@@ -119,6 +120,12 @@ const project = new AwsCdkTypeScriptApp({
     'test/cdk/__snapshots__/',
   ],
 });
+
+// Pin minimum transitive dependency versions for security patches
+project.package.addPackageResolutions(
+  'flatted@^3.4.2',
+  'fast-xml-parser@^5.5.7',
+);
 
 // Add global environment variables for all tasks
 project.tasks.addEnvironment('PROJECT_NAME', project.name);

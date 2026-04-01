@@ -33,7 +33,7 @@ jobs:
                     while true; do
                       # Fetch latest workflow run matching SHA and workflow name
                       WORKFLOW_RUN=$(gh api /repos/${{ github.repository }}/actions/runs \
-                      --jq ".workflow_runs | map(select(.head_sha == \"$SHA\" and .name == \"$WORKFLOW_NAME\")) | first")
+                      --jq ".workflow_runs | map(select(.head_sha == \"$SHA\" and .name == \"$WORKFLOW_NAME\")) | sort_by(.run_number) | reverse | first")
                       
                       if [ -z "$WORKFLOW_RUN" ]; then
                         echo "No build workflow run found for commit $SHA."
@@ -78,7 +78,7 @@ jobs:
                       echo "🔍 Checking status of check runs for $SHA"
 
                       CHECK_RUNS=$(gh api repos/${{ github.repository }}/commits/$SHA/check-runs --paginate \
-                        --jq '[.check_runs[] | select(.name != "'"$SELF_JOB_NAME"'")]')
+                        --jq '[.check_runs[] | select(.name != "'"$SELF_JOB_NAME"'")] | group_by(.name) | map(sort_by(.started_at) | reverse | .[0])')
 
                       echo "📋 All check run statuses:"
                       echo "$CHECK_RUNS" | jq -r '.[] | "- \(.name): \(.status) / \(.conclusion)"'

@@ -15,54 +15,50 @@ export function createDeployWorkflow(github: GitHub): void {
   const deployWorkflow = new GithubWorkflow(github, 'deploy');
 
   deployWorkflow.on({
+    workflowDispatch: {},
     workflowRun: {
       workflows: ['auto-approve'],
       types: [
         'completed',
       ],
     },
+    pullRequestReview: {
+      types: ['submitted'],
+    },
   });
 
   // Job 1: Check if deployment is needed
   deployWorkflow.addJob('check-changes', {
     runsOn: ['ubuntu-latest'],
-    if: "github.event.workflow_run.conclusion == 'success'",
+    if: "github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved')",
     permissions: {},
     outputs: {
       should_deploy: {
         stepId: 'check',
         outputName: 'should_deploy',
       },
+      ref: {
+        stepId: 'check',
+        outputName: 'ref',
+      },
     },
     steps: [
       {
-        name: 'Checkout',
-        uses: 'actions/checkout@v4',
-        with: {
-          'ref': '${{ github.event.workflow_run.head_sha }}',
-          'fetch-depth': 0,
-        },
-      },
-      {
-        name: 'Check for src changes',
+        name: 'Determine ref and deploy status',
         id: 'check',
         run: `
           if [ "\${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "Manual trigger - will deploy"
+            echo "Manual trigger - will deploy from main"
             echo "should_deploy=true" >> $GITHUB_OUTPUT
+            echo "ref=main" >> $GITHUB_OUTPUT
+          elif [ "\${{ github.event_name }}" == "pull_request_review" ]; then
+            echo "Triggered by PR approval"
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+            echo "ref=\${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
           else
-            # For workflow_run events, check changes against the base branch (main)
-            git fetch origin main
-            if git diff --name-only origin/main...HEAD | grep -q "^src/"; then
-              echo "Changes detected in src/ compared to origin/main - will deploy"
-              git diff --name-only origin/main...HEAD | grep "^src/" | head -10
-              echo "should_deploy=true" >> $GITHUB_OUTPUT
-            else
-              echo "No changes in src/ compared to origin/main - skipping deployment"
-              echo "All changed files:"
-              git diff --name-only origin/main...HEAD | head -10
-              echo "should_deploy=false" >> $GITHUB_OUTPUT
-            fi
+            echo "Triggered by auto-approve workflow"
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+            echo "ref=\${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
           fi
         `.trim(),
       },
@@ -92,7 +88,7 @@ export function createDeployWorkflow(github: GitHub): void {
         id: 'create',
         run: `
           DEPLOYMENT_ID=$(gh api repos/\${{ github.repository }}/deployments \\
-            -f ref=\${{ github.event.workflow_run.head_sha }} \\
+            -f ref=\${{ needs.check-changes.outputs.ref }} \\
             -f environment=AWS \\
             -F auto_merge=false \\
             --jq '.id')
@@ -105,7 +101,7 @@ export function createDeployWorkflow(github: GitHub): void {
 
   // Job 3: Build content (only runs if there are src changes)
   deployWorkflow.addJob('build', {
-    needs: ['create-deployment'],
+    needs: ['check-changes', 'create-deployment'],
     if: 'needs.check-changes.outputs.should_deploy == \'true\'',
     runsOn: ['ubuntu-24.04-arm'],
     permissions: {
@@ -121,7 +117,7 @@ export function createDeployWorkflow(github: GitHub): void {
         name: 'Checkout',
         uses: 'actions/checkout@v4',
         with: {
-          ref: '${{ github.event.workflow_run.head_sha }}',
+          ref: '${{ needs.check-changes.outputs.ref }}',
         },
       },
       {
@@ -182,7 +178,7 @@ export function createDeployWorkflow(github: GitHub): void {
         name: 'Checkout',
         uses: 'actions/checkout@v4',
         with: {
-          ref: '${{ github.event.workflow_run.head_sha }}',
+          ref: '${{ needs.check-changes.outputs.ref }}',
         },
       },
       {

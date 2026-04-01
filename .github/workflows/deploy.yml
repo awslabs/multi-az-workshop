@@ -2,43 +2,39 @@
 
 name: deploy
 on:
+  workflow_dispatch: {}
   workflow_run:
     workflows:
       - auto-approve
     types:
       - completed
+  pull_request_review:
+    types:
+      - submitted
 jobs:
   check-changes:
     runs-on: ubuntu-latest
     permissions: {}
     outputs:
       should_deploy: ${{ steps.check.outputs.should_deploy }}
-    if: github.event.workflow_run.conclusion == 'success'
+      ref: ${{ steps.check.outputs.ref }}
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved')
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-          fetch-depth: 0
-      - name: Check for src changes
+      - name: Determine ref and deploy status
         id: check
         run: |-
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-                      echo "Manual trigger - will deploy"
+                      echo "Manual trigger - will deploy from main"
                       echo "should_deploy=true" >> $GITHUB_OUTPUT
+                      echo "ref=main" >> $GITHUB_OUTPUT
+                    elif [ "${{ github.event_name }}" == "pull_request_review" ]; then
+                      echo "Triggered by PR approval"
+                      echo "should_deploy=true" >> $GITHUB_OUTPUT
+                      echo "ref=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
                     else
-                      # For workflow_run events, check changes against the base branch (main)
-                      git fetch origin main
-                      if git diff --name-only origin/main...HEAD | grep -q "^src/"; then
-                        echo "Changes detected in src/ compared to origin/main - will deploy"
-                        git diff --name-only origin/main...HEAD | grep "^src/" | head -10
-                        echo "should_deploy=true" >> $GITHUB_OUTPUT
-                      else
-                        echo "No changes in src/ compared to origin/main - skipping deployment"
-                        echo "All changed files:"
-                        git diff --name-only origin/main...HEAD | head -10
-                        echo "should_deploy=false" >> $GITHUB_OUTPUT
-                      fi
+                      echo "Triggered by auto-approve workflow"
+                      echo "should_deploy=true" >> $GITHUB_OUTPUT
+                      echo "ref=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
                     fi
   create-deployment:
     needs: check-changes
@@ -55,14 +51,16 @@ jobs:
         id: create
         run: |-
           DEPLOYMENT_ID=$(gh api repos/${{ github.repository }}/deployments \
-                      -f ref=${{ github.event.workflow_run.head_sha }} \
+                      -f ref=${{ needs.check-changes.outputs.ref }} \
                       -f environment=AWS \
                       -F auto_merge=false \
                       --jq '.id')
                     echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
                     echo "Created deployment: $DEPLOYMENT_ID"
   build:
-    needs: create-deployment
+    needs:
+      - check-changes
+      - create-deployment
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
@@ -75,7 +73,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ needs.check-changes.outputs.ref }}
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -116,7 +114,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ needs.check-changes.outputs.ref }}
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:

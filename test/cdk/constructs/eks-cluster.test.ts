@@ -187,7 +187,7 @@ describe('EKSCluster', () => {
       assertResourceProperties(sharedTemplate, 'Custom::AWSCDK-EKS-Cluster', {
         Config: Match.objectLike({
           resourcesVpcConfig: Match.objectLike({
-            endpointPublicAccess: true,
+            endpointPublicAccess: false,
             endpointPrivateAccess: true,
           }),
         }),
