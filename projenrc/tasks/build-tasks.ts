@@ -155,17 +155,17 @@ function createAssetBuildTasks(project: AwsCdkTypeScriptApp): Task {
 
   const pullIstioContainers = project.addTask('assets:istio-containers', {
     description: 'Pull Istio container images',
-    exec: 'eval "$(node build/load-versions.js)" && for image in install-cni proxyv2 pilot; do docker pull docker.io/istio/${image}:$ISTIO && docker save istio/${image}:$ISTIO | gzip > assets/${image}.tar.gz; done',
+    exec: 'eval "$(node build/load-versions.js)" && for image in install-cni proxyv2 pilot; do build/docker-pull-with-retry.sh docker.io/istio/${image}:$ISTIO && docker save istio/${image}:$ISTIO | gzip > assets/${image}.tar.gz; done',
   });
 
   const pullLbControllerContainer = project.addTask('assets:lb-controller-container', {
     description: 'Pull AWS LB controller container image',
-    exec: 'eval "$(node build/load-versions.js)" && docker pull public.ecr.aws/eks/aws-load-balancer-controller:v$AWS_LOAD_BALANCER_CONTROLLER-linux_arm64 && docker save public.ecr.aws/eks/aws-load-balancer-controller:v$AWS_LOAD_BALANCER_CONTROLLER-linux_arm64 | gzip > assets/aws-load-balancer-controller.tar.gz',
+    exec: 'eval "$(node build/load-versions.js)" && build/docker-pull-with-retry.sh public.ecr.aws/eks/aws-load-balancer-controller:v$AWS_LOAD_BALANCER_CONTROLLER-linux_arm64 && docker save public.ecr.aws/eks/aws-load-balancer-controller:v$AWS_LOAD_BALANCER_CONTROLLER-linux_arm64 | gzip > assets/aws-load-balancer-controller.tar.gz',
   });
 
   const pullCloudwatchAgent = project.addTask('assets:cloudwatch-agent', {
     description: 'Pull CloudWatch agent container image',
-    exec: 'docker pull public.ecr.aws/cloudwatch-agent/cloudwatch-agent:latest && docker tag public.ecr.aws/cloudwatch-agent/cloudwatch-agent:latest cloudwatch-agent/cloudwatch-agent:latest && docker save cloudwatch-agent/cloudwatch-agent:latest | gzip > assets/cloudwatch-agent.tar.gz',
+    exec: 'build/docker-pull-with-retry.sh public.ecr.aws/cloudwatch-agent/cloudwatch-agent:latest && docker tag public.ecr.aws/cloudwatch-agent/cloudwatch-agent:latest cloudwatch-agent/cloudwatch-agent:latest && docker save cloudwatch-agent/cloudwatch-agent:latest | gzip > assets/cloudwatch-agent.tar.gz',
   });
 
   const downloadDockerCompose = project.addTask('assets:docker-compose', {
