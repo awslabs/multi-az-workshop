@@ -1,11 +1,6 @@
 {
   "dependencies": [
     {
-      "name": "@aws-cdk/aws-eks-v2-alpha",
-      "version": "2.239.0-alpha.0",
-      "type": "build"
-    },
-    {
       "name": "@aws-cdk/lambda-layer-kubectl-v35",
       "version": "^2.0.0",
       "type": "build"
@@ -97,17 +92,17 @@
     },
     {
       "name": "fast-xml-parser",
-      "version": "^5.5.7",
+      "version": ">=5.5.7",
       "type": "override"
     },
     {
       "name": "flatted",
-      "version": "^3.4.2",
+      "version": ">=3.4.2",
       "type": "override"
     },
     {
       "name": "aws-cdk-lib",
-      "version": "^2.244.0",
+      "version": "2.244.0",
       "type": "runtime"
     },
     {
