@@ -123,8 +123,8 @@ const project = new AwsCdkTypeScriptApp({
 
 // Pin minimum transitive dependency versions for security patches
 project.package.addPackageResolutions(
-  'flatted@^3.4.2',
-  'fast-xml-parser@^5.5.7',
+  'flatted@>=3.4.2',
+  'fast-xml-parser@>=5.5.7',
 );
 
 // Add global environment variables for all tasks

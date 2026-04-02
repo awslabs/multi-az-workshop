@@ -65,159 +65,38 @@ export class IpV6NetworkStack extends NestedStackWithSource {
       service: ec2.GatewayVpcEndpointAwsService.S3,
     });
 
-    // Add VPC Interface Endpoints
-    this.vpc.addInterfaceEndpoint('vpcessm', {
-      service: ec2.InterfaceVpcEndpointAwsService.SSM,
-      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      privateDnsEnabled: true,
-      open: true,
-    });
+    const interfaceEndpoints: ec2.InterfaceVpcEndpointAwsService[] = [
+      ec2.InterfaceVpcEndpointAwsService.SSM,
+      ec2.InterfaceVpcEndpointAwsService.SSM_MESSAGES,
+      ec2.InterfaceVpcEndpointAwsService.KMS,
+      ec2.InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS,
+      ec2.InterfaceVpcEndpointAwsService.CLOUDWATCH_MONITORING,
+      ec2.InterfaceVpcEndpointAwsService.EC2_MESSAGES,
+      ec2.InterfaceVpcEndpointAwsService.CLOUDFORMATION,
+      ec2.InterfaceVpcEndpointAwsService.XRAY,
+      ec2.InterfaceVpcEndpointAwsService.CODEDEPLOY,
+      ec2.InterfaceVpcEndpointAwsService.CODEDEPLOY_COMMANDS_SECURE,
+      ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
+      ec2.InterfaceVpcEndpointAwsService.ELASTIC_LOAD_BALANCING,
+      ec2.InterfaceVpcEndpointAwsService.STS,
+      ec2.InterfaceVpcEndpointAwsService.EC2,
+      ec2.InterfaceVpcEndpointAwsService.ECR,
+      ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER,
+      ec2.InterfaceVpcEndpointAwsService.EKS,
+      ec2.InterfaceVpcEndpointAwsService.EKS_AUTH,
+      ec2.InterfaceVpcEndpointAwsService.AUTOSCALING,
+      ec2.InterfaceVpcEndpointAwsService.LAMBDA,
+      ec2.InterfaceVpcEndpointAwsService.STEP_FUNCTIONS,
+      ec2.InterfaceVpcEndpointAwsService.STEP_FUNCTIONS_SYNC
+    ]
 
-    this.vpc.addInterfaceEndpoint('vpcessmmessages', {
-      service: ec2.InterfaceVpcEndpointAwsService.SSM_MESSAGES,
-      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      privateDnsEnabled: true,
-      open: true,
-    });
-
-    this.vpc.addInterfaceEndpoint('kms', {
-      service: ec2.InterfaceVpcEndpointAwsService.KMS,
-      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      privateDnsEnabled: true,
-      open: true,
-    });
-
-    this.vpc.addInterfaceEndpoint('logs', {
-      service: ec2.InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS,
-      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      privateDnsEnabled: true,
-      open: true,
-    });
-
-    this.vpc.addInterfaceEndpoint('cloudwatch', {
-      service: ec2.InterfaceVpcEndpointAwsService.CLOUDWATCH_MONITORING,
-      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      privateDnsEnabled: true,
-      open: true,
-    });
-
-    this.vpc.addInterfaceEndpoint('ec2messages', {
-      service: ec2.InterfaceVpcEndpointAwsService.EC2_MESSAGES,
-      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      privateDnsEnabled: true,
-      open: true,
-    });
-
-    this.vpc.addInterfaceEndpoint('cfn', {
-      service: ec2.InterfaceVpcEndpointAwsService.CLOUDFORMATION,
-      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      privateDnsEnabled: true,
-      open: true,
-    });
-
-    this.vpc.addInterfaceEndpoint('xray', {
-      service: ec2.InterfaceVpcEndpointAwsService.XRAY,
-      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      privateDnsEnabled: true,
-      open: true,
-    });
-
-    this.vpc.addInterfaceEndpoint('codedeploy', {
-      service: ec2.InterfaceVpcEndpointAwsService.CODEDEPLOY,
-      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      privateDnsEnabled: true,
-      open: true,
-    });
-
-    this.vpc.addInterfaceEndpoint('codedeployagent', {
-      service: ec2.InterfaceVpcEndpointAwsService.CODEDEPLOY_COMMANDS_SECURE,
-      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      privateDnsEnabled: true,
-      open: true,
-    });
-
-    this.vpc.addInterfaceEndpoint('secretsmanager', {
-      service: ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
-      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      privateDnsEnabled: true,
-      open: true,
-    });
-
-    this.vpc.addInterfaceEndpoint('elasticloadbalancing', {
-      service: ec2.InterfaceVpcEndpointAwsService.ELASTIC_LOAD_BALANCING,
-      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      privateDnsEnabled: true,
-      open: true,
-    });
-
-    this.vpc.addInterfaceEndpoint('sts', {
-      service: ec2.InterfaceVpcEndpointAwsService.STS,
-      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      privateDnsEnabled: true,
-      open: true,
-    });
-
-    this.vpc.addInterfaceEndpoint('ec2', {
-      service: ec2.InterfaceVpcEndpointAwsService.EC2,
-      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      privateDnsEnabled: true,
-      open: true,
-    });
-
-    this.vpc.addInterfaceEndpoint('ecrapi', {
-      service: ec2.InterfaceVpcEndpointAwsService.ECR,
-      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      privateDnsEnabled: true,
-      open: true,
-    });
-
-    this.vpc.addInterfaceEndpoint('ecrdkr', {
-      service: ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER,
-      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      privateDnsEnabled: true,
-      open: true,
-    });
-
-    this.vpc.addInterfaceEndpoint('eks', {
-      service: ec2.InterfaceVpcEndpointAwsService.EKS,
-      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      privateDnsEnabled: true,
-      open: true,
-    });
-
-    this.vpc.addInterfaceEndpoint('eksauth', {
-      service: ec2.InterfaceVpcEndpointAwsService.EKS_AUTH,
-      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      privateDnsEnabled: true,
-      open: true,
-    });
-
-    this.vpc.addInterfaceEndpoint('autoscaling', {
-      service: ec2.InterfaceVpcEndpointAwsService.AUTOSCALING,
-      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      privateDnsEnabled: true,
-      open: true,
-    });
-
-    this.vpc.addInterfaceEndpoint('lambda', {
-      service: ec2.InterfaceVpcEndpointAwsService.LAMBDA,
-      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      privateDnsEnabled: true,
-      open: true,
-    });
-
-    this.vpc.addInterfaceEndpoint('stepfunctions', {
-      service: ec2.InterfaceVpcEndpointAwsService.STEP_FUNCTIONS,
-      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      privateDnsEnabled: true,
-      open: true,
-    });
-
-    this.vpc.addInterfaceEndpoint('stepfunctionssync', {
-      service: ec2.InterfaceVpcEndpointAwsService.STEP_FUNCTIONS_SYNC,
-      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      privateDnsEnabled: true,
-      open: true,
+    interfaceEndpoints.forEach(endpoint => {
+      this.vpc.addInterfaceEndpoint(endpoint.shortName + "vpce", {
+        service: endpoint,
+        subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+        privateDnsEnabled: true,
+        open: true,
+      });
     });
   }
 }

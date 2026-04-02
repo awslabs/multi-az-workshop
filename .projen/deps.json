@@ -97,12 +97,12 @@
     },
     {
       "name": "fast-xml-parser",
-      "version": "^5.5.7",
+      "version": ">=5.5.7",
       "type": "override"
     },
     {
       "name": "flatted",
-      "version": "^3.4.2",
+      "version": ">=3.4.2",
       "type": "override"
     },
     {

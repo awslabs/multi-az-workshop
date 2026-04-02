@@ -93,6 +93,68 @@ export class EKSCluster extends Construct {
       retention: logs.RetentionDays.ONE_WEEK,
     });
 
+    // Create launch template for node group
+    const lt = new ec2.LaunchTemplate(this, 'NodeGroupLaunchTemplate', {
+      httpPutResponseHopLimit: 2,
+      httpTokens: ec2.LaunchTemplateHttpTokens.REQUIRED,
+      blockDevices: [
+        {
+          deviceName: '/dev/xvda',
+          volume: ec2.BlockDeviceVolume.ebs(20, {
+            encrypted: true,
+          }),
+        },
+      ],
+    });
+
+    // Create IAM role for EKS worker nodes
+    const eksWorkerRole = new iam.Role(this, 'EKSWorkerRole', {
+      assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
+    });
+
+    eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSVPCResourceController'));
+    eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSWorkerNodePolicy'));
+    eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedEC2InstanceDefaultPolicy'));
+    eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEC2ContainerRegistryReadOnly'));
+    eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKS_CNI_Policy'));
+    eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchAgentServerPolicy'));
+
+    eksWorkerRole.addManagedPolicy(
+      new iam.ManagedPolicy(this, 'EKSWorkerCNIIPv6ManagedPolicy', {
+        statements: [
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ['ec2:AssignIpv6Addresses'],
+            resources: ['*'],
+          }),
+        ],
+      }),
+    );
+
+    eksWorkerRole.addManagedPolicy(
+      new iam.ManagedPolicy(this, 'EKSWorkerS3ManagedPolicy', {
+        statements: [
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ['s3:GetObject', 's3:ListBucket'],
+            resources: ['*'],
+          }),
+        ],
+      }),
+    );
+
+    eksWorkerRole.addManagedPolicy(
+      new iam.ManagedPolicy(this, 'EKSWorkerSSMManagedPolicy', {
+        statements: [
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ['ssm:GetParameter'],
+            resources: ['*'],
+          }),
+        ],
+      }),
+    );
+
     // Create EKS cluster
     const cluster = new eks.Cluster(this, 'EKSCluster', {
       vpc: props.vpc,
@@ -275,54 +337,6 @@ export class EKSCluster extends Construct {
     const podDeleterRoleBindingResource = podDeleterRoleBindingManifest.node.findChild('Resource') as cdk.CustomResource;
     (podDeleterRoleBindingResource.node.defaultChild as cdk.CfnResource).addPropertyOverride('ServiceTimeout', '300');
 
-    // Create IAM role for EKS worker nodes
-    const eksWorkerRole = new iam.Role(this, 'EKSWorkerRole', {
-      assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
-    });
-
-    eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSVPCResourceController'));
-    eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSWorkerNodePolicy'));
-    eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedEC2InstanceDefaultPolicy'));
-    eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEC2ContainerRegistryReadOnly'));
-    eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKS_CNI_Policy'));
-    eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchAgentServerPolicy'));
-
-    eksWorkerRole.addManagedPolicy(
-      new iam.ManagedPolicy(this, 'EKSWorkerCNIIPv6ManagedPolicy', {
-        statements: [
-          new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: ['ec2:AssignIpv6Addresses'],
-            resources: ['*'],
-          }),
-        ],
-      }),
-    );
-
-    eksWorkerRole.addManagedPolicy(
-      new iam.ManagedPolicy(this, 'EKSWorkerS3ManagedPolicy', {
-        statements: [
-          new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: ['s3:GetObject', 's3:ListBucket'],
-            resources: ['*'],
-          }),
-        ],
-      }),
-    );
-
-    eksWorkerRole.addManagedPolicy(
-      new iam.ManagedPolicy(this, 'EKSWorkerSSMManagedPolicy', {
-        statements: [
-          new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: ['ssm:GetParameter'],
-            resources: ['*'],
-          }),
-        ],
-      }),
-    );
-
     // Add role mapping for worker nodes
     cluster.awsAuth.addRoleMapping(eksWorkerRole, {
       groups: ['system:masters', 'system:bootstrappers', 'system:nodes', 'log-viewer-global', 'pod-deleter'],
@@ -333,20 +347,6 @@ export class EKSCluster extends Construct {
     new ssm.StringParameter(this, 'ClusterParameter', {
       parameterName: 'ClusterName',
       stringValue: cluster.clusterName,
-    });
-
-    // Create launch template for node group
-    const lt = new ec2.LaunchTemplate(this, 'NodeGroupLaunchTemplate', {
-      httpPutResponseHopLimit: 2,
-      httpTokens: ec2.LaunchTemplateHttpTokens.REQUIRED,
-      blockDevices: [
-        {
-          deviceName: '/dev/xvda',
-          volume: ec2.BlockDeviceVolume.ebs(20, {
-            encrypted: true,
-          }),
-        },
-      ],
     });
 
     // Create managed node group
