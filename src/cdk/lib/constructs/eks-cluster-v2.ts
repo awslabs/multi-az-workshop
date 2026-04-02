@@ -143,6 +143,7 @@ export class EKSClusterV2 extends Construct {
         version: props.version,
         defaultCapacity: 0,
         defaultCapacityType: eks.DefaultCapacityType.NODEGROUP,
+        clusterName: props.clusterName,
 
         kubectlProviderOptions: {
             kubectlLayer: new KubectlLayer(this, "KubectlLayer"),
@@ -162,7 +163,7 @@ export class EKSClusterV2 extends Construct {
 
     // Create SSM parameter for cluster name
     new ssm.StringParameter(this, 'ClusterParameter', {
-      parameterName: 'TestClusterName',
+      parameterName: 'ClusterName',
       stringValue: cluster.clusterName,
     });
 
@@ -214,16 +215,6 @@ export class EKSClusterV2 extends Construct {
     new eks.Addon(this, 'PodIdentityAgentAddOn', {
       cluster,
       addonName: 'eks-pod-identity-agent',
-    });
-
-
-    cluster.addHelmChart("IstioBase", {
-      chartAsset: new Asset(this, "IstioBaseAsset", {
-         path: "/Users/mhaken/Downloads/base-1.29.0.zip"
-      }),
-      namespace: "istio-system",
-      createNamespace: true,
-      wait: true
     });
 
     cluster.grantAccess(
