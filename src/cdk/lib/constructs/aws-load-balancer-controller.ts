@@ -3,6 +3,7 @@
 
 import * as cdk from 'aws-cdk-lib';
 import * as eks from 'aws-cdk-lib/aws-eks';
+import * as eksv2 from '@aws-cdk/aws-eks-v2-alpha';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct, IDependable } from 'constructs';
 import { ContainerAndRepo, RepoAndHelmChartProps, RepoAndContainerProps } from './container-and-repo';
@@ -15,7 +16,7 @@ export interface AwsLoadBalancerControllerProps {
   /**
    * The EKS cluster to install the controller on
    */
-  readonly cluster: eks.ICluster;
+  readonly cluster: eksv2.ICluster;
 
   /**
    * Container and repository builder for managing container images and Helm charts
@@ -54,7 +55,7 @@ export class AwsLoadBalancerController extends HelmRepoAndChartConstruct {
     lbControllerRole.addManagedPolicy(loadBalancerControllerManagedPolicy);
 
     // Create service account
-    const loadBalancerServiceAccount = new eks.KubernetesManifest(this, 'LoadBalancerServiceAccount', {
+    const loadBalancerServiceAccount = new eksv2.KubernetesManifest(this, 'LoadBalancerServiceAccount', {
       cluster: props.cluster,
       manifest: [
         {

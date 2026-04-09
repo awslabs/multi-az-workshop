@@ -3,6 +3,7 @@
 
 import * as cdk from 'aws-cdk-lib';
 import * as eks from 'aws-cdk-lib/aws-eks';
+import * as eksv2 from '@aws-cdk/aws-eks-v2-alpha';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as rds from 'aws-cdk-lib/aws-rds';
@@ -16,7 +17,7 @@ export interface EKSApplicationProps {
   /**
    * The EKS cluster to deploy the application to
    */
-  readonly cluster: eks.ICluster;
+  readonly cluster: eksv2.ICluster;
 
   /**
    * Container and repository builder for managing container images
@@ -129,7 +130,7 @@ export class EKSApplication extends Construct {
     });
 
     // Create namespace
-    const appNamespace = new eks.KubernetesManifest(this, 'AppNamespace', {
+    const appNamespace = new eksv2.KubernetesManifest(this, 'AppNamespace', {
       cluster: props.cluster,
       manifest: [
         {
@@ -152,7 +153,7 @@ export class EKSApplication extends Construct {
     );
 
     // Create service account
-    const appServiceAccount = new eks.KubernetesManifest(this, 'AppServiceAccount', {
+    const appServiceAccount = new eksv2.KubernetesManifest(this, 'AppServiceAccount', {
       cluster: props.cluster,
       manifest: [
         {
@@ -184,7 +185,7 @@ export class EKSApplication extends Construct {
     podIdentity.node.addDependency(appServiceAccount);
 
     // Create service
-    const appService = new eks.KubernetesManifest(this, 'AppService', {
+    const appService = new eksv2.KubernetesManifest(this, 'AppService', {
       cluster: props.cluster,
       manifest: [
         {
@@ -225,7 +226,7 @@ export class EKSApplication extends Construct {
     );
 
     // Create Istio virtual service
-    const istioVirtualService = new eks.KubernetesManifest(this, 'IstioVirtualService', {
+    const istioVirtualService = new eksv2.KubernetesManifest(this, 'IstioVirtualService', {
       cluster: props.cluster,
       manifest: [
         {
@@ -288,7 +289,7 @@ export class EKSApplication extends Construct {
     );
 
     // Create deployment
-    const appDeployment = new eks.KubernetesManifest(this, 'AppDeployment', {
+    const appDeployment = new eksv2.KubernetesManifest(this, 'AppDeployment', {
       cluster: props.cluster,
       manifest: [
         {
@@ -463,7 +464,7 @@ export class EKSApplication extends Construct {
     this.appTargetGroup = tgp;
 
     // Create target group binding
-    const targetGroupBinding = new eks.KubernetesManifest(this, 'TargetGroupBinding', {
+    const targetGroupBinding = new eksv2.KubernetesManifest(this, 'TargetGroupBinding', {
       cluster: props.cluster,
       manifest: [
         {

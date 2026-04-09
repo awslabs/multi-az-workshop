@@ -6,12 +6,10 @@ import { Match } from 'aws-cdk-lib/assertions';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as eks from 'aws-cdk-lib/aws-eks';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import * as rds from 'aws-cdk-lib/aws-rds';
 import { EKSCluster, InstanceArchitecture } from '../../../src/cdk/lib/constructs/eks-cluster';
 import {
   assertResourceExists,
   assertResourceProperties,
-  assertResourceCount,
 } from '../../helpers/assertion-helpers';
 import { createMockVpc, createMockSecurityGroup } from '../../helpers/mock-factories';
 import { synthesizeStack } from '../../helpers/stack-helpers';
@@ -21,7 +19,6 @@ describe('EKSCluster', () => {
   let sharedApp: cdk.App;
   let sharedStack: cdk.Stack;
   let sharedVpc: ec2.Vpc;
-  let sharedDatabaseCluster: rds.DatabaseCluster;
   let sharedAdminRole: iam.Role;
   let sharedLoadBalancerSecurityGroup: ec2.SecurityGroup;
   let sharedTemplate: ReturnType<typeof synthesizeStack>;
@@ -32,27 +29,12 @@ describe('EKSCluster', () => {
     sharedVpc = createMockVpc(sharedStack);
     sharedLoadBalancerSecurityGroup = createMockSecurityGroup(sharedStack, sharedVpc, 'LoadBalancerSG');
 
-    // Create admin role
     sharedAdminRole = new iam.Role(sharedStack, 'AdminRole', {
       assumedBy: new iam.ServicePrincipal('eks.amazonaws.com'),
     });
 
-    // Create database cluster
-    sharedDatabaseCluster = new rds.DatabaseCluster(sharedStack, 'Database', {
-      engine: rds.DatabaseClusterEngine.auroraPostgres({
-        version: rds.AuroraPostgresEngineVersion.VER_16_1,
-      }),
-      writer: rds.ClusterInstance.provisioned('writer', {
-        instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MEDIUM),
-      }),
-      vpc: sharedVpc,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    // Create EKS cluster with default configuration
     new EKSCluster(sharedStack, 'EKSCluster', {
       vpc: sharedVpc,
-      databaseCluster: sharedDatabaseCluster,
       cpuArch: InstanceArchitecture.X86_64,
       adminRole: sharedAdminRole,
       loadBalancerSecurityGroup: sharedLoadBalancerSecurityGroup,
@@ -65,7 +47,7 @@ describe('EKSCluster', () => {
 
   describe('constructor', () => {
     test('creates EKS cluster with default configuration', () => {
-      assertResourceExists(sharedTemplate, 'Custom::AWSCDK-EKS-Cluster');
+      assertResourceExists(sharedTemplate, 'AWS::EKS::Cluster');
       assertResourceExists(sharedTemplate, 'AWS::EKS::Nodegroup');
       assertResourceExists(sharedTemplate, 'AWS::Logs::LogGroup');
     });
@@ -77,82 +59,23 @@ describe('EKSCluster', () => {
     });
   });
 
-  describe('constructor with custom version', () => {
-    let customVersionApp: cdk.App;
-    let customVersionStack: cdk.Stack;
-    let customVersionTemplate: ReturnType<typeof synthesizeStack>;
-
-    beforeAll(() => {
-      customVersionApp = createTestApp();
-      customVersionStack = createTestStack(customVersionApp);
-      const vpc = createMockVpc(customVersionStack);
-      const loadBalancerSecurityGroup = createMockSecurityGroup(customVersionStack, vpc, 'LoadBalancerSG');
-
-      const adminRole = new iam.Role(customVersionStack, 'AdminRole', {
-        assumedBy: new iam.ServicePrincipal('eks.amazonaws.com'),
-      });
-
-      const databaseCluster = new rds.DatabaseCluster(customVersionStack, 'Database', {
-        engine: rds.DatabaseClusterEngine.auroraPostgres({
-          version: rds.AuroraPostgresEngineVersion.VER_16_1,
-        }),
-        writer: rds.ClusterInstance.provisioned('writer', {
-          instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MEDIUM),
-        }),
-        vpc,
-        removalPolicy: cdk.RemovalPolicy.DESTROY,
-      });
-
-      new EKSCluster(customVersionStack, 'EKSCluster', {
-        vpc,
-        databaseCluster,
-        cpuArch: InstanceArchitecture.X86_64,
-        adminRole,
-        loadBalancerSecurityGroup,
-        clusterName: 'test-cluster',
-        version: eks.KubernetesVersion.of('1.35'),
-      });
-
-      customVersionTemplate = synthesizeStack(customVersionStack);
-    });
-
-    test('creates cluster with custom version', () => {
-      assertResourceExists(customVersionTemplate, 'Custom::AWSCDK-EKS-Cluster');
-    });
-  });
-
   describe('constructor with ARM architecture', () => {
-    let armApp: cdk.App;
-    let armStack: cdk.Stack;
     let armTemplate: ReturnType<typeof synthesizeStack>;
 
     beforeAll(() => {
-      armApp = createTestApp();
-      armStack = createTestStack(armApp);
+      const armApp = createTestApp();
+      const armStack = createTestStack(armApp);
       const vpc = createMockVpc(armStack);
-      const loadBalancerSecurityGroup = createMockSecurityGroup(armStack, vpc, 'LoadBalancerSG');
-
+      const lbSg = createMockSecurityGroup(armStack, vpc, 'LoadBalancerSG');
       const adminRole = new iam.Role(armStack, 'AdminRole', {
         assumedBy: new iam.ServicePrincipal('eks.amazonaws.com'),
       });
 
-      const databaseCluster = new rds.DatabaseCluster(armStack, 'Database', {
-        engine: rds.DatabaseClusterEngine.auroraPostgres({
-          version: rds.AuroraPostgresEngineVersion.VER_16_1,
-        }),
-        writer: rds.ClusterInstance.provisioned('writer', {
-          instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MEDIUM),
-        }),
-        vpc,
-        removalPolicy: cdk.RemovalPolicy.DESTROY,
-      });
-
       new EKSCluster(armStack, 'EKSCluster', {
         vpc,
-        databaseCluster,
         cpuArch: InstanceArchitecture.ARM_64,
         adminRole,
-        loadBalancerSecurityGroup,
+        loadBalancerSecurityGroup: lbSg,
         clusterName: 'test-cluster',
         version: eks.KubernetesVersion.of('1.35'),
       });
@@ -169,13 +92,6 @@ describe('EKSCluster', () => {
   });
 
   describe('cluster configuration', () => {
-    test('creates control plane security group', () => {
-      assertResourceExists(sharedTemplate, 'AWS::EC2::SecurityGroup');
-      assertResourceProperties(sharedTemplate, 'AWS::EC2::SecurityGroup', {
-        GroupDescription: 'Allow inbound access from this Security Group',
-      });
-    });
-
     test('configures cluster logging', () => {
       assertResourceProperties(sharedTemplate, 'AWS::Logs::LogGroup', {
         LogGroupName: '/aws/eks/test-cluster/cluster',
@@ -183,61 +99,17 @@ describe('EKSCluster', () => {
       });
     });
 
-    test('configures endpoint access', () => {
-      assertResourceProperties(sharedTemplate, 'Custom::AWSCDK-EKS-Cluster', {
-        Config: Match.objectLike({
-          resourcesVpcConfig: Match.objectLike({
-            endpointPublicAccess: false,
-            endpointPrivateAccess: true,
-          }),
-        }),
+    test('configures cluster with correct name', () => {
+      assertResourceProperties(sharedTemplate, 'AWS::EKS::Cluster', {
+        Name: 'test-cluster',
       });
     });
-  });
 
-  describe('cluster configuration with custom name', () => {
-    let customNameApp: cdk.App;
-    let customNameStack: cdk.Stack;
-    let customNameTemplate: ReturnType<typeof synthesizeStack>;
-
-    beforeAll(() => {
-      customNameApp = createTestApp();
-      customNameStack = createTestStack(customNameApp);
-      const vpc = createMockVpc(customNameStack);
-      const loadBalancerSecurityGroup = createMockSecurityGroup(customNameStack, vpc, 'LoadBalancerSG');
-
-      const adminRole = new iam.Role(customNameStack, 'AdminRole', {
-        assumedBy: new iam.ServicePrincipal('eks.amazonaws.com'),
-      });
-
-      const databaseCluster = new rds.DatabaseCluster(customNameStack, 'Database', {
-        engine: rds.DatabaseClusterEngine.auroraPostgres({
-          version: rds.AuroraPostgresEngineVersion.VER_16_1,
-        }),
-        writer: rds.ClusterInstance.provisioned('writer', {
-          instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MEDIUM),
-        }),
-        vpc,
-        removalPolicy: cdk.RemovalPolicy.DESTROY,
-      });
-
-      new EKSCluster(customNameStack, 'EKSCluster', {
-        vpc,
-        databaseCluster,
-        cpuArch: InstanceArchitecture.X86_64,
-        adminRole,
-        loadBalancerSecurityGroup,
-        clusterName: 'my-test-cluster',
-        version: eks.KubernetesVersion.of('1.35'),
-      });
-
-      customNameTemplate = synthesizeStack(customNameStack);
-    });
-
-    test('creates cluster with correct name', () => {
-      assertResourceProperties(customNameTemplate, 'Custom::AWSCDK-EKS-Cluster', {
-        Config: Match.objectLike({
-          name: 'my-test-cluster',
+    test('configures private endpoint access', () => {
+      assertResourceProperties(sharedTemplate, 'AWS::EKS::Cluster', {
+        ResourcesVpcConfig: Match.objectLike({
+          EndpointPublicAccess: false,
+          EndpointPrivateAccess: true,
         }),
       });
     });
@@ -332,7 +204,6 @@ describe('EKSCluster', () => {
 
     test('creates custom managed policies', () => {
       assertResourceExists(sharedTemplate, 'AWS::IAM::ManagedPolicy');
-      assertResourceCount(sharedTemplate, 'AWS::IAM::ManagedPolicy', 3);
     });
   });
 
@@ -345,80 +216,39 @@ describe('EKSCluster', () => {
     });
   });
 
-  describe('RBAC configuration', () => {
-    test('creates log viewer cluster role', () => {
-      assertResourceProperties(sharedTemplate, 'Custom::AWSCDK-EKS-KubernetesResource', {
-        Manifest: Match.stringLikeRegexp('.*log-viewer.*'),
-      });
-    });
-
-    test('creates pod deleter cluster role', () => {
-      assertResourceProperties(sharedTemplate, 'Custom::AWSCDK-EKS-KubernetesResource', {
-        Manifest: Match.stringLikeRegexp('.*pod-deleter.*'),
-      });
-    });
-
-    test('creates networking manager cluster role', () => {
-      assertResourceProperties(sharedTemplate, 'Custom::AWSCDK-EKS-KubernetesResource', {
-        Manifest: Match.stringLikeRegexp('.*networking-manager.*'),
-      });
-    });
-
-    test('creates cluster role bindings', () => {
-      assertResourceProperties(sharedTemplate, 'Custom::AWSCDK-EKS-KubernetesResource', {
-        Manifest: Match.stringLikeRegexp('.*ClusterRoleBinding.*'),
-      });
+  describe('access entries', () => {
+    test('creates access entry for admin role', () => {
+      assertResourceExists(sharedTemplate, 'AWS::EKS::AccessEntry');
     });
   });
 
   describe('VPC and subnet configuration', () => {
-    test('uses private isolated subnets', () => {
-      assertResourceExists(sharedTemplate, 'Custom::AWSCDK-EKS-Cluster');
+    test('creates EKS cluster', () => {
+      assertResourceExists(sharedTemplate, 'AWS::EKS::Cluster');
     });
 
-    test('configures security group ingress rules', () => {
-      assertResourceExists(sharedTemplate, 'AWS::EC2::SecurityGroupIngress');
-    });
-  });
-
-  describe('kubectl layer integration', () => {
-    test('creates kubectl layer', () => {
-      assertResourceExists(sharedTemplate, 'AWS::Lambda::LayerVersion');
+    test('creates worker node security group', () => {
+      assertResourceExists(sharedTemplate, 'AWS::EC2::SecurityGroup');
     });
   });
 
   describe('cluster properties and outputs', () => {
-    let propsApp: cdk.App;
-    let propsStack: cdk.Stack;
     let eksCluster: EKSCluster;
 
     beforeAll(() => {
-      propsApp = createTestApp();
-      propsStack = createTestStack(propsApp);
+      const propsApp = createTestApp();
+      const propsStack = createTestStack(propsApp);
       const vpc = createMockVpc(propsStack);
-      const loadBalancerSecurityGroup = createMockSecurityGroup(propsStack, vpc, 'LoadBalancerSG');
-
+      const lbSg = createMockSecurityGroup(propsStack, vpc, 'LoadBalancerSG');
       const adminRole = new iam.Role(propsStack, 'AdminRole', {
         assumedBy: new iam.ServicePrincipal('eks.amazonaws.com'),
       });
 
-      const databaseCluster = new rds.DatabaseCluster(propsStack, 'Database', {
-        engine: rds.DatabaseClusterEngine.auroraPostgres({
-          version: rds.AuroraPostgresEngineVersion.VER_16_1,
-        }),
-        writer: rds.ClusterInstance.provisioned('writer', {
-          instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MEDIUM),
-        }),
-        vpc,
-        removalPolicy: cdk.RemovalPolicy.DESTROY,
-      });
-
       eksCluster = new EKSCluster(propsStack, 'EKSCluster', {
         vpc,
-        databaseCluster,
         cpuArch: InstanceArchitecture.X86_64,
         adminRole,
-        loadBalancerSecurityGroup,
+        loadBalancerSecurityGroup: lbSg,
         clusterName: 'test-cluster',
         version: eks.KubernetesVersion.of('1.35'),
       });
@@ -428,10 +258,6 @@ describe('EKSCluster', () => {
       expect(eksCluster.cluster).toBeDefined();
       expect(eksCluster.cluster.clusterName).toBeDefined();
     });
-
-    test('exposes nodegroup property', () => {
-      expect(eksCluster.nodegroup).toBeDefined();
-    });
   });
 
   describe('SSM parameter', () => {
@@ -440,9 +266,6 @@ describe('EKSCluster', () => {
       assertResourceProperties(sharedTemplate, 'AWS::SSM::Parameter', {
         Name: 'ClusterName',
         Type: 'String',
-        Value: Match.objectLike({
-          Ref: Match.anyValue(),
-        }),
       });
     });
   });

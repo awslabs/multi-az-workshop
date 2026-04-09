@@ -5,7 +5,7 @@ import * as eks from '@aws-cdk/aws-eks-v2-alpha';
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import { EKSClusterV2, InstanceArchitecture } from './lib/constructs/eks-cluster-v2';
+import { EKSClusterV2, InstanceArchitecture } from './lib/constructs/eks-cluster';
 
 const app = new cdk.App({
   outdir: process.env.CDK_OUTDIR ?? 'cdk.out.test',

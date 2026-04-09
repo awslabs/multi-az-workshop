@@ -1,11 +1,11 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import * as eks from '@aws-cdk/aws-eks-v2-alpha';
 import { KubectlV35Layer } from '@aws-cdk/lambda-layer-kubectl-v35';
 import * as cdk from 'aws-cdk-lib';
 import { Match } from 'aws-cdk-lib/assertions';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as eks from 'aws-cdk-lib/aws-eks';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { AwsLoadBalancerController } from '../../../src/cdk/lib/constructs/aws-load-balancer-controller';
 import { ContainerAndRepo } from '../../../src/cdk/lib/constructs/container-and-repo';
@@ -36,7 +36,8 @@ describe('AwsLoadBalancerController', () => {
       vpc: sharedVpc,
       version: eks.KubernetesVersion.of('1.35'),
       defaultCapacity: 0,
-      kubectlLayer: new KubectlV35Layer(sharedStack, 'KubectlLayer'),
+      defaultCapacityType: eks.DefaultCapacityType.NODEGROUP,
+      kubectlProviderOptions: { kubectlLayer: new KubectlV35Layer(sharedStack, 'KubectlLayer') },
     });
 
     // Create assets bucket
@@ -259,7 +260,8 @@ describe('AwsLoadBalancerController', () => {
         vpc,
         version: eks.KubernetesVersion.of('1.35'),
         defaultCapacity: 0,
-        kubectlLayer: new KubectlV35Layer(stack, 'TestKubectlLayer'),
+        defaultCapacityType: eks.DefaultCapacityType.NODEGROUP,
+        kubectlProviderOptions: { kubectlLayer: new KubectlV35Layer(stack, 'TestKubectlLayer') },
       });
 
       const assetsBucket = new s3.Bucket(stack, 'TestAssetsBucket', {
@@ -318,7 +320,8 @@ describe('AwsLoadBalancerController', () => {
         vpc,
         version: eks.KubernetesVersion.of('1.35'),
         defaultCapacity: 0,
-        kubectlLayer: new KubectlV35Layer(stack, 'KubectlLayer'),
+        defaultCapacityType: eks.DefaultCapacityType.NODEGROUP,
+        kubectlProviderOptions: { kubectlLayer: new KubectlV35Layer(stack, 'KubectlLayer') },
       });
 
       const assetsBucket = new s3.Bucket(stack, 'AssetsBucket', {
@@ -367,7 +370,8 @@ describe('AwsLoadBalancerController', () => {
         vpc,
         version: eks.KubernetesVersion.of('1.35'),
         defaultCapacity: 0,
-        kubectlLayer: new KubectlV35Layer(stack, 'KubectlLayer'),
+        defaultCapacityType: eks.DefaultCapacityType.NODEGROUP,
+        kubectlProviderOptions: { kubectlLayer: new KubectlV35Layer(stack, 'KubectlLayer') },
       });
 
       const assetsBucket = new s3.Bucket(stack, 'AssetsBucket', {

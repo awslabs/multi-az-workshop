@@ -97,10 +97,9 @@ export class EKSStack extends NestedStackWithSource {
     const cluster = new EKSCluster(this, 'Cluster', {
       adminRole,
       cpuArch,
-      databaseCluster: props.database,
       vpc: props.vpc,
       loadBalancerSecurityGroup: props.loadBalancerSecurityGroup,
-      clusterName: 'multi-az-workshop-eks-cluster',
+      clusterName: 'multi-az-workshop-eks-cluster-v2',
       version: props.eksVersion,
     });
 
