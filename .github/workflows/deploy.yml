@@ -82,7 +82,7 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "9.0"
-      - name: Enable corepack
+      - name: Enable Corepack
         run: corepack enable
       - name: Install dependencies
         run: yarn install --immutable
@@ -121,7 +121,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: Enable corepack
+      - name: Enable Corepack
         run: corepack enable
       - name: Install dependencies
         run: yarn install --immutable
