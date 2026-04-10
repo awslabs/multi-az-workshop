@@ -86,12 +86,19 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "aws-cdk-lib": "2.244.0",
+    "aws-cdk-lib": "2.248.0",
     "constructs": "^10.5.0"
   },
   "resolutions": {
     "fast-xml-parser": ">=5.5.7",
     "flatted": ">=3.4.2"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "yarn",
+      "version": ">=4.0.1",
+      "onFail": "ignore"
+    }
   },
   "license": "Apache-2.0",
   "homepage": "https://github.com/awslabs/multi-az-workshop",
@@ -99,6 +106,7 @@
     "access": "public"
   },
   "version": "0.0.0",
+  "packageManager": "yarn@4.13.0",
   "jest": {
     "coverageProvider": "v8",
     "testMatch": [

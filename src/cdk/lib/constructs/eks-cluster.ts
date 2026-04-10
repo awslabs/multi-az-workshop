@@ -4,7 +4,7 @@
 import { KubectlV35Layer as KubectlLayer } from '@aws-cdk/lambda-layer-kubectl-v35';
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as eks from '@aws-cdk/aws-eks-v2-alpha';
+import * as eks from 'aws-cdk-lib/aws-eks-v2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
