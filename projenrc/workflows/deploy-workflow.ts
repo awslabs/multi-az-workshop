@@ -135,6 +135,10 @@ export function createDeployWorkflow(github: GitHub): void {
         },
       },
       {
+        name: 'Enable Corepack',
+        run: 'corepack enable',
+      },
+      {
         name: 'Install dependencies',
         run: 'yarn install --check-files --frozen-lockfile',
       },
@@ -187,6 +191,10 @@ export function createDeployWorkflow(github: GitHub): void {
         with: {
           'node-version': '20',
         },
+      },
+      {
+        name: 'Enable Corepack',
+        run: 'corepack enable',
       },
       {
         name: 'Install dependencies',

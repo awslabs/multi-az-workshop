@@ -1,11 +1,11 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import * as eks from '@aws-cdk/aws-eks-v2-alpha';
 import { KubectlV35Layer } from '@aws-cdk/lambda-layer-kubectl-v35';
 import * as cdk from 'aws-cdk-lib';
 import { Match } from 'aws-cdk-lib/assertions';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as eks from 'aws-cdk-lib/aws-eks-v2';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { ContainerAndRepo } from '../../../src/cdk/lib/constructs/container-and-repo';

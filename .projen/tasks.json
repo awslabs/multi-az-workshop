@@ -399,49 +399,6 @@
         }
       ]
     },
-    "deploy:eks-v2-test": {
-      "name": "deploy:eks-v2-test",
-      "description": "Deploy the EKS Cluster V2 test stack to AWS via CloudFormation",
-      "env": {
-        "EKS_TEST_STACK_NAME": "EKSClusterV2TestStack",
-        "EKS_TEST_PROFILE": "multi-az-workshop",
-        "EKS_TEST_REGION": "us-east-2",
-        "EKS_TEST_BUCKET": "multi-az-workshop-us-east-2-386526219917",
-        "EKS_TEST_ROLE": "CloudFormationDeploymentRole"
-      },
-      "steps": [
-        {
-          "say": "Synthesizing EKS V2 test stack..."
-        },
-        {
-          "exec": "CDK_OUTDIR=cdk.out.test npx ts-node -P tsconfig.dev.json src/cdk/eks-cluster-v2-test-stack.ts"
-        },
-        {
-          "say": "Packaging assets..."
-        },
-        {
-          "exec": "chmod +x build/package-test.py && build/package-test.py $EKS_TEST_STACK_NAME ."
-        },
-        {
-          "say": "Setting deployment timestamp..."
-        },
-        {
-          "exec": "date -u +\"%Y-%m-%dT%H-%M-%SZ\" > cdk.out.test/assets_prefix.txt"
-        },
-        {
-          "say": "Uploading assets to S3..."
-        },
-        {
-          "exec": "aws s3 cp cdk.out.test/packaged s3://$EKS_TEST_BUCKET/$(cat cdk.out.test/assets_prefix.txt)/ --recursive --profile $EKS_TEST_PROFILE --region $EKS_TEST_REGION"
-        },
-        {
-          "say": "Deploying CloudFormation stack..."
-        },
-        {
-          "exec": "ASSETS_PREFIX=$(cat cdk.out.test/assets_prefix.txt)\n\n        set +e\n        aws cloudformation describe-stacks --stack-name $EKS_TEST_STACK_NAME --profile $EKS_TEST_PROFILE --region $EKS_TEST_REGION >/dev/null 2>&1\n        EXITCODE=$?\n        set -e\n\n        TEMPLATE_URL=\"https://$EKS_TEST_BUCKET.s3.$EKS_TEST_REGION.amazonaws.com/$ASSETS_PREFIX/$EKS_TEST_STACK_NAME.json\"\n\n        if [ $EXITCODE -eq 0 ]; then\n          echo \"Stack exists - creating update changeset...\"\n          CHANGE_SET_TYPE=\"UPDATE\"\n          WAIT_CONDITION=\"update\"\n        else\n          echo \"Stack does not exist - creating...\"\n          CHANGE_SET_TYPE=\"CREATE\"\n          WAIT_CONDITION=\"create\"\n        fi\n\n        aws cloudformation create-change-set \\\n          --change-set-type $CHANGE_SET_TYPE \\\n          --stack-name $EKS_TEST_STACK_NAME \\\n          --change-set-name $EKS_TEST_STACK_NAME-$ASSETS_PREFIX \\\n          --template-url $TEMPLATE_URL \\\n          --parameters \\\n            ParameterKey=AssetsBucketName,ParameterValue=$EKS_TEST_BUCKET \\\n            ParameterKey=AssetsBucketPrefix,ParameterValue=\"$ASSETS_PREFIX/\" \\\n          --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \\\n          --role-arn arn:aws:iam::$(aws sts get-caller-identity --profile $EKS_TEST_PROFILE --query Account --output text):role/$EKS_TEST_ROLE \\\n          --profile $EKS_TEST_PROFILE \\\n          --region $EKS_TEST_REGION\n\n        echo \"Waiting for change set to be created...\"\n        aws cloudformation wait change-set-create-complete \\\n          --stack-name $EKS_TEST_STACK_NAME \\\n          --change-set-name $EKS_TEST_STACK_NAME-$ASSETS_PREFIX \\\n          --profile $EKS_TEST_PROFILE \\\n          --region $EKS_TEST_REGION\n\n        echo \"Executing change set...\"\n        aws cloudformation execute-change-set \\\n          --stack-name $EKS_TEST_STACK_NAME \\\n          --change-set-name $EKS_TEST_STACK_NAME-$ASSETS_PREFIX \\\n          --profile $EKS_TEST_PROFILE \\\n          --region $EKS_TEST_REGION\n\n        echo \"Waiting for stack $WAIT_CONDITION to complete...\"\n        if ! aws cloudformation wait stack-$WAIT_CONDITION-complete \\\n          --stack-name $EKS_TEST_STACK_NAME \\\n          --profile $EKS_TEST_PROFILE \\\n          --region $EKS_TEST_REGION; then\n          echo \"Stack deployment failed\"\n          exit 1\n        fi\n\n        echo \"Deployment complete!\""
-        }
-      ]
-    },
     "deploy:workshop": {
       "name": "deploy:workshop",
       "description": "Deploy workshop to AWS using CloudFormation (requires BUCKET and AWS_REGION env vars)",
@@ -497,20 +454,6 @@
         {
           "exec": "cdk destroy",
           "receiveArgs": true
-        }
-      ]
-    },
-    "destroy:eks-v2-test": {
-      "name": "destroy:eks-v2-test",
-      "description": "Destroy the EKS Cluster V2 test stack",
-      "env": {
-        "EKS_TEST_STACK_NAME": "EKSClusterV2TestStack",
-        "EKS_TEST_PROFILE": "multi-az-workshop",
-        "EKS_TEST_REGION": "us-east-2"
-      },
-      "steps": [
-        {
-          "exec": "echo \"Deleting stack $EKS_TEST_STACK_NAME...\"\n        aws cloudformation delete-stack --stack-name $EKS_TEST_STACK_NAME --profile $EKS_TEST_PROFILE --region $EKS_TEST_REGION\n        aws cloudformation wait stack-delete-complete --stack-name $EKS_TEST_STACK_NAME --profile $EKS_TEST_PROFILE --region $EKS_TEST_REGION\n        echo \"Stack deleted.\""
         }
       ]
     },
@@ -722,15 +665,6 @@
         }
       ]
     },
-    "synth:eks-v2-test": {
-      "name": "synth:eks-v2-test",
-      "description": "Synthesize the EKS Cluster V2 test stack",
-      "steps": [
-        {
-          "exec": "CDK_OUTDIR=cdk.out.test npx ts-node -P tsconfig.dev.json src/cdk/eks-cluster-v2-test-stack.ts"
-        }
-      ]
-    },
     "synth:silent": {
       "name": "synth:silent",
       "description": "Synthesizes your cdk app into cdk.out and suppresses the template in stdout (part of \"yarn build\")",
@@ -829,7 +763,7 @@
           "exec": "yarn install --no-immutable"
         },
         {
-          "exec": "yarn up @aws-cdk/aws-eks-v2-alpha @aws-cdk/lambda-layer-kubectl-v35 @cdklabs/multi-az-observability @stylistic/eslint-plugin @types/jest @types/node @typescript-eslint/eslint-plugin @typescript-eslint/parser aws-cdk commit-and-tag-version esbuild eslint-import-resolver-typescript eslint-plugin-import eslint fast-check jest jest-junit projen ts-jest ts-node typescript aws-cdk-lib constructs"
+          "exec": "yarn up @aws-cdk/lambda-layer-kubectl-v35 @cdklabs/multi-az-observability @stylistic/eslint-plugin @types/jest @types/node @typescript-eslint/eslint-plugin @typescript-eslint/parser aws-cdk commit-and-tag-version esbuild eslint-import-resolver-typescript eslint-plugin-import eslint fast-check jest jest-junit projen ts-jest ts-node typescript aws-cdk-lib constructs"
         },
         {
           "exec": "npx projen"

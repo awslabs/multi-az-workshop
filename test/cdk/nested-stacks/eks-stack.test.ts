@@ -2,7 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import { App, Stack } from 'aws-cdk-lib';
 import { Template, Match } from 'aws-cdk-lib/assertions';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as eks from 'aws-cdk-lib/aws-eks';
+import * as eks from 'aws-cdk-lib/aws-eks-v2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import { IPAddressType } from '../../../src/cdk/lib/constructs/ip-address-type';

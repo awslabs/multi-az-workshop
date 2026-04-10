@@ -30,10 +30,8 @@
     "compile": "npx projen compile",
     "default": "npx projen default",
     "deploy": "npx projen deploy",
-    "deploy:eks-v2-test": "npx projen deploy:eks-v2-test",
     "deploy:workshop": "npx projen deploy:workshop",
     "destroy": "npx projen destroy",
-    "destroy:eks-v2-test": "npx projen destroy:eks-v2-test",
     "diff": "npx projen diff",
     "eject": "npx projen eject",
     "eslint": "npx projen eslint",
@@ -46,7 +44,6 @@
     "publish:upload-assets": "npx projen publish:upload-assets",
     "release": "npx projen release",
     "synth": "npx projen synth",
-    "synth:eks-v2-test": "npx projen synth:eks-v2-test",
     "synth:silent": "npx projen synth:silent",
     "test": "npx projen test",
     "test:app:integration": "npx projen test:app:integration",
@@ -63,7 +60,6 @@
     "organization": false
   },
   "devDependencies": {
-    "@aws-cdk/aws-eks-v2-alpha": "2.240.0-alpha.0",
     "@aws-cdk/lambda-layer-kubectl-v35": "^2.0.0",
     "@cdklabs/multi-az-observability": "0.0.1-alpha.60",
     "@stylistic/eslint-plugin": "^2",

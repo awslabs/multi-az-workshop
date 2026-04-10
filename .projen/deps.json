@@ -1,11 +1,6 @@
 {
   "dependencies": [
     {
-      "name": "@aws-cdk/aws-eks-v2-alpha",
-      "version": "2.240.0-alpha.0",
-      "type": "build"
-    },
-    {
       "name": "@aws-cdk/lambda-layer-kubectl-v35",
       "version": "^2.0.0",
       "type": "build"
