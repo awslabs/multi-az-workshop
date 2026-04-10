@@ -159,6 +159,14 @@ export class EKSCluster extends Construct {
     });
 
     cluster.node.addDependency(clusterLogGroup);
+    cluster.clusterSecurityGroup.addIngressRule(
+      ec2.Peer.securityGroupId(workerSecurityGroup.securityGroupId),
+      ec2.Port.tcp(443),
+    );
+    cluster.clusterSecurityGroup.addIngressRule(
+      ec2.Peer.securityGroupId(cluster.clusterSecurityGroup.securityGroupId),
+      ec2.Port.tcp(443),
+    );
 
     // Create SSM parameter for cluster name
     new ssm.StringParameter(this, 'ClusterParameter', {
