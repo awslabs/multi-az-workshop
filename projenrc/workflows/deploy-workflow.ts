@@ -135,12 +135,8 @@ export function createDeployWorkflow(github: GitHub): void {
         },
       },
       {
-        name: 'Enable Corepack',
-        run: 'corepack enable',
-      },
-      {
         name: 'Install dependencies',
-        run: 'yarn install --check-files --frozen-lockfile',
+        run: 'yarn install --immutable',
       },
       {
         name: 'Build workshop content',
@@ -193,12 +189,8 @@ export function createDeployWorkflow(github: GitHub): void {
         },
       },
       {
-        name: 'Enable Corepack',
-        run: 'corepack enable',
-      },
-      {
         name: 'Install dependencies',
-        run: 'yarn install --check-files --frozen-lockfile',
+        run: 'yarn install --immutable',
       },
       {
         name: 'Download content artifact',

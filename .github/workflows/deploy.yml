@@ -82,10 +82,8 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "9.0"
-      - name: Enable Corepack
-        run: corepack enable
       - name: Install dependencies
-        run: yarn install --check-files --frozen-lockfile
+        run: yarn install --immutable
       - name: Build workshop content
         run: npx projen build
       - name: Upload content artifact
@@ -121,10 +119,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: Enable Corepack
-        run: corepack enable
       - name: Install dependencies
-        run: yarn install --check-files --frozen-lockfile
+        run: yarn install --immutable
       - name: Download content artifact
         uses: actions/download-artifact@v4
         with:
