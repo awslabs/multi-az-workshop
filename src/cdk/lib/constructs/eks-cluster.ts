@@ -196,7 +196,7 @@ export class EKSCluster extends Construct {
     lt.addSecurityGroup(cluster.clusterSecurityGroup);
 
     // Create managed node group
-    cluster.addNodegroupCapacity('ManagedNodeGroup', {
+    /*cluster.addNodegroupCapacity('ManagedNodeGroup', {
       amiType:
         props.cpuArch === InstanceArchitecture.ARM_64
           ? eks.NodegroupAmiType.AL2023_ARM_64_STANDARD
@@ -216,7 +216,7 @@ export class EKSCluster extends Construct {
         id: lt.launchTemplateId!,
         version: lt.latestVersionNumber,
       },
-    });
+    });*/
 
     // Add EKS Pod Identity Agent addon
     new eks.Addon(this, 'PodIdentityAgentAddOn', {
