@@ -4,10 +4,9 @@
 import { KubectlV35Layer as KubectlLayer } from '@aws-cdk/lambda-layer-kubectl-v35';
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as eks from 'aws-cdk-lib/aws-eks';
+import * as eks from 'aws-cdk-lib/aws-eks-v2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
-import * as rds from 'aws-cdk-lib/aws-rds';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
@@ -27,11 +26,6 @@ export interface EKSClusterProps {
    * VPC to deploy the cluster in
    */
   readonly vpc: ec2.IVpc;
-
-  /**
-   * Database cluster for the application
-   */
-  readonly databaseCluster: rds.IDatabaseCluster;
 
   /**
    * CPU architecture for the worker nodes
@@ -68,44 +62,19 @@ export class EKSCluster extends Construct {
    */
   public readonly cluster: eks.ICluster;
 
-  /**
-   * The managed node group
-   */
-  public readonly nodegroup: eks.Nodegroup;
-
   constructor(scope: Construct, id: string, props: EKSClusterProps) {
     super(scope, id);
 
-    // Create security group for control plane
-    const controlPlaneSG = new ec2.SecurityGroup(this, 'EKSClusterControlPlaneSecurityGroup', {
-      description: 'Allow inbound access from this Security Group',
-      vpc: props.vpc,
+    //Worker node security group
+    const workerSecurityGroup: ec2.ISecurityGroup = new ec2.SecurityGroup(this, "WorkerNodeSecurityGroup", {
+        description: "Allows inbound access from the load balancer",
+        vpc: props.vpc
     });
 
-    controlPlaneSG.addIngressRule(controlPlaneSG, ec2.Port.allUdp());
-    controlPlaneSG.addIngressRule(controlPlaneSG, ec2.Port.allTcp());
-    controlPlaneSG.addIngressRule(controlPlaneSG, ec2.Port.allIcmp());
-
-    // Create log group for cluster logs
-    const clusterLogGroup = new logs.LogGroup(this, 'cluster-log-group', {
-      logGroupName: `/aws/eks/${props.clusterName}/cluster`,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      retention: logs.RetentionDays.ONE_WEEK,
-    });
-
-    // Create launch template for node group
-    const lt = new ec2.LaunchTemplate(this, 'NodeGroupLaunchTemplate', {
-      httpPutResponseHopLimit: 2,
-      httpTokens: ec2.LaunchTemplateHttpTokens.REQUIRED,
-      blockDevices: [
-        {
-          deviceName: '/dev/xvda',
-          volume: ec2.BlockDeviceVolume.ebs(20, {
-            encrypted: true,
-          }),
-        },
-      ],
-    });
+    workerSecurityGroup.addIngressRule(
+      ec2.Peer.securityGroupId(props.loadBalancerSecurityGroup.securityGroupId),
+      ec2.Port.tcp(5000)
+    );
 
     // Create IAM role for EKS worker nodes
     const eksWorkerRole = new iam.Role(this, 'EKSWorkerRole', {
@@ -118,7 +87,9 @@ export class EKSCluster extends Construct {
     eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEC2ContainerRegistryReadOnly'));
     eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKS_CNI_Policy'));
     eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchAgentServerPolicy'));
+    eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AWSSecretsManagerClientReadOnlyAccess'));
 
+    // Allow support for IPv6 if needed
     eksWorkerRole.addManagedPolicy(
       new iam.ManagedPolicy(this, 'EKSWorkerCNIIPv6ManagedPolicy', {
         statements: [
@@ -131,6 +102,7 @@ export class EKSCluster extends Construct {
       }),
     );
 
+    // Allow the worker nodes to pull down the istio destination rules file from S3
     eksWorkerRole.addManagedPolicy(
       new iam.ManagedPolicy(this, 'EKSWorkerS3ManagedPolicy', {
         statements: [
@@ -143,6 +115,7 @@ export class EKSCluster extends Construct {
       }),
     );
 
+    // Get parameters used in the workshop, i.e. cluster name and s3 bucket
     eksWorkerRole.addManagedPolicy(
       new iam.ManagedPolicy(this, 'EKSWorkerSSMManagedPolicy', {
         statements: [
@@ -155,193 +128,45 @@ export class EKSCluster extends Construct {
       }),
     );
 
-    // Create EKS cluster
+    // Create log group for cluster logs
+    const clusterLogGroup = new logs.LogGroup(this, 'cluster-log-group', {
+      logGroupName: `/aws/eks/${props.clusterName}/cluster`,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      retention: logs.RetentionDays.ONE_WEEK,
+    });
+
     const cluster = new eks.Cluster(this, 'EKSCluster', {
-      vpc: props.vpc,
-      vpcSubnets: [{ subnetType: ec2.SubnetType.PRIVATE_ISOLATED }],
-      defaultCapacity: 0,
-      version: props.version,
-      placeClusterHandlerInVpc: true,
-      endpointAccess: eks.EndpointAccess.PRIVATE,
-      kubectlLayer: new KubectlLayer(this, 'KubectlLayer'),
-      securityGroup: controlPlaneSG,
-      mastersRole: props.adminRole,
-      clusterName: props.clusterName,
-      clusterLogging: [
-        eks.ClusterLoggingTypes.CONTROLLER_MANAGER,
-        eks.ClusterLoggingTypes.AUTHENTICATOR,
-        eks.ClusterLoggingTypes.API,
-        eks.ClusterLoggingTypes.AUDIT,
-        eks.ClusterLoggingTypes.SCHEDULER,
-      ],
+        vpc: props.vpc,
+        vpcSubnets: [{ subnetType: ec2.SubnetType.PRIVATE_ISOLATED }],
+        endpointAccess: eks.EndpointAccess.PRIVATE,
+        version: props.version,
+        defaultCapacity: 0,
+        defaultCapacityType: eks.DefaultCapacityType.NODEGROUP,
+        clusterName: props.clusterName,
+
+        kubectlProviderOptions: {
+            kubectlLayer: new KubectlLayer(this, "KubectlLayer"),
+            privateSubnets: props.vpc.selectSubnets({ subnetType: ec2.SubnetType.PRIVATE_ISOLATED }).subnets,
+        },
+
+        clusterLogging: [
+          eks.ClusterLoggingTypes.CONTROLLER_MANAGER,
+          eks.ClusterLoggingTypes.AUTHENTICATOR,
+          eks.ClusterLoggingTypes.API,
+          eks.ClusterLoggingTypes.AUDIT,
+          eks.ClusterLoggingTypes.SCHEDULER,
+        ],
     });
 
     cluster.node.addDependency(clusterLogGroup);
-
-    // Add ingress rules to cluster security group
     cluster.clusterSecurityGroup.addIngressRule(
-      ec2.Peer.securityGroupId(props.loadBalancerSecurityGroup.securityGroupId),
-      ec2.Port.tcp(80),
-    );
-    cluster.clusterSecurityGroup.addIngressRule(
-      ec2.Peer.securityGroupId(props.loadBalancerSecurityGroup.securityGroupId),
-      ec2.Port.tcp(5000),
+      ec2.Peer.securityGroupId(workerSecurityGroup.securityGroupId),
+      ec2.Port.tcp(443),
     );
     cluster.clusterSecurityGroup.addIngressRule(
       ec2.Peer.securityGroupId(cluster.clusterSecurityGroup.securityGroupId),
-      ec2.Port.tcp(80),
+      ec2.Port.tcp(443),
     );
-    cluster.clusterSecurityGroup.addIngressRule(
-      ec2.Peer.securityGroupId(cluster.clusterSecurityGroup.securityGroupId),
-      ec2.Port.tcp(5000),
-    );
-
-    // Add EKS Pod Identity Agent addon
-    new eks.CfnAddon(this, 'PodIdentityAgentAddOn', {
-      addonName: 'eks-pod-identity-agent',
-      clusterName: cluster.clusterName,
-    });
-
-    // Create RBAC roles and bindings
-    const logRoleManifest = cluster.addManifest('LogsRole', {
-      apiVersion: 'rbac.authorization.k8s.io/v1',
-      kind: 'ClusterRole',
-      metadata: {
-        name: 'log-viewer',
-      },
-      rules: [
-        {
-          apiGroups: [''],
-          resources: ['pods', 'pods/log', 'pods/exec'],
-          verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
-        },
-        {
-          apiGroups: ['apps'],
-          resources: ['deployments'],
-          verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
-        },
-      ],
-    });
-
-    const logRoleResource = logRoleManifest.node.findChild('Resource') as cdk.CustomResource;
-    (logRoleResource.node.defaultChild as cdk.CfnResource).addPropertyOverride('ServiceTimeout', '300');
-
-    const podDeleterManifest = cluster.addManifest('PodDeleterRole', {
-      apiVersion: 'rbac.authorization.k8s.io/v1',
-      kind: 'ClusterRole',
-      metadata: {
-        name: 'pod-deleter',
-      },
-      rules: [
-        {
-          apiGroups: [''],
-          resources: ['pods'],
-          verbs: ['get', 'list', 'delete'],
-        },
-      ],
-    });
-
-    const podDeleterResource = podDeleterManifest.node.findChild('Resource') as cdk.CustomResource;
-    (podDeleterResource.node.defaultChild as cdk.CfnResource).addPropertyOverride('ServiceTimeout', '300');
-
-    const networkingRoleManifest = cluster.addManifest('NetworkingRole', {
-      apiVersion: 'rbac.authorization.k8s.io/v1',
-      kind: 'ClusterRole',
-      metadata: {
-        name: 'networking-manager',
-      },
-      rules: [
-        {
-          apiGroups: ['networking.istio.io'],
-          resources: ['destinationrules'],
-          verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
-        },
-      ],
-    });
-
-    const networkingRoleResource = networkingRoleManifest.node.findChild('Resource') as cdk.CustomResource;
-    (networkingRoleResource.node.defaultChild as cdk.CfnResource).addPropertyOverride('ServiceTimeout', '300');
-
-    const logRoleBindingManifest = cluster.addManifest('LogsRoleBinding', {
-      apiVersion: 'rbac.authorization.k8s.io/v1',
-      kind: 'ClusterRoleBinding',
-      metadata: {
-        name: 'log-viewer-global',
-        namespace: 'kube-system',
-      },
-      roleRef: {
-        apiGroup: 'rbac.authorization.k8s.io',
-        kind: 'ClusterRole',
-        name: 'log-viewer',
-      },
-      subjects: [
-        {
-          kind: 'Group',
-          name: 'system:authenticated',
-          apiGroup: 'rbac.authorization.k8s.io',
-        },
-      ],
-    });
-
-    logRoleBindingManifest.node.addDependency(logRoleManifest);
-    const logRoleBindingResource = logRoleBindingManifest.node.findChild('Resource') as cdk.CustomResource;
-    (logRoleBindingResource.node.defaultChild as cdk.CfnResource).addPropertyOverride('ServiceTimeout', '300');
-
-    const networkingRoleBindingManifest = cluster.addManifest('NetworkingRoleBinding', {
-      apiVersion: 'rbac.authorization.k8s.io/v1',
-      kind: 'ClusterRoleBinding',
-      metadata: {
-        name: 'networking-manager-global',
-        namespace: 'multi-az-workshop',
-      },
-      roleRef: {
-        apiGroup: 'rbac.authorization.k8s.io',
-        kind: 'ClusterRole',
-        name: 'networking-manager',
-      },
-      subjects: [
-        {
-          kind: 'Group',
-          name: 'system:authenticated',
-          apiGroup: 'rbac.authorization.k8s.io',
-        },
-      ],
-    });
-
-    networkingRoleBindingManifest.node.addDependency(networkingRoleManifest);
-    const networkingRoleBindingResource = networkingRoleBindingManifest.node.findChild('Resource') as cdk.CustomResource;
-    (networkingRoleBindingResource.node.defaultChild as cdk.CfnResource).addPropertyOverride('ServiceTimeout', '300');
-
-    const podDeleterRoleBindingManifest = cluster.addManifest('PodDeleterRoleBinding', {
-      apiVersion: 'rbac.authorization.k8s.io/v1',
-      kind: 'ClusterRoleBinding',
-      metadata: {
-        name: 'pod-deleter-global',
-        namespace: 'multi-az-workshop',
-      },
-      roleRef: {
-        apiGroup: 'rbac.authorization.k8s.io',
-        kind: 'ClusterRole',
-        name: 'pod-deleter',
-      },
-      subjects: [
-        {
-          kind: 'Group',
-          name: 'system:authenticated',
-          apiGroup: 'rbac.authorization.k8s.io',
-        },
-      ],
-    });
-
-    podDeleterRoleBindingManifest.node.addDependency(podDeleterManifest);
-    const podDeleterRoleBindingResource = podDeleterRoleBindingManifest.node.findChild('Resource') as cdk.CustomResource;
-    (podDeleterRoleBindingResource.node.defaultChild as cdk.CfnResource).addPropertyOverride('ServiceTimeout', '300');
-
-    // Add role mapping for worker nodes
-    cluster.awsAuth.addRoleMapping(eksWorkerRole, {
-      groups: ['system:masters', 'system:bootstrappers', 'system:nodes', 'log-viewer-global', 'pod-deleter'],
-      username: 'system:node:{{EC2PrivateDNSName}}',
-    });
 
     // Create SSM parameter for cluster name
     new ssm.StringParameter(this, 'ClusterParameter', {
@@ -349,14 +174,35 @@ export class EKSCluster extends Construct {
       stringValue: cluster.clusterName,
     });
 
+    // Create launch template for node group so that we can specify
+    // IMDSv2 settings directly and specify disk encryption
+    const lt = new ec2.LaunchTemplate(this, 'NodeGroupLaunchTemplate', {
+      httpPutResponseHopLimit: 2,
+      httpTokens: ec2.LaunchTemplateHttpTokens.REQUIRED,
+      securityGroup: workerSecurityGroup,
+      blockDevices: [
+        {
+          deviceName: '/dev/xvda',
+          volume: ec2.BlockDeviceVolume.ebs(20, {
+            encrypted: true,
+          }),
+        },
+      ],
+    });
+
+    // When the security group is specified in the launch template,
+    // EKS doesn't automatically add the cluster security group to
+    // the instance
+    lt.addSecurityGroup(cluster.clusterSecurityGroup);
+
     // Create managed node group
-    this.nodegroup = cluster.addNodegroupCapacity('ManagedNodeGroup', {
+    /*cluster.addNodegroupCapacity('ManagedNodeGroup', {
       amiType:
         props.cpuArch === InstanceArchitecture.ARM_64
           ? eks.NodegroupAmiType.AL2023_ARM_64_STANDARD
           : eks.NodegroupAmiType.AL2023_X86_64_STANDARD,
       capacityType: eks.CapacityType.ON_DEMAND,
-      enableNodeAutoRepair: true,
+      enableNodeAutoRepair: true,   
       minSize: 3,
       maxSize: 3,
       instanceTypes: [
@@ -370,7 +216,39 @@ export class EKSCluster extends Construct {
         id: lt.launchTemplateId!,
         version: lt.latestVersionNumber,
       },
+    });*/
+
+    // Add EKS Pod Identity Agent addon
+    new eks.Addon(this, 'PodIdentityAgentAddOn', {
+      cluster,
+      addonName: 'eks-pod-identity-agent',
     });
+
+    cluster.grantAccess(
+      "ParticipantRoleReadOnlyAccess", 
+      props.adminRole.roleArn, 
+      [
+        eks.AccessPolicy.fromAccessPolicyName('AmazonEKSViewPolicy', {
+          accessScopeType: eks.AccessScopeType.CLUSTER
+        }),
+      ], 
+      { 
+        accessEntryType: eks.AccessEntryType.STANDARD 
+      }
+    );
+
+    cluster.grantAccess(
+      "WorkerNodeRoleAdminAccessEntry",
+      eksWorkerRole.roleArn,
+      [
+        eks.AccessPolicy.fromAccessPolicyName('AmazonEKSEditPolicy', {
+          accessScopeType: eks.AccessScopeType.CLUSTER
+        }),
+      ],
+      {
+        accessEntryType: eks.AccessEntryType.STANDARD
+      }
+    );
 
     this.cluster = cluster;
   }

@@ -1,5 +1,6 @@
+import { javascript } from 'projen';
 import { AwsCdkTypeScriptApp } from 'projen/lib/awscdk';
-import { UpgradeDependenciesSchedule } from 'projen/lib/javascript';
+import { NodePackageManager, UpgradeDependenciesSchedule } from 'projen/lib/javascript';
 import { createBuildTasks, createDeployTasks, createPublishTasks } from './projenrc/tasks/';
 import { createDeployWorkflow, createAutoApproveWorkflow, createPublishWorkflow, customizeReleaseWorkflow } from './projenrc/workflows';
 
@@ -9,11 +10,17 @@ const project = new AwsCdkTypeScriptApp({
   description: 'The multi-AZ resilience patterns workshop',
   defaultReleaseBranch: 'main',
   projenrcTs: true,
-  cdkVersion: '2.244.0',
+  cdkVersion: '2.248.0',
   cdkVersionPinning: true,
   constructsVersion: '10.5.0',
   appEntrypoint: 'cdk/multi-az-workshop.ts',
   srcdir: 'src',
+  packageManager: NodePackageManager.YARN_BERRY,
+  yarnBerryOptions: {
+    yarnRcOptions: {
+      nodeLinker: javascript.YarnNodeLinker.NODE_MODULES,
+    },
+  },
 
   // TypeScript compiler options
   tsconfig: {

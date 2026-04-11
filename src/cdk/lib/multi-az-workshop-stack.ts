@@ -221,7 +221,7 @@ export class MultiAZWorkshopStack extends cdk.Stack {
     // Create target groups array
     const targetGroups: elbv2.IApplicationTargetGroup[] = [
       this.ec2Stack.targetGroup,
-      this.eksStack.eksAppTargetGroup,
+      ...(this.eksStack?.eksAppTargetGroup ? [this.eksStack.eksAppTargetGroup] : []),
     ];
 
     // Create Enhanced Application Load Balancer
@@ -359,7 +359,7 @@ export class MultiAZWorkshopStack extends cdk.Stack {
     listener.node.addDependency(mazNestedStack);
 
     // Create EKS routing rules for /home and /signin paths
-    if (this.eksStack) {
+    if (this.eksStack && this.eksStack.eksAppTargetGroup) {
       new elbv2.ApplicationListenerRule(this, 'eks-alb-routes', {
         action: elbv2.ListenerAction.forward([this.eksStack.eksAppTargetGroup]),
         conditions: [elbv2.ListenerCondition.pathPatterns(['/home', '/signin'])],

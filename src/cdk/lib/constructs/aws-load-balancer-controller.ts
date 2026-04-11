@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as cdk from 'aws-cdk-lib';
-import * as eks from 'aws-cdk-lib/aws-eks';
+import * as eks_legacy from 'aws-cdk-lib/aws-eks';
+import * as eks from 'aws-cdk-lib/aws-eks-v2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct, IDependable } from 'constructs';
 import { ContainerAndRepo, RepoAndHelmChartProps, RepoAndContainerProps } from './container-and-repo';
@@ -74,7 +75,7 @@ export class AwsLoadBalancerController extends HelmRepoAndChartConstruct {
     );
 
     // Create pod identity association
-    const loadBalancerControllerPodIdentityAssociation = new eks.CfnPodIdentityAssociation(
+    const loadBalancerControllerPodIdentityAssociation = new eks_legacy.CfnPodIdentityAssociation(
       this,
       'AwsLoadBalancerControllerPodIdentityAssociation',
       {

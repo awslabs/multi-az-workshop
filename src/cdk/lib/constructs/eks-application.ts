@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as cdk from 'aws-cdk-lib';
-import * as eks from 'aws-cdk-lib/aws-eks';
+import * as eks_legacy from 'aws-cdk-lib/aws-eks';
+import * as eks from 'aws-cdk-lib/aws-eks-v2';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as rds from 'aws-cdk-lib/aws-rds';
@@ -174,7 +175,7 @@ export class EKSApplication extends Construct {
     appServiceAccount.node.addDependency(appNamespace);
 
     // Create pod identity association
-    const podIdentity = new eks.CfnPodIdentityAssociation(this, 'PodIdentityAssociation', {
+    const podIdentity = new eks_legacy.CfnPodIdentityAssociation(this, 'PodIdentityAssociation', {
       clusterName: props.cluster.clusterName,
       namespace: props.namespace,
       serviceAccount: sa,

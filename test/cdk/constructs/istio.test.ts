@@ -37,7 +37,7 @@ describe('Istio', () => {
       vpc: sharedVpc,
       version: eks.KubernetesVersion.of('1.35'),
       defaultCapacity: 0,
-      kubectlLayer: new KubectlV35Layer(sharedStack, 'KubectlLayer'),
+      kubectlProviderOptions: { kubectlLayer: new KubectlV35Layer(sharedStack, 'KubectlLayer') },
     });
 
     // Create assets bucket
@@ -244,7 +244,7 @@ describe('Istio', () => {
         vpc,
         version: eks.KubernetesVersion.of('1.35'),
         defaultCapacity: 0,
-        kubectlLayer: new KubectlV35Layer(stack, 'KubectlLayer'),
+        kubectlProviderOptions: { kubectlLayer: new KubectlV35Layer(stack, 'KubectlLayer') },
       });
       const assetsBucket = new s3.Bucket(stack, 'AssetsBucket', {
         removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -339,7 +339,7 @@ describe('Istio', () => {
           vpc,
           version: eks.KubernetesVersion.of('1.35'),
           defaultCapacity: 0,
-          kubectlLayer: new KubectlV35Layer(customVersionStack, 'KubectlLayer'),
+          kubectlProviderOptions: { kubectlLayer: new KubectlV35Layer(customVersionStack, 'KubectlLayer') },
         });
         const assetsBucket = new s3.Bucket(customVersionStack, 'AssetsBucket', {
           removalPolicy: cdk.RemovalPolicy.DESTROY,

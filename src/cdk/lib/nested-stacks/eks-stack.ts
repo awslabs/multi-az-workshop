@@ -97,18 +97,18 @@ export class EKSStack extends NestedStackWithSource {
     const cluster = new EKSCluster(this, 'Cluster', {
       adminRole,
       cpuArch,
-      databaseCluster: props.database,
       vpc: props.vpc,
       loadBalancerSecurityGroup: props.loadBalancerSecurityGroup,
-      clusterName: 'multi-az-workshop-eks-cluster',
+      clusterName: 'multi-az-workshop-eks-cluster-v2',
       version: props.eksVersion,
     });
+    cluster;
 
     // Fix up nested stacks for kubectl and cluster resource providers
     this.fixUpNestedStacks();
 
     // Install Istio service mesh
-    const istio = new Istio(this, 'Istio', {
+    /*const istio = new Istio(this, 'Istio', {
       cluster: cluster.cluster,
       containerAndRepoBuilder: repoHelmContainerCreator,
       version: props.istioVersion
@@ -132,7 +132,7 @@ export class EKSStack extends NestedStackWithSource {
     app.node.addDependency(istio);
     app.node.addDependency(lbController.waitableNode);
 
-    this.eksAppTargetGroup = app.appTargetGroup;
+    this.eksAppTargetGroup = app.appTargetGroup;*/
   }
 
   /**
