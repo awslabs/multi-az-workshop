@@ -140,10 +140,13 @@ export class EKSCluster extends Construct {
           vpc: props.vpc,
           allowAllOutbound: true,
     });
-    eksControlPlaneSG.addIngressRule(
-      ec2.Peer.securityGroupId(eksControlPlaneSG.securityGroupId), 
-      ec2.Port.allTcp()
-    );
+
+    new ec2.CfnSecurityGroupIngress(this, "EKSControlPlaneIngressRule", {
+      ipProtocol: ec2.Protocol.TCP,
+      sourceSecurityGroupId: eksControlPlaneSG.securityGroupId,
+      fromPort: 443,
+      toPort: 443
+    });
 
     const cluster = new eks.Cluster(this, 'EKSCluster', {
         vpc: props.vpc,
