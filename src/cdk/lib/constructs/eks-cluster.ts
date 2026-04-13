@@ -257,7 +257,7 @@ export class EKSCluster extends Construct {
       }
     );
 
-    cluster.grantAccess(
+    /*cluster.grantAccess(
       "WorkerNodeRoleAdminAccessEntry",
       eksWorkerRole.roleArn,
       [
@@ -268,28 +268,7 @@ export class EKSCluster extends Construct {
       {
         accessEntryType: eks.AccessEntryType.STANDARD
       }
-    );
-
-    new eks.AccessEntry(this, "WorkerNodeRoleSystemNodeEntry", {
-      cluster: cluster,
-      principal: eksWorkerRole.roleArn,
-      accessEntryType: eks.AccessEntryType.EC2_LINUX,
-      accessPolicies: [
-      ],
-    });
-
-    cluster.grantAccess(
-      "WorkerNodeRoleSystemNodeEntry",
-      eksWorkerRole.roleArn,
-      [
-        eks.AccessPolicy.fromAccessPolicyName('AmazonEKSEditPolicy', {
-          accessScopeType: eks.AccessScopeType.CLUSTER
-        }),
-      ],
-      {
-        accessEntryType: eks.AccessEntryType.STANDARD
-      }
-    );
+    );*/
 
     this.cluster = cluster;
   }
