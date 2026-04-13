@@ -135,6 +135,16 @@ export class EKSCluster extends Construct {
       retention: logs.RetentionDays.ONE_WEEK,
     });
 
+    const eksControlPlaneSG = new ec2.SecurityGroup(this, "EKSControlPlaneSecurityGroup", {
+          description: "Allows EKS control plane communication",
+          vpc: props.vpc,
+          allowAllOutbound: true,
+    });
+    eksControlPlaneSG.addIngressRule(
+      ec2.Peer.securityGroupId(eksControlPlaneSG.securityGroupId), 
+      ec2.Port.allTcp()
+    );
+
     const cluster = new eks.Cluster(this, 'EKSCluster', {
         vpc: props.vpc,
         vpcSubnets: [{ subnetType: ec2.SubnetType.PRIVATE_ISOLATED }],
@@ -149,6 +159,8 @@ export class EKSCluster extends Construct {
             privateSubnets: props.vpc.selectSubnets({ subnetType: ec2.SubnetType.PRIVATE_ISOLATED }).subnets,
         },
 
+        securityGroup: eksControlPlaneSG,
+
         clusterLogging: [
           eks.ClusterLoggingTypes.CONTROLLER_MANAGER,
           eks.ClusterLoggingTypes.AUTHENTICATOR,
@@ -159,14 +171,6 @@ export class EKSCluster extends Construct {
     });
 
     cluster.node.addDependency(clusterLogGroup);
-
-    // This is the security group that is associated with the EKS control 
-    // plane ENIs and is also used for the Lambda kubectl function
-    // not sure if this gets associated with worker nodes or not
-    cluster.clusterSecurityGroup.addIngressRule(
-      ec2.Peer.ipv4("192.168.100.100/32"),
-      ec2.Port.tcp(1000)
-    );
 
     /*cluster.clusterSecurityGroup.addIngressRule(
       ec2.Peer.securityGroupId(workerSecurityGroup.securityGroupId),
@@ -200,10 +204,13 @@ export class EKSCluster extends Construct {
       ],
     });
 
+    // This is the security group that is associated with the EKS control 
+    // plane ENIs and is also used for the Lambda kubectl function
     // When the security group is specified in the launch template,
     // EKS doesn't automatically add the cluster security group to
-    // the instance
-    // lt.addSecurityGroup(cluster.clusterSecurityGroup);
+    // the instance, this is needed to enable communication with the control
+    // plane
+    //lt.addSecurityGroup(cluster.clusterSecurityGroup);
 
     // Create managed node group
     cluster.addNodegroupCapacity('ManagedNodeGroup', {
@@ -247,7 +254,7 @@ export class EKSCluster extends Construct {
       }
     );
 
-    /*cluster.grantAccess(
+    cluster.grantAccess(
       "WorkerNodeRoleAdminAccessEntry",
       eksWorkerRole.roleArn,
       [
@@ -258,7 +265,28 @@ export class EKSCluster extends Construct {
       {
         accessEntryType: eks.AccessEntryType.STANDARD
       }
-    );*/
+    );
+
+    new eks.AccessEntry(this, "WorkerNodeRoleSystemNodeEntry", {
+      cluster: cluster,
+      principal: eksWorkerRole.roleArn,
+      accessEntryType: eks.AccessEntryType.EC2_LINUX,
+      accessPolicies: [
+      ],
+    });
+
+    cluster.grantAccess(
+      "WorkerNodeRoleSystemNodeEntry",
+      eksWorkerRole.roleArn,
+      [
+        eks.AccessPolicy.fromAccessPolicyName('AmazonEKSEditPolicy', {
+          accessScopeType: eks.AccessScopeType.CLUSTER
+        }),
+      ],
+      {
+        accessEntryType: eks.AccessEntryType.STANDARD
+      }
+    );
 
     this.cluster = cluster;
   }
