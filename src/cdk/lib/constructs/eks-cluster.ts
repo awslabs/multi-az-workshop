@@ -160,6 +160,9 @@ export class EKSCluster extends Construct {
 
     cluster.node.addDependency(clusterLogGroup);
 
+    // This is the security group that is associated with the EKS control 
+    // plane ENIs and is also used for the Lambda kubectl function
+    // not sure if this gets associated with worker nodes or not
     cluster.clusterSecurityGroup.addIngressRule(
       ec2.Peer.ipv4("192.168.100.100/32"),
       ec2.Port.tcp(1000)
@@ -203,7 +206,7 @@ export class EKSCluster extends Construct {
     // lt.addSecurityGroup(cluster.clusterSecurityGroup);
 
     // Create managed node group
-    /*cluster.addNodegroupCapacity('ManagedNodeGroup', {
+    cluster.addNodegroupCapacity('ManagedNodeGroup', {
       amiType:
         props.cpuArch === InstanceArchitecture.ARM_64
           ? eks.NodegroupAmiType.AL2023_ARM_64_STANDARD
@@ -223,7 +226,7 @@ export class EKSCluster extends Construct {
         id: lt.launchTemplateId!,
         version: lt.latestVersionNumber,
       },
-    });*/
+    });
 
     // Add EKS Pod Identity Agent addon
     new eks.Addon(this, 'PodIdentityAgentAddOn', {
