@@ -48,19 +48,18 @@ describe('EKSCluster', () => {
   describe('constructor', () => {
     test('creates EKS cluster with default configuration', () => {
       assertResourceExists(sharedTemplate, 'AWS::EKS::Cluster');
+      assertResourceExists(sharedTemplate, 'AWS::EKS::Nodegroup');
       assertResourceExists(sharedTemplate, 'AWS::Logs::LogGroup');
     });
 
-    // TODO: Re-enable when node group is deployed
-    test.skip('creates cluster with x86 architecture', () => {
+    test('creates cluster with x86 architecture', () => {
       assertResourceProperties(sharedTemplate, 'AWS::EKS::Nodegroup', {
         AmiType: 'AL2023_x86_64_STANDARD',
       });
     });
   });
 
-  // TODO: Re-enable when node group is deployed
-  describe.skip('constructor with ARM architecture', () => {
+  describe('constructor with ARM architecture', () => {
     let armTemplate: ReturnType<typeof synthesizeStack>;
 
     beforeAll(() => {
@@ -116,8 +115,7 @@ describe('EKSCluster', () => {
     });
   });
 
-  // TODO: Re-enable when node group is deployed
-  describe.skip('node group configuration', () => {
+  describe('node group configuration', () => {
     test('creates managed node group', () => {
       assertResourceExists(sharedTemplate, 'AWS::EKS::Nodegroup');
     });
