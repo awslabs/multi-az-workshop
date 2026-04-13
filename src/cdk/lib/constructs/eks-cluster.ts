@@ -159,14 +159,16 @@ export class EKSCluster extends Construct {
     });
 
     cluster.node.addDependency(clusterLogGroup);
-    cluster.clusterSecurityGroup.addIngressRule(
+
+    /*cluster.clusterSecurityGroup.addIngressRule(
       ec2.Peer.securityGroupId(workerSecurityGroup.securityGroupId),
       ec2.Port.tcp(443),
     );
+    
     cluster.clusterSecurityGroup.addIngressRule(
       ec2.Peer.securityGroupId(cluster.clusterSecurityGroup.securityGroupId),
       ec2.Port.tcp(443),
-    );
+    );*/
 
     // Create SSM parameter for cluster name
     new ssm.StringParameter(this, 'ClusterParameter', {
@@ -193,10 +195,10 @@ export class EKSCluster extends Construct {
     // When the security group is specified in the launch template,
     // EKS doesn't automatically add the cluster security group to
     // the instance
-    lt.addSecurityGroup(cluster.clusterSecurityGroup);
+    // lt.addSecurityGroup(cluster.clusterSecurityGroup);
 
     // Create managed node group
-    cluster.addNodegroupCapacity('ManagedNodeGroup', {
+    /*cluster.addNodegroupCapacity('ManagedNodeGroup', {
       amiType:
         props.cpuArch === InstanceArchitecture.ARM_64
           ? eks.NodegroupAmiType.AL2023_ARM_64_STANDARD
@@ -216,7 +218,7 @@ export class EKSCluster extends Construct {
         id: lt.launchTemplateId!,
         version: lt.latestVersionNumber,
       },
-    });
+    });*/
 
     // Add EKS Pod Identity Agent addon
     new eks.Addon(this, 'PodIdentityAgentAddOn', {
@@ -228,7 +230,7 @@ export class EKSCluster extends Construct {
       "ParticipantRoleReadOnlyAccess", 
       props.adminRole.roleArn, 
       [
-        eks.AccessPolicy.fromAccessPolicyName('AmazonEKSViewPolicy', {
+        eks.AccessPolicy.fromAccessPolicyName('AmazonEKSAdminViewPolicy', {
           accessScopeType: eks.AccessScopeType.CLUSTER
         }),
       ], 
@@ -237,7 +239,7 @@ export class EKSCluster extends Construct {
       }
     );
 
-    cluster.grantAccess(
+    /*cluster.grantAccess(
       "WorkerNodeRoleAdminAccessEntry",
       eksWorkerRole.roleArn,
       [
@@ -248,7 +250,7 @@ export class EKSCluster extends Construct {
       {
         accessEntryType: eks.AccessEntryType.STANDARD
       }
-    );
+    );*/
 
     this.cluster = cluster;
   }
