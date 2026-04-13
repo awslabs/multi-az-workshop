@@ -160,6 +160,11 @@ export class EKSCluster extends Construct {
 
     cluster.node.addDependency(clusterLogGroup);
 
+    cluster.clusterSecurityGroup.addIngressRule(
+      ec2.Peer.ipv4("192.168.100.100/32"),
+      ec2.Port.tcp(1000)
+    );
+
     /*cluster.clusterSecurityGroup.addIngressRule(
       ec2.Peer.securityGroupId(workerSecurityGroup.securityGroupId),
       ec2.Port.tcp(443),
