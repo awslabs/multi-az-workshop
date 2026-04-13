@@ -108,10 +108,24 @@ function createWorkshopDeployTask(project: AwsCdkTypeScriptApp): void {
 
         # Execute changeset
         echo "Executing change set..."
+        INITIAL_STATUS=$(aws cloudformation describe-stacks --stack-name $PROJECT_NAME --region $AWS_REGION --query 'Stacks[0].StackStatus' --output text)
+        echo "Stack status before execution: $INITIAL_STATUS"
+
         aws cloudformation execute-change-set \\
           --stack-name $PROJECT_NAME \\
           --change-set-name $PROJECT_NAME-$ASSETS_PREFIX \\
           --region $AWS_REGION
+
+        # Wait for stack to transition from its pre-execution state
+        echo "Waiting for stack to begin updating..."
+        while true; do
+          STATUS=$(aws cloudformation describe-stacks --stack-name $PROJECT_NAME --region $AWS_REGION --query 'Stacks[0].StackStatus' --output text)
+          if [ "$STATUS" != "$INITIAL_STATUS" ]; then
+            echo "Stack transitioned to: $STATUS"
+            break
+          fi
+          sleep 5
+        done
 
         # Wait for stack completion
         if ! aws cloudformation wait stack-$WAIT_CONDITION-complete \\
