@@ -143,6 +143,7 @@ export class EKSCluster extends Construct {
 
     new ec2.CfnSecurityGroupIngress(this, "EKSControlPlaneIngressRule", {
       ipProtocol: ec2.Protocol.TCP,
+      groupId: eksControlPlaneSG.securityGroupId,
       sourceSecurityGroupId: eksControlPlaneSG.securityGroupId,
       fromPort: 443,
       toPort: 443
