@@ -115,7 +115,7 @@ export class EKSStack extends NestedStackWithSource {
     });
 
     // Install AWS Load Balancer Controller
-    /*const lbController = new AwsLoadBalancerController(this, 'AwsLoadBalancerController', {
+    const lbController = new AwsLoadBalancerController(this, 'AwsLoadBalancerController', {
       cluster: cluster.cluster,
       containerAndRepoBuilder: repoHelmContainerCreator,
       version: props.awsLoadBalancerControllerVersion
@@ -132,7 +132,7 @@ export class EKSStack extends NestedStackWithSource {
     app.node.addDependency(istio);
     app.node.addDependency(lbController.waitableNode);
 
-    this.eksAppTargetGroup = app.appTargetGroup;*/
+    this.eksAppTargetGroup = app.appTargetGroup;
   }
 
   /**
