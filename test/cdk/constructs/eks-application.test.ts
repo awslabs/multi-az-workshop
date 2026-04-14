@@ -19,7 +19,8 @@ import { createMockVpc, createMockUploaderFunction } from '../../helpers/mock-fa
 import { synthesizeStack } from '../../helpers/stack-helpers';
 import { createTestApp, createTestStack } from '../../helpers/test-fixtures';
 
-describe('EKSApplication', () => {
+// TODO: Re-enable when EKS application is deployed
+describe.skip('EKSApplication', () => {
   let app: cdk.App;
   let stack: cdk.Stack;
   let vpc: ec2.Vpc;

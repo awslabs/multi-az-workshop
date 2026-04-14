@@ -133,8 +133,7 @@ describe('EKSStack', () => {
     });
   });
 
-  // TODO: Re-enable when node group is deployed
-  describe.skip('node group configuration', () => {
+  describe('node group configuration', () => {
     test('creates node group', () => {
       const nodeGroups = findResourcesByType(sharedTemplate, 'AWS::EKS::Nodegroup');
       expect(nodeGroups.length).toBeGreaterThan(0);
@@ -153,8 +152,7 @@ describe('EKSStack', () => {
       expect(roles.length).toBeGreaterThan(0);
     });
 
-    // TODO: Re-enable when AWS Load Balancer Controller is deployed
-    test.skip('creates service account for AWS Load Balancer Controller', () => {
+    test('creates service account for AWS Load Balancer Controller', () => {
       const serviceAccounts = findResourcesByType(sharedTemplate, 'Custom::AWSCDK-EKS-KubernetesResource');
       const saResources = serviceAccounts.filter((sa: any) => {
         const manifest = sa.Properties?.Manifest;
@@ -191,14 +189,13 @@ describe('EKSStack', () => {
       expect(parameters.AssetsBucketPrefix).toBeDefined();
     });
 
-    test('exposes target group as public property', () => {
-      // TODO: Re-enable when EKS application is deployed
-      // expect(sharedEksStack.eksAppTargetGroup).toBeDefined();
+    // TODO: Re-enable when EKS application is deployed
+    test.skip('exposes target group as public property', () => {
+      expect(sharedEksStack.eksAppTargetGroup).toBeDefined();
     });
   });
 
-  // TODO: Re-enable when Istio is deployed
-  describe.skip('Istio installation', () => {
+  describe('Istio installation', () => {
     test('installs Istio components', () => {
       const helmCharts = findResourcesByType(sharedTemplate, 'Custom::AWSCDK-EKS-HelmChart');
       const istioCharts = helmCharts.filter((chart: any) => {
@@ -212,8 +209,7 @@ describe('EKSStack', () => {
     });
   });
 
-  // TODO: Re-enable when AWS Load Balancer Controller is deployed
-  describe.skip('AWS Load Balancer Controller installation', () => {
+  describe('AWS Load Balancer Controller installation', () => {
     test('installs AWS Load Balancer Controller', () => {
       const helmCharts = findResourcesByType(sharedTemplate, 'Custom::AWSCDK-EKS-HelmChart');
       const lbControllerCharts = helmCharts.filter((chart: any) =>
@@ -243,8 +239,7 @@ describe('EKSStack', () => {
     });
   });
 
-  // TODO: Re-enable when container resources are deployed
-  describe.skip('CloudFormation resources', () => {
+  describe('CloudFormation resources', () => {
     test('creates ECR repositories', () => {
       const repositories = findResourcesByType(sharedTemplate, 'AWS::ECR::Repository');
       expect(repositories.length).toBeGreaterThan(0);

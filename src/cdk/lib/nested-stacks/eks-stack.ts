@@ -123,7 +123,7 @@ export class EKSStack extends NestedStackWithSource {
     lbController.node.addDependency(istio.waitableNode);
 
     // Deploy application
-    const app = new EKSApplication(this, 'EKSApp', {
+    /*const app = new EKSApplication(this, 'EKSApp', {
       cluster: cluster.cluster,
       containerAndRepoBuilder: repoHelmContainerCreator,
       databaseCluster: props.database,
@@ -132,7 +132,7 @@ export class EKSStack extends NestedStackWithSource {
     app.node.addDependency(istio);
     app.node.addDependency(lbController.waitableNode);
 
-    this.eksAppTargetGroup = app.appTargetGroup;
+    this.eksAppTargetGroup = app.appTargetGroup;*/
   }
 
   /**
