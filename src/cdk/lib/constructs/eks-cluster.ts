@@ -122,48 +122,27 @@ export class EKSCluster extends Construct {
     eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AWSSecretsManagerClientReadOnlyAccess'));
 
     // Allow support for IPv6 if needed
+    // Allow the worker nodes to pull down the istio destination rules file from S3
+    // Get parameters used in the workshop, i.e. cluster name and s3 bucket
+    // Allow user to assume the kubectl role
     eksWorkerRole.addManagedPolicy(
-      new iam.ManagedPolicy(this, 'EKSWorkerCNIIPv6ManagedPolicy', {
+      new iam.ManagedPolicy(this, 'EKSWorkerManagedPolicy', {
         statements: [
           new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
             actions: ['ec2:AssignIpv6Addresses'],
             resources: ['*'],
           }),
-        ],
-      }),
-    );
-
-    // Allow the worker nodes to pull down the istio destination rules file from S3
-    eksWorkerRole.addManagedPolicy(
-      new iam.ManagedPolicy(this, 'EKSWorkerS3ManagedPolicy', {
-        statements: [
           new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
             actions: ['s3:GetObject', 's3:ListBucket'],
             resources: ['*'],
           }),
-        ],
-      }),
-    );
-
-    // Get parameters used in the workshop, i.e. cluster name and s3 bucket
-    eksWorkerRole.addManagedPolicy(
-      new iam.ManagedPolicy(this, 'EKSWorkerSSMManagedPolicy', {
-        statements: [
           new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
             actions: ['ssm:GetParameter'],
             resources: ['*'],
           }),
-        ],
-      }),
-    );
-
-    // Allow user to assume the kubectl role
-    eksWorkerRole.addManagedPolicy(
-      new iam.ManagedPolicy(this, "AssumeRoleManagedPolicy", {
-        statements: [
           new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
             actions: ['sts:AssumeRole'],
