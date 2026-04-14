@@ -9,6 +9,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
+import { worker } from 'node:cluster';
 
 /**
  * Instance architecture for EKS nodes
@@ -65,7 +66,7 @@ export class EKSCluster extends Construct {
   constructor(scope: Construct, id: string, props: EKSClusterProps) {
     super(scope, id);
 
-    //Worker node security group
+    // Worker node security group
     const workerSecurityGroup: ec2.ISecurityGroup = new ec2.SecurityGroup(this, "WorkerNodeSecurityGroup", {
         description: "Allows inbound access from the load balancer",
         vpc: props.vpc
@@ -76,9 +77,24 @@ export class EKSCluster extends Construct {
       ec2.Port.tcp(5000)
     );
 
+    // "Additional" security group for cluster
+    const controlPlaneSecondarySecurityGroup: ec2.ISecurityGroup = new ec2.SecurityGroup(this, "SecondaryControlPlaneSecurityGroup", {
+      description: "Security group assigned to EKS control plane ENIs. Trusts worker node security group for control plane communication.",
+      vpc: props.vpc
+    });
+
+    controlPlaneSecondarySecurityGroup.addIngressRule(
+      ec2.Peer.securityGroupId(workerSecurityGroup.securityGroupId),
+      ec2.Port.HTTPS
+    );
+
     // Create IAM role for EKS worker nodes
     const eksWorkerRole = new iam.Role(this, 'EKSWorkerRole', {
       assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
+    });
+
+    const userKubectlRole: iam.IRole = new iam.Role(this, "UserKubectlRole", {
+      assumedBy: eksWorkerRole
     });
 
     eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSVPCResourceController'));
@@ -128,25 +144,26 @@ export class EKSCluster extends Construct {
       }),
     );
 
+    // Allow user to assume the kubectl role
+    eksWorkerRole.addManagedPolicy(
+      new iam.ManagedPolicy(this, "AssumeRoleManagedPolicy", {
+        statements: [
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ['sts:AssumeRole'],
+            resources: [
+              userKubectlRole.roleArn
+            ],
+          }),
+        ],
+      }),
+    );
+
     // Create log group for cluster logs
     const clusterLogGroup = new logs.LogGroup(this, 'cluster-log-group', {
       logGroupName: `/aws/eks/${props.clusterName}/cluster`,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       retention: logs.RetentionDays.ONE_WEEK,
-    });
-
-    const eksControlPlaneSG = new ec2.SecurityGroup(this, "EKSControlPlaneSecurityGroup", {
-          description: "Allows EKS control plane communication",
-          vpc: props.vpc,
-          allowAllOutbound: true,
-    });
-
-    new ec2.CfnSecurityGroupIngress(this, "EKSControlPlaneIngressRule", {
-      ipProtocol: ec2.Protocol.TCP,
-      groupId: eksControlPlaneSG.securityGroupId,
-      sourceSecurityGroupId: eksControlPlaneSG.securityGroupId,
-      fromPort: 443,
-      toPort: 443
     });
 
     const cluster = new eks.Cluster(this, 'EKSCluster', {
@@ -163,7 +180,13 @@ export class EKSCluster extends Construct {
             privateSubnets: props.vpc.selectSubnets({ subnetType: ec2.SubnetType.PRIVATE_ISOLATED }).subnets,
         },
 
-        securityGroup: eksControlPlaneSG,
+        // This defines the first "additional" security group for the cluster
+        // It is not added to the launch template by default. It is not the security
+        // group that is referenced by cluster.clusterSecurityGroup. It is assigned 
+        // to the EKS control plane ENIs. Use this SG to just trust the security
+        // group used in the launch template. This prevents adding ingress rules to
+        // the cluster kubectl lambda security groups that aren't needed.
+        securityGroup: controlPlaneSecondarySecurityGroup,
 
         clusterLogging: [
           eks.ClusterLoggingTypes.CONTROLLER_MANAGER,
@@ -175,16 +198,6 @@ export class EKSCluster extends Construct {
     });
 
     cluster.node.addDependency(clusterLogGroup);
-
-    /*cluster.clusterSecurityGroup.addIngressRule(
-      ec2.Peer.securityGroupId(workerSecurityGroup.securityGroupId),
-      ec2.Port.tcp(443),
-    );
-    
-    cluster.clusterSecurityGroup.addIngressRule(
-      ec2.Peer.securityGroupId(cluster.clusterSecurityGroup.securityGroupId),
-      ec2.Port.tcp(443),
-    );*/
 
     // Create SSM parameter for cluster name
     new ssm.StringParameter(this, 'ClusterParameter', {
@@ -207,14 +220,6 @@ export class EKSCluster extends Construct {
         },
       ],
     });
-
-    // This is the security group that is associated with the EKS control 
-    // plane ENIs and is also used for the Lambda kubectl function
-    // When the security group is specified in the launch template,
-    // EKS doesn't automatically add the cluster security group to
-    // the instance, this is needed to enable communication with the control
-    // plane
-    //lt.addSecurityGroup(cluster.clusterSecurityGroup);
 
     // Create managed node group
     cluster.addNodegroupCapacity('ManagedNodeGroup', {
@@ -258,9 +263,9 @@ export class EKSCluster extends Construct {
       }
     );
 
-    /*cluster.grantAccess(
-      "WorkerNodeRoleAdminAccessEntry",
-      eksWorkerRole.roleArn,
+    cluster.grantAccess(
+      "UserKubetclRoleAccessEntry",
+      userKubectlRole.roleArn,
       [
         eks.AccessPolicy.fromAccessPolicyName('AmazonEKSEditPolicy', {
           accessScopeType: eks.AccessScopeType.CLUSTER
@@ -269,7 +274,7 @@ export class EKSCluster extends Construct {
       {
         accessEntryType: eks.AccessEntryType.STANDARD
       }
-    );*/
+    );
 
     this.cluster = cluster;
   }
