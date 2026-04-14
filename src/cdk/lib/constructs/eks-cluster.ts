@@ -9,7 +9,6 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
-import { worker } from 'node:cluster';
 
 /**
  * Instance architecture for EKS nodes

@@ -108,14 +108,14 @@ export class EKSStack extends NestedStackWithSource {
     this.fixUpNestedStacks();
 
     // Install Istio service mesh
-    /*const istio = new Istio(this, 'Istio', {
+    const istio = new Istio(this, 'Istio', {
       cluster: cluster.cluster,
       containerAndRepoBuilder: repoHelmContainerCreator,
       version: props.istioVersion
     });
 
     // Install AWS Load Balancer Controller
-    const lbController = new AwsLoadBalancerController(this, 'AwsLoadBalancerController', {
+    /*const lbController = new AwsLoadBalancerController(this, 'AwsLoadBalancerController', {
       cluster: cluster.cluster,
       containerAndRepoBuilder: repoHelmContainerCreator,
       version: props.awsLoadBalancerControllerVersion
