@@ -80,6 +80,7 @@ export class EKSCluster extends Construct {
       this,
       "WorkerPeerSecurityGroupIngress",
       {
+        groupId: workerSecurityGroup.securityGroupId,
         ipProtocol: ec2.Protocol.ALL,
         sourceSecurityGroupId: workerSecurityGroup.securityGroupId
       }
