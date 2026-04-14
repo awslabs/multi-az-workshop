@@ -94,7 +94,23 @@ export class EKSCluster extends Construct {
     });
 
     const userKubectlRole: iam.IRole = new iam.Role(this, "UserKubectlRole", {
-      assumedBy: eksWorkerRole
+      assumedBy: new iam.PrincipalWithConditions(
+        new iam.AccountPrincipal(cdk.Aws.ACCOUNT_ID),
+        {
+          ArnLike: {
+            "aws:PrincipalArn": cdk.Arn.format(
+              {
+                service: "iam",
+                resource: "role",
+                resourceName: "multi-az-workshop-eksNest-ClusterEKSWorkerRole*",
+                partition: cdk.Aws.PARTITION,
+                account: cdk.Aws.ACCOUNT_ID,
+                region: ""
+              }
+            )
+          }
+        }
+      )    
     });
 
     eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSVPCResourceController'));
