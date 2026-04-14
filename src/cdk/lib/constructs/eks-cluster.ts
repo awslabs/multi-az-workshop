@@ -76,6 +76,15 @@ export class EKSCluster extends Construct {
       ec2.Port.tcp(5000)
     );
 
+    new ec2.CfnSecurityGroupIngress(
+      this,
+      "WorkerPeerSecurityGroupIngress",
+      {
+        ipProtocol: ec2.Protocol.ALL,
+        sourceSecurityGroupId: workerSecurityGroup.securityGroupId
+      }
+    );
+
     // "Additional" security group for cluster
     const controlPlaneSecondarySecurityGroup: ec2.ISecurityGroup = new ec2.SecurityGroup(this, "SecondaryControlPlaneSecurityGroup", {
       description: "Security group assigned to EKS control plane ENIs. Trusts worker node security group for control plane communication.",
