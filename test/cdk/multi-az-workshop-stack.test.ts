@@ -342,8 +342,7 @@ describe('MultiAZWorkshopStack', () => {
       expect(hasEksStack).toBe(true);
     });
 
-    // TODO: Re-enable when EKS application is deployed
-    test.skip('creates EKS listener rule for specific paths', () => {
+    test('creates EKS listener rule for specific paths', () => {
       const template = sharedTemplate;
 
       // Should have listener rule for EKS paths

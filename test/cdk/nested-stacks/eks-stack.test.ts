@@ -189,8 +189,7 @@ describe('EKSStack', () => {
       expect(parameters.AssetsBucketPrefix).toBeDefined();
     });
 
-    // TODO: Re-enable when EKS application is deployed
-    test.skip('exposes target group as public property', () => {
+    test('exposes target group as public property', () => {
       expect(sharedEksStack.eksAppTargetGroup).toBeDefined();
     });
   });
@@ -219,8 +218,7 @@ describe('EKSStack', () => {
     });
   });
 
-  // TODO: Re-enable when EKS application is deployed
-  describe.skip('application deployment', () => {
+  describe('application deployment', () => {
     test('deploys EKS application', () => {
       const k8sResources = findResourcesByType(sharedTemplate, 'Custom::AWSCDK-EKS-KubernetesResource');
       expect(k8sResources.length).toBeGreaterThan(0);
