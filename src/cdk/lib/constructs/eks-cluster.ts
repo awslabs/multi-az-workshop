@@ -203,6 +203,17 @@ export class EKSCluster extends Construct {
 
     cluster.node.addDependency(clusterLogGroup);
 
+    // Workers need to allow ingress from the Lambda kubectl function
+    // to configure AWS load balancer controller and target groups
+    new ec2.CfnSecurityGroupIngress(this,
+      "LambdaKubectlIngressRule",
+      {
+        sourceSecurityGroupId: cluster.clusterSecurityGroupId,
+        ipProtocol: ec2.Protocol.ALL,
+        groupId: workerSecurityGroup.securityGroupId,
+      }
+    );
+
     // Create SSM parameter for cluster name
     new ssm.StringParameter(this, 'ClusterParameter', {
       parameterName: 'ClusterName',
