@@ -108,7 +108,7 @@ export class EKSStack extends NestedStackWithSource {
     this.fixUpNestedStacks();
 
     // Install Istio service mesh
-    /*const istio = new Istio(this, 'Istio', {
+    const istio = new Istio(this, 'Istio', {
       cluster: cluster.cluster,
       containerAndRepoBuilder: repoHelmContainerCreator,
       version: props.istioVersion
@@ -132,7 +132,7 @@ export class EKSStack extends NestedStackWithSource {
     app.node.addDependency(istio);
     app.node.addDependency(lbController.waitableNode);
 
-    this.eksAppTargetGroup = app.appTargetGroup;*/
+    this.eksAppTargetGroup = app.appTargetGroup;
   }
 
   /**
