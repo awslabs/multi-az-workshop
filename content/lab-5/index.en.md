@@ -37,26 +37,30 @@ Enable autoshift for your EKS cluster, auto scaling group, and ALB. Use the alar
 Pick any of the three resources and select the *Actions* drop down. Then click *Start practice run*, select an AZ to test against, write a comment, and then click *Start*. This will initiate a zonal autoshift against whichever resource you selected. If you chose your ALB, review your operational dashboards to see the traffic shift. If you chose your auto scaling group, terminate an EC2 instance in the impacted AZ. If you chose EKS, you'll need to use `kubectl` to terminate a pod and see it rescheduled in a different AZ. The practice run lasts for 30 minutes but it's not necessary to wait for it to complete and you can cancel the practice run at any time.
 
 ::::expand{header="Instructions for terminating a pod"}
-First, navigate to the [EKS console](https://console.aws.amazon.com/eks/clusters/multi-az-workshop-eks-cluster) and review your cluster. Click the *Resources* tab, click *Deployments* on the left, and the select the *multi-az-workshop-app*. There should be 6 running pods. The easiest way to find a pod in the AZ you selected is by its IP address. The workshop uses the 192.168.0.0/16 address space. The first subnet uses 192.168.0.0/24, the next 192.168.1.0/24, and the last 192.168.2.0/24. So AZ "a" has 0.x addresses, AZ "b" has 1.x addresses, and AZ "c" has 2.x addresses. Select a pod name based on its IP mapping to the AZ you selected to run the practice in.
-
-Next, navigate to the [EC2 console](https://console.aws.amazon.com/ec2/home#Instances:) and use session manager to access the worker node **with the same IP address subnet as the Pod you want to delete** the same way you did in [Lab 2](/lab-2). You may have to download `kubectl` if it's not the same node you used in Lab 2. 
+First, navigate to the [EC2 console](https://console.aws.amazon.com/ec2/home#Instances:) and use session manager to access a worker node the same way you did in [Lab 2](/lab-2). You may have to download `kubectl` if it's not the same node you used in Lab 2 (instructions shown below). 
 
 ```bash
 BUCKET_PATH=$(aws ssm get-parameter --name BucketPath --query 'Parameter.Value' | tr -d '"')
 aws s3 cp ${BUCKET_PATH}kubectl /tmp/kubectl
 chmod +x /tmp/kubectl
+alias kubectl=/tmp/kubectl
 CLUSTER=$(aws ssm get-parameter --name ClusterName --query 'Parameter.Value' | tr -d '"')
 REGION=$(aws ssm get-parameter --name Region --query 'Parameter.Value' | tr -d '"')
-aws eks update-kubeconfig --name $CLUSTER --region $REGION
+ROLE_ARN=$(aws ssm get-parameter --name RoleArn --query 'Parameter.Value' | tr -d '"')
+aws eks update-kubeconfig --name $CLUSTER --region $REGION --role-arn $ROLE_ARN
 ```
 
-Then, run the following command.
+Next, list all of the pods in the multi-az application:
 
 ```bash
-/tmp/kubectl delete pod <pod name> --namespace multi-az-workshop
+kubectl get pods --namespace multi-az-workshop -o custom-columns="POD:.metadata.name,HOST:.spec.nodeName,IP:.status.podIP,AZ:.metadata.labels.topology\.kubernetes\.io/zone"
 ```
 
-Worker nodes are only authorized to delete pods that are running on themself for security reasons, while there are other ways to accomplish this task, it simplifies the required authentication and authorization for the scope of the workshop.
+There should be 6 running pods. Select a pod based on it's AZ and copy the pod name. Past the pod name into the following command:
+
+```bash
+kubectl delete pod <pod name> --namespace multi-az-workshop
+```
 ::::
 
 ::::alert{type="info" header="Transient failures"}

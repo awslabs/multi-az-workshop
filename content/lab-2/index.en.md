@@ -143,9 +143,11 @@ If not directed to the *`Session Manager`* tab on the *`Connect to instance`* ta
 BUCKET_PATH=$(aws ssm get-parameter --name BucketPath --query 'Parameter.Value' | tr -d '"')
 aws s3 cp ${BUCKET_PATH}kubectl /tmp/kubectl
 chmod +x /tmp/kubectl
+alias kubectl=/tmp/kubectl
 CLUSTER=$(aws ssm get-parameter --name ClusterName --query 'Parameter.Value' | tr -d '"')
 REGION=$(aws ssm get-parameter --name Region --query 'Parameter.Value' | tr -d '"')
-aws eks update-kubeconfig --name $CLUSTER --region $REGION
+ROLE_ARN=$(aws ssm get-parameter --name RoleArn --query 'Parameter.Value' | tr -d '"')
+aws eks update-kubeconfig --name $CLUSTER --region $REGION --role-arn $ROLE_ARN
 ```
 
 Next, download the manifest we'll use to apply the change (or feel free to create it yourself).
@@ -196,7 +198,7 @@ spec:
 Then we'll apply the manifest to create the destination rule for our service. 
 
 ```bash
-/tmp/kubectl --namespace multi-az-workshop apply --filename /tmp/destination-rule.yaml
+kubectl --namespace multi-az-workshop apply --filename /tmp/destination-rule.yaml
 ```
 
 Now, your architecture looks like this and prevents traffic at the application tier from crossing Availability Zones. Although communicating with the database still requires cross-AZ traffic, these changes will help isolate the scope of impact when zonal impairments happen.
