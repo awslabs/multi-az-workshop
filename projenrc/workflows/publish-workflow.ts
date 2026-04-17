@@ -126,6 +126,15 @@ git config --global user.email "$EMAIL"
 git config --global user.name "$USER_NAME"`,
       },
       {
+        name: 'Extract CloudFormation template from release',
+        run: `gh release download \${{ needs.upload-assets.outputs.release_tag }} \\
+  --repo \${{ github.repository }} \\
+  --pattern 'content.zip' \\
+  --dir /tmp
+unzip -jo /tmp/content.zip multi-az-workshop.json -d \${{ github.workspace }}/static/
+rm /tmp/content.zip`,
+      },
+      {
         name: 'Push workshop content',
         run: `# Clone Workshop Studio repository
 git clone --branch mainline "$REMOTE_REPO" \${{ github.workspace }}/workshop-repo
