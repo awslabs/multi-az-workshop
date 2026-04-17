@@ -1,3 +1,6 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * Publish workflow configuration
  * Handles publishing to Workshop Studio from the latest GitHub release
@@ -17,21 +20,6 @@ export function createPublishWorkflow(github: GitHub): void {
   publishWorkflow.on({
     workflowDispatch: {
       inputs: {
-        aws_access_key_id: {
-          type: 'string',
-          description: 'The AWS access key id',
-          required: true,
-        },
-        aws_secret_access_key: {
-          type: 'string',
-          description: 'The AWS secret access key',
-          required: true,
-        },
-        aws_session_token: {
-          type: 'string',
-          description: 'The AWS session token',
-          required: true,
-        },
         email: {
           type: 'string',
           description: 'The email used for the git commit',
@@ -60,9 +48,9 @@ export function createPublishWorkflow(github: GitHub): void {
     env: {
       GH_TOKEN: '${{ github.token }}',
       AWS_DEFAULT_REGION: 'us-east-1',
-      AWS_ACCESS_KEY_ID: '${{ inputs.aws_access_key_id }}',
-      AWS_SECRET_ACCESS_KEY: '${{ inputs.aws_secret_access_key }}',
-      AWS_SESSION_TOKEN: '${{ inputs.aws_session_token }}',
+      AWS_ACCESS_KEY_ID: '${{ secrets.ACCESS_KEY_ID }}',
+      AWS_SECRET_ACCESS_KEY: '${{ secrets.SECRET_KEY }}',
+      AWS_SESSION_TOKEN: '${{ secrets.SESSION_TOKEN }}',
       ASSETS_LOCATION: '${{ secrets.ASSETS_LOCATION }}',
     },
     steps: [
@@ -85,6 +73,7 @@ echo "sha=$RELEASE_SHA" >> $GITHUB_OUTPUT`,
         name: 'Download content.zip from release',
         run: `# Download the content.zip asset from the latest release
 gh release download \${{ steps.release-info.outputs.tag }} \\
+  --repo \${{ github.repository }} \\
   --pattern 'content.zip' \\
   --dir ./`,
       },
@@ -116,9 +105,9 @@ unzip -q content.zip -d extracted`,
       WS_REPO_SOURCE: 's3',
       PLUGIN: '${{ secrets.PLUGIN }}',
       PACKAGE: '${{ secrets.GIT_PACKAGE }}',
-      AWS_ACCESS_KEY_ID: '${{ inputs.aws_access_key_id }}',
-      AWS_SECRET_ACCESS_KEY: '${{ inputs.aws_secret_access_key }}',
-      AWS_SESSION_TOKEN: '${{ inputs.aws_session_token }}',
+      AWS_ACCESS_KEY_ID: '${{ secrets.ACCESS_KEY_ID }}',
+      AWS_SECRET_ACCESS_KEY: '${{ secrets.SECRET_KEY }}',
+      AWS_SESSION_TOKEN: '${{ secrets.SESSION_TOKEN }}',
     },
     steps: [
       {
@@ -166,5 +155,4 @@ fi`,
       },
     ],
   });
-
 }
