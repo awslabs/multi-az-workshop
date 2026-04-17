@@ -101,6 +101,16 @@
       "type": "override"
     },
     {
+      "name": "handlebars",
+      "version": ">=4.7.9",
+      "type": "override"
+    },
+    {
+      "name": "picomatch",
+      "version": ">=2.3.2",
+      "type": "override"
+    },
+    {
       "name": "aws-cdk-lib",
       "version": "2.248.0",
       "type": "runtime"

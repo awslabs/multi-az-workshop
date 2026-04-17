@@ -122,6 +122,11 @@ export class EKSCluster extends Construct {
       )    
     });
 
+    new ssm.StringParameter(this, 'KubectlRoleParameter', {
+      parameterName: 'RoleArn',
+      stringValue: userKubectlRole.roleArn
+    });
+
     eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSVPCResourceController'));
     eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSWorkerNodePolicy'));
     eksWorkerRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedEC2InstanceDefaultPolicy'));
@@ -283,6 +288,9 @@ export class EKSCluster extends Construct {
       userKubectlRole.roleArn,
       [
         eks.AccessPolicy.fromAccessPolicyName('AmazonEKSEditPolicy', {
+          accessScopeType: eks.AccessScopeType.CLUSTER
+        }),
+        eks.AccessPolicy.fromAccessPolicyName('AmazonEKSAdminViewPolicy', {
           accessScopeType: eks.AccessScopeType.CLUSTER
         }),
       ],

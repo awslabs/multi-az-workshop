@@ -131,6 +131,8 @@ const project = new AwsCdkTypeScriptApp({
 project.package.addPackageResolutions(
   'flatted@>=3.4.2',
   'fast-xml-parser@>=5.5.7',
+  'handlebars@>=4.7.9',
+  'picomatch@>=2.3.2',
 );
 
 // Add global environment variables for all tasks

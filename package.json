@@ -87,7 +87,9 @@
   },
   "resolutions": {
     "fast-xml-parser": ">=5.5.7",
-    "flatted": ">=3.4.2"
+    "flatted": ">=3.4.2",
+    "handlebars": ">=4.7.9",
+    "picomatch": ">=2.3.2"
   },
   "devEngines": {
     "packageManager": {
