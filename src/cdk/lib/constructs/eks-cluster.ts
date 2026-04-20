@@ -289,7 +289,7 @@ export class EKSCluster extends Construct {
       }
     );
 
-    /*new eks_legacy.CfnAccessEntry(this, "UserKubetclRoleAccessEntry", {
+    new eks_legacy.CfnAccessEntry(this, "UserKubetclRoleAccessEntry", {
       clusterName: cluster.clusterName,
       principalArn: userKubectlRole.roleArn,
       accessPolicies: [
@@ -308,7 +308,7 @@ export class EKSCluster extends Construct {
       ],
       type: eks.AccessEntryType.STANDARD,
       kubernetesGroups: props.userRoleKubernetesGroups
-    });*/
+    });
 
     /*cluster.grantAccess(
       "UserKubetclRoleAccessEntry",
