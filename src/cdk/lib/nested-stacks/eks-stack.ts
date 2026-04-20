@@ -101,8 +101,8 @@ export class EKSStack extends NestedStackWithSource {
       loadBalancerSecurityGroup: props.loadBalancerSecurityGroup,
       clusterName: 'multi-az-workshop-eks-cluster-v2',
       version: props.eksVersion,
+      userRoleKubernetesGroups: [ "istio-admins" ]
     });
-    cluster;
 
     // Fix up nested stacks for kubectl and cluster resource providers
     this.fixUpNestedStacks();
@@ -111,7 +111,8 @@ export class EKSStack extends NestedStackWithSource {
     const istio = new Istio(this, 'Istio', {
       cluster: cluster.cluster,
       containerAndRepoBuilder: repoHelmContainerCreator,
-      version: props.istioVersion
+      version: props.istioVersion,
+      adminsGroupName: "istio-admins",
     });
 
     // Install AWS Load Balancer Controller

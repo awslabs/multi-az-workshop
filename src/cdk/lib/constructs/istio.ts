@@ -3,6 +3,8 @@
 
 import * as cdk from 'aws-cdk-lib';
 import * as eks from 'aws-cdk-lib/aws-eks-v2';
+import * as eks_legacy from 'aws-cdk-lib/aws-eks';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct, IDependable } from 'constructs';
 import { ContainerAndRepo, RepoAndHelmChartProps, RepoAndContainerProps } from './container-and-repo';
 import { HelmRepoAndChartConstruct } from './helm-repo-and-chart';
@@ -26,6 +28,14 @@ export interface IstioProps {
    * @default "1.29.0"
    */
   readonly version?: string;
+
+  /**
+   * If you have created an access entry, provide the istio admins group name to
+   * give access to that group
+   * 
+   * @default "No cluster role is created and no binding is made to the group"
+   */
+  readonly adminsGroupName?: string;
 }
 
 /**
@@ -137,6 +147,56 @@ export class Istio extends HelmRepoAndChartConstruct {
     cni.node.addDependency(istioCniHelmChartRepo.dependable);
     (cni.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride('ServiceTimeout', '300');
 
+    if (props.adminsGroupName) {
+
+      const istioClusterRole = props.cluster.addManifest('IstioClusterRole', {
+        apiVersion: 'rbac.authorization.k8s.io/v1',
+        kind: 'ClusterRole',
+        metadata: {
+          name: 'istio-admin',
+        },
+        rules: [
+          {
+            apiGroups: ['networking.istio.io'],
+            resources: ['*'],
+            verbs: ['*'],
+          },
+          {
+            apiGroups: ['security.istio.io'],
+            resources: ['*'],
+            verbs: ['*'],
+          },
+          {
+            apiGroups: ['authentication.istio.io'],
+            resources: ['*'],
+            verbs: ['*'],
+          },
+        ],
+      });
+
+      const roleBinding = props.cluster.addManifest('IstioAdminsClusterRoleBinding', {
+        apiVersion: 'rbac.authorization.k8s.io/v1',
+        kind: 'ClusterRoleBinding',
+        metadata: {
+          name: 'istio-admins-binding',
+        },
+        subjects: [
+          {
+            kind: 'Group',
+            name: props.adminsGroupName,
+            apiGroup: 'rbac.authorization.k8s.io',
+          },
+        ],
+        roleRef: {
+          kind: 'ClusterRole',
+          name: 'istio-admin',
+          apiGroup: 'rbac.authorization.k8s.io',
+        },
+      });
+
+      roleBinding.node.addDependency(istioClusterRole);
+    }
+    
     this.waitableNode = cni;
   }
 }
