@@ -5,6 +5,7 @@ import { KubectlV35Layer as KubectlLayer } from '@aws-cdk/lambda-layer-kubectl-v
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as eks from 'aws-cdk-lib/aws-eks-v2';
+import * as eks_legacy from 'aws-cdk-lib/aws-eks';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
@@ -51,6 +52,11 @@ export interface EKSClusterProps {
    * Kubernetes version
    */
   readonly version: eks.KubernetesVersion;
+
+  /**
+   * Groups to add to the access entry of the user role
+   */
+  readonly userRoleKubernetesGroups?: string[];
 }
 
 /**
@@ -63,9 +69,9 @@ export class EKSCluster extends Construct {
   public readonly cluster: eks.ICluster;
 
   /**
-   * The role used by users to interact with kubectl and cluster resources
+   * The access entry for the user role
    */
-  public readonly userRole: iam.IRole;
+  public readonly userAccessEntry: eks_legacy.CfnAccessEntry;
 
   constructor(scope: Construct, id: string, props: EKSClusterProps) {
     super(scope, id);
@@ -126,8 +132,6 @@ export class EKSCluster extends Construct {
         }
       )    
     });
-
-    this.userRole = userKubectlRole;
 
     new ssm.StringParameter(this, 'KubectlRoleParameter', {
       parameterName: 'RoleArn',
@@ -290,7 +294,28 @@ export class EKSCluster extends Construct {
       }
     );
 
-    cluster.grantAccess(
+    this.userAccessEntry = new eks_legacy.CfnAccessEntry(this, "UserKubetclRoleAccessEntry", {
+      clusterName: cluster.clusterName,
+      principalArn: userKubectlRole.roleArn,
+      accessPolicies: [
+        {
+          policyArn: "arn:aws:eks::aws:cluster-access-policy/AmazonEKSEditPolicy",
+          accessScope: {
+            type: "cluster"
+          }
+        },
+        {
+          policyArn: "arn:aws:eks::aws:cluster-access-policy/AmazonEKSAdminViewPolicy",
+          accessScope: {
+            type: "cluster"
+          }
+        },
+      ],
+      type: eks.AccessEntryType.STANDARD,
+      kubernetesGroups: props.userRoleKubernetesGroups
+    });
+
+    /*cluster.grantAccess(
       "UserKubetclRoleAccessEntry",
       userKubectlRole.roleArn,
       [
@@ -304,7 +329,7 @@ export class EKSCluster extends Construct {
       {
         accessEntryType: eks.AccessEntryType.STANDARD
       }
-    );
+    );*/
 
     this.cluster = cluster;
   }

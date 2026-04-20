@@ -30,11 +30,12 @@ export interface IstioProps {
   readonly version?: string;
 
   /**
-   * The role being provided admin access to istio resources
+   * If you have created an access entry, provide the istio admins group name to
+   * give access to that group
    * 
-   * @default "No role is given access"
+   * @default "No cluster role is created and no binding is made to the group"
    */
-  readonly role?: iam.IRole;
+  readonly adminsGroupName?: string;
 }
 
 /**
@@ -146,13 +147,7 @@ export class Istio extends HelmRepoAndChartConstruct {
     cni.node.addDependency(istioCniHelmChartRepo.dependable);
     (cni.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride('ServiceTimeout', '300');
 
-    if (props.role) {
-      new eks_legacy.CfnAccessEntry(this, 'IstioAccessEntry', {
-        clusterName: props.cluster.clusterName,
-        principalArn: props.role.roleArn,
-        type: eks_legacy.AccessEntryType.STANDARD,
-        kubernetesGroups: ["istio-admins"]
-      });
+    if (props.adminsGroupName) {
 
       const istioClusterRole = props.cluster.addManifest('IstioClusterRole', {
         apiVersion: 'rbac.authorization.k8s.io/v1',
@@ -188,7 +183,7 @@ export class Istio extends HelmRepoAndChartConstruct {
         subjects: [
           {
             kind: 'Group',
-            name: "istio-admins",
+            name: props.adminsGroupName,
             apiGroup: 'rbac.authorization.k8s.io',
           },
         ],
