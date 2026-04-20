@@ -68,11 +68,6 @@ export class EKSCluster extends Construct {
    */
   public readonly cluster: eks.ICluster;
 
-  /**
-   * The access entry for the user role
-   */
-  public readonly userAccessEntry: eks_legacy.CfnAccessEntry;
-
   constructor(scope: Construct, id: string, props: EKSClusterProps) {
     super(scope, id);
 
@@ -294,7 +289,7 @@ export class EKSCluster extends Construct {
       }
     );
 
-    this.userAccessEntry = new eks_legacy.CfnAccessEntry(this, "UserKubetclRoleAccessEntry", {
+    /*new eks_legacy.CfnAccessEntry(this, "UserKubetclRoleAccessEntry", {
       clusterName: cluster.clusterName,
       principalArn: userKubectlRole.roleArn,
       accessPolicies: [
@@ -313,7 +308,7 @@ export class EKSCluster extends Construct {
       ],
       type: eks.AccessEntryType.STANDARD,
       kubernetesGroups: props.userRoleKubernetesGroups
-    });
+    });*/
 
     /*cluster.grantAccess(
       "UserKubetclRoleAccessEntry",
