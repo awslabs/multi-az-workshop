@@ -105,10 +105,10 @@ jobs:
 
           # Check for changes and commit if any exist
           set +e
-          git add -A
-          git diff --cached --quiet
+          git diff --quiet
           if [ $? -eq 1 ]; then
             set -e
+            git add -A
             git commit -m "Published from release ${{ needs.upload-assets.outputs.release_tag }}"
             git push
             echo "✅ Workshop content published successfully"
