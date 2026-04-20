@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Packages the EKS V2 test stack synthesized output for S3-based CloudFormation deployment.
 Reuses the same logic as package.py but operates on cdk.out.test.

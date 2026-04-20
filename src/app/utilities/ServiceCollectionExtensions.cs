@@ -1,3 +1,6 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 using System.Diagnostics;
 using Amazon.CloudWatch.EMF.Config;
 using Amazon.CloudWatch.EMF.Logger;

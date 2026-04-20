@@ -1,3 +1,6 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * Mock factory functions for creating test AWS resources
  * Provides reusable mocks for common CDK constructs

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 ROOT_DIR="/opt/codedeploy-agent/deployment-root"
 APP="$ROOT_DIR/$DEPLOYMENT_GROUP_ID/$DEPLOYMENT_ID/deployment-archive/container.tar.gz"
 CW="$ROOT_DIR/$DEPLOYMENT_GROUP_ID/$DEPLOYMENT_ID/deployment-archive/cloudwatch-agent.tar.gz"

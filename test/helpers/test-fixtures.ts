@@ -1,3 +1,6 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * Test fixtures for creating pre-configured test data and scenarios
  * Provides reusable test stacks and common test data
