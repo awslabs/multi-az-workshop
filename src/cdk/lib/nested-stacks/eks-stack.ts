@@ -102,7 +102,6 @@ export class EKSStack extends NestedStackWithSource {
       clusterName: 'multi-az-workshop-eks-cluster-v2',
       version: props.eksVersion,
     });
-    cluster;
 
     // Fix up nested stacks for kubectl and cluster resource providers
     this.fixUpNestedStacks();
@@ -111,7 +110,8 @@ export class EKSStack extends NestedStackWithSource {
     const istio = new Istio(this, 'Istio', {
       cluster: cluster.cluster,
       containerAndRepoBuilder: repoHelmContainerCreator,
-      version: props.istioVersion
+      version: props.istioVersion,
+      role: cluster.userRole,
     });
 
     // Install AWS Load Balancer Controller

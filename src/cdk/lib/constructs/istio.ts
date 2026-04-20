@@ -4,6 +4,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as eks from 'aws-cdk-lib/aws-eks-v2';
 import * as eks_legacy from 'aws-cdk-lib/aws-eks';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct, IDependable } from 'constructs';
 import { ContainerAndRepo, RepoAndHelmChartProps, RepoAndContainerProps } from './container-and-repo';
 import { HelmRepoAndChartConstruct } from './helm-repo-and-chart';
@@ -33,7 +34,7 @@ export interface IstioProps {
    * 
    * @default "No role is given access"
    */
-  readonly roleArn?: string;
+  readonly role?: iam.IRole;
 }
 
 /**
@@ -145,10 +146,10 @@ export class Istio extends HelmRepoAndChartConstruct {
     cni.node.addDependency(istioCniHelmChartRepo.dependable);
     (cni.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride('ServiceTimeout', '300');
 
-    if (props.roleArn) {
+    if (props.role) {
       new eks_legacy.CfnAccessEntry(this, 'IstioAccessEntry', {
         clusterName: props.cluster.clusterName,
-        principalArn: props.roleArn,
+        principalArn: props.role.roleArn,
         type: eks_legacy.AccessEntryType.STANDARD,
         kubernetesGroups: ["istio-admins"]
       });

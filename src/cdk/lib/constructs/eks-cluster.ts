@@ -62,6 +62,11 @@ export class EKSCluster extends Construct {
    */
   public readonly cluster: eks.ICluster;
 
+  /**
+   * The role used by users to interact with kubectl and cluster resources
+   */
+  public readonly userRole: iam.IRole;
+
   constructor(scope: Construct, id: string, props: EKSClusterProps) {
     super(scope, id);
 
@@ -121,6 +126,8 @@ export class EKSCluster extends Construct {
         }
       )    
     });
+
+    this.userRole = userKubectlRole;
 
     new ssm.StringParameter(this, 'KubectlRoleParameter', {
       parameterName: 'RoleArn',
