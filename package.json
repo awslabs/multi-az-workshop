@@ -76,10 +76,10 @@
     "fast-check": "^3.15.0",
     "jest": "^30.3.0",
     "jest-junit": "^16",
-    "projen": "^0.99.47",
+    "projen": "^0.99.51",
     "ts-jest": "^29.4.9",
     "ts-node": "^10.9.2",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.3"
   },
   "dependencies": {
     "aws-cdk-lib": "2.248.0",
