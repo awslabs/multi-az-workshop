@@ -1,3 +1,6 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 import { App, Stack } from 'aws-cdk-lib';
 import { Template, Match } from 'aws-cdk-lib/assertions';
 import { SelfManagedHttpEndpointS3Stack } from '../../../src/cdk/lib/nested-stacks/self-managed-http-endpoint-s3-stack';

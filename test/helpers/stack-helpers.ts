@@ -1,3 +1,6 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * Stack helper functions for synthesis and resource inspection
  * Provides utilities for working with CDK stacks in tests

@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 # Define container names
 CONTAINER1="multi-az-workshop-application"
 CONTAINER2="cwagent"

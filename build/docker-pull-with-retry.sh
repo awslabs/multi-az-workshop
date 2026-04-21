@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 # Pulls a docker image with exponential backoff and jitter on rate limit errors.
 # Usage: docker-pull-with-retry.sh <image> [max_retries]
 

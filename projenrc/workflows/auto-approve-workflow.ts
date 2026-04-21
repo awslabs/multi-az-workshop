@@ -1,3 +1,6 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * Auto-approve workflow configuration
  * Automatically approves PRs with the auto-approve label from authorized users

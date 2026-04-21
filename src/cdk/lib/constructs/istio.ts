@@ -3,8 +3,6 @@
 
 import * as cdk from 'aws-cdk-lib';
 import * as eks from 'aws-cdk-lib/aws-eks-v2';
-import * as eks_legacy from 'aws-cdk-lib/aws-eks';
-import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct, IDependable } from 'constructs';
 import { ContainerAndRepo, RepoAndHelmChartProps, RepoAndContainerProps } from './container-and-repo';
 import { HelmRepoAndChartConstruct } from './helm-repo-and-chart';
