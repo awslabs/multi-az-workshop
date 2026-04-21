@@ -395,6 +395,7 @@ export class EC2FleetStack extends cdk.NestedStack {
           autoscaling.ScalingProcess.SCHEDULED_ACTIONS,
         ],
       }),
+      groupMetrics: [autoscaling.GroupMetrics.all()],
       signals: autoscaling.Signals.waitForCount(Math.ceil(props.fleetSize / 2), {
         timeout: cdk.Duration.minutes(10),
       }),
