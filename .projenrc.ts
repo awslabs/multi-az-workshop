@@ -73,7 +73,14 @@ const project = new AwsCdkTypeScriptApp({
 
   // GitHub settings
   githubOptions: {
-    mergify: true,
+    mergify: false,
+    mergeQueue: true,
+    mergeQueueOptions: {
+      autoQueueOptions: {
+        allowedUsernames: ['hakenmt', 'github-actions[bot]'],
+        labels: ['auto-approve', 'auto-merge'],
+      },
+    },
   },
 
   // Minimal dependencies for root project
