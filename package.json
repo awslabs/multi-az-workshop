@@ -76,7 +76,7 @@
     "fast-check": "^3.15.0",
     "jest": "^30.3.0",
     "jest-junit": "^16",
-    "projen": "^0.99.51",
+    "projen": "^0.99.52",
     "ts-jest": "^29.4.9",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3"
