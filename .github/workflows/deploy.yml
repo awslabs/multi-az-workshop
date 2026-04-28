@@ -3,65 +3,36 @@
 name: deploy
 on:
   workflow_dispatch: {}
-  pull_request_review:
+  workflow_run:
+    workflows:
+      - build
     types:
-      - submitted
+      - completed
 jobs:
-  check-changes:
+  resolve:
     runs-on: ubuntu-latest
     permissions:
-      checks: read
       actions: read
       contents: read
     outputs:
-      should_deploy: ${{ steps.check.outputs.should_deploy }}
-      ref: ${{ steps.check.outputs.ref }}
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved')
+      ref: ${{ steps.info.outputs.ref }}
+      run_id: ${{ steps.info.outputs.run_id }}
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request' && (github.event.workflow_run.actor.login == 'hakenmt' || github.event.workflow_run.triggering_actor.login == 'hakenmt' || github.event.workflow_run.actor.login == 'github-actions[bot]' || github.event.workflow_run.triggering_actor.login == 'github-actions[bot]'))
     steps:
-      - name: Determine ref
-        id: check
+      - name: Determine ref and source run
+        id: info
         run: |-
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
                       echo "Manual trigger - deploying from main"
                       echo "ref=main" >> $GITHUB_OUTPUT
+                      echo "run_id=" >> $GITHUB_OUTPUT
                     else
-                      echo "Triggered by PR approval"
-                      echo "ref=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+                      echo "Triggered by build run ${{ github.event.workflow_run.id }}"
+                      echo "ref=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
+                      echo "run_id=${{ github.event.workflow_run.id }}" >> $GITHUB_OUTPUT
                     fi
-                    echo "should_deploy=true" >> $GITHUB_OUTPUT
-      - name: Verify all required checks passed for this ref
-        if: github.event_name == 'pull_request_review'
-        run: |-
-          SHA="${{ github.event.pull_request.head.sha }}"
-                    echo "Verifying checks for $SHA"
-
-                    # Fetch all check runs for this SHA
-                    CHECK_RUNS=$(gh api repos/${{ github.repository }}/commits/$SHA/check-runs --paginate \
-                      --jq '[.check_runs[]] | group_by(.name) | map(sort_by(.started_at) | reverse | .[0])')
-
-                    FAILED=$(echo "$CHECK_RUNS" | jq '[.[] | select(.conclusion == "failure" or .conclusion == "cancelled" or .conclusion == "timed_out")] | length')
-                    PENDING=$(echo "$CHECK_RUNS" | jq '[.[] | select(.status != "completed" and .name != "deploy" and .name != "check-changes" and .name != "create-deployment" and .name != "build" and .name != "report-deployment")] | length')
-
-                    echo "Failed checks: $FAILED"
-                    echo "Pending checks (excluding this deploy workflow): $PENDING"
-
-                    if [ "$FAILED" -gt 0 ]; then
-                      echo "::error::One or more required checks failed for $SHA. Refusing to deploy."
-                      echo "$CHECK_RUNS" | jq -r '.[] | select(.conclusion == "failure" or .conclusion == "cancelled" or .conclusion == "timed_out") | "- \(.name): \(.conclusion)"'
-                      exit 1
-                    fi
-
-                    if [ "$PENDING" -gt 0 ]; then
-                      echo "::error::Required checks are still pending for $SHA. Refusing to deploy."
-                      echo "$CHECK_RUNS" | jq -r '.[] | select(.status != "completed") | "- \(.name): \(.status)"'
-                      exit 1
-                    fi
-
-                    echo "All required checks passed for $SHA"
   create-deployment:
-    needs: check-changes
+    needs: resolve
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -75,15 +46,16 @@ jobs:
         id: create
         run: |-
           DEPLOYMENT_ID=$(gh api repos/${{ github.repository }}/deployments \
-                      -f ref=${{ needs.check-changes.outputs.ref }} \
+                      -f ref=${{ needs.resolve.outputs.ref }} \
                       -f environment=AWS \
                       -F auto_merge=false \
+                      -F required_contexts='[]' \
                       --jq '.id')
                     echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
                     echo "Created deployment: $DEPLOYMENT_ID"
-  build:
+  build-from-main:
     needs:
-      - check-changes
+      - resolve
       - create-deployment
     runs-on: ubuntu-24.04-arm
     permissions:
@@ -91,13 +63,12 @@ jobs:
     env:
       CI: "true"
       PROJECT_NAME: ${{ github.event.repository.name }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-    if: needs.check-changes.outputs.should_deploy == 'true'
+    if: github.event_name == 'workflow_dispatch'
     steps:
-      - name: Checkout
+      - name: Checkout main (trusted)
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.check-changes.outputs.ref }}
+          ref: main
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -110,7 +81,7 @@ jobs:
         run: corepack enable
       - name: Install dependencies
         run: yarn install --immutable
-      - name: Build workshop content
+      - name: Build
         run: npx projen build
       - name: Upload content artifact
         uses: actions/upload-artifact@v4
@@ -118,15 +89,17 @@ jobs:
           name: workshop-content
           path: dist/content.zip
           retention-days: 7
+          if-no-files-found: error
   deploy:
     needs:
-      - check-changes
+      - resolve
       - create-deployment
-      - build
+      - build-from-main
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
+      actions: read
     environment:
       name: AWS
     env:
@@ -135,25 +108,22 @@ jobs:
       BUCKET: ${{ secrets.BUCKET }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
       DEPLOYMENT_ROLE: ${{ secrets.DEPLOYMENT_ROLE }}
-    if: needs.check-changes.outputs.should_deploy == 'true'
+    if: always() && needs.resolve.result == 'success' && needs.create-deployment.result == 'success' && (needs.build-from-main.result == 'success' || needs.build-from-main.result == 'skipped')
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.check-changes.outputs.ref }}
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-      - name: Enable Corepack
-        run: corepack enable
-      - name: Install dependencies
-        run: yarn install --immutable
-      - name: Download content artifact
+      - name: Download content artifact (manual dispatch)
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/download-artifact@v4
         with:
           name: workshop-content
           path: dist
+      - name: Download content artifact (from build run)
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@v4
+        with:
+          name: workshop-content
+          path: dist
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ needs.resolve.outputs.run_id }}
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5.1.0
         with:
@@ -161,12 +131,74 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           mask-aws-account-id: true
       - name: Deploy workshop to AWS
-        run: npx projen deploy
+        run: |-
+          set -euo pipefail
+                    rm -rf tmp && mkdir -p tmp
+                    unzip -q dist/content.zip -d tmp
+
+                    ASSETS_PREFIX=$(date --utc +"%Y-%m-%dT%H-%M-%SZ")
+                    echo "$ASSETS_PREFIX" > tmp/assets_prefix.txt
+
+                    echo "Uploading assets to s3://$BUCKET/$ASSETS_PREFIX/"
+                    aws s3 cp tmp "s3://$BUCKET/$ASSETS_PREFIX/" --recursive
+
+                    set +e
+                    aws cloudformation describe-stacks --stack-name "$PROJECT_NAME" --region "$AWS_REGION" >/dev/null 2>&1
+                    EXISTS=$?
+                    set -e
+
+                    if [ $EXISTS -eq 0 ]; then
+                      CHANGE_SET_TYPE=UPDATE; WAIT=update
+                    else
+                      CHANGE_SET_TYPE=CREATE; WAIT=create
+                    fi
+                    echo "Stack $CHANGE_SET_TYPE"
+
+                    aws cloudformation create-change-set \
+                      --change-set-type "$CHANGE_SET_TYPE" \
+                      --stack-name "$PROJECT_NAME" \
+                      --change-set-name "$PROJECT_NAME-$ASSETS_PREFIX" \
+                      --template-url "https://$BUCKET.s3.$AWS_REGION.amazonaws.com/$ASSETS_PREFIX/$PROJECT_NAME.json" \
+                      --parameters \
+                        ParameterKey=AssetsBucketName,ParameterValue="$BUCKET" \
+                        ParameterKey=AssetsBucketPrefix,ParameterValue="$ASSETS_PREFIX/" \
+                        ParameterKey=ParticipantRoleName,ParameterValue=Admin \
+                      --capabilities CAPABILITY_IAM \
+                      --region "$AWS_REGION"
+
+                    aws cloudformation wait change-set-create-complete \
+                      --stack-name "$PROJECT_NAME" \
+                      --change-set-name "$PROJECT_NAME-$ASSETS_PREFIX" \
+                      --region "$AWS_REGION"
+
+                    INITIAL_STATUS=$(aws cloudformation describe-stacks --stack-name "$PROJECT_NAME" --region "$AWS_REGION" --query 'Stacks[0].StackStatus' --output text)
+
+                    aws cloudformation execute-change-set \
+                      --stack-name "$PROJECT_NAME" \
+                      --change-set-name "$PROJECT_NAME-$ASSETS_PREFIX" \
+                      --region "$AWS_REGION"
+
+                    while true; do
+                      STATUS=$(aws cloudformation describe-stacks --stack-name "$PROJECT_NAME" --region "$AWS_REGION" --query 'Stacks[0].StackStatus' --output text)
+                      if [ "$STATUS" != "$INITIAL_STATUS" ]; then
+                        echo "Stack transitioned to: $STATUS"
+                        break
+                      fi
+                      sleep 5
+                    done
+
+                    if ! aws cloudformation wait "stack-$WAIT-complete" --stack-name "$PROJECT_NAME" --region "$AWS_REGION"; then
+                      echo "Deployment failed - cleaning up S3 prefix"
+                      aws s3 rm "s3://$BUCKET/$ASSETS_PREFIX/" --recursive || true
+                      exit 1
+                    fi
+
+                    echo "Deployment succeeded - cleaning up old S3 content"
+                    aws s3 rm "s3://$BUCKET/" --recursive --exclude "$ASSETS_PREFIX/*" || true
   report-deployment:
     needs:
-      - check-changes
+      - resolve
       - create-deployment
-      - build
       - deploy
     runs-on: ubuntu-latest
     permissions:
@@ -186,5 +218,5 @@ jobs:
                       -f state=$STATE
                     echo "Deployment status: $STATE"
 concurrency:
-  group: deploy-${{ github.event.pull_request.head.sha || github.sha }}
+  group: deploy-${{ github.event.workflow_run.head_sha || github.sha }}
   cancel-in-progress: true

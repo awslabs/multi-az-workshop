@@ -156,6 +156,21 @@ if (autoQueueWorkflow?.file) {
   ]);
 }
 
+// After a successful PR build, upload dist/content.zip as an artifact so the
+// privileged deploy workflow can consume it via workflow_run without ever
+// checking out untrusted PR code.
+project.buildWorkflow?.addPostBuildSteps({
+  name: 'Upload content artifact',
+  if: "github.event_name == 'pull_request'",
+  uses: 'actions/upload-artifact@v4',
+  with: {
+    'name': 'workshop-content',
+    'path': 'dist/content.zip',
+    'retention-days': 7,
+    'if-no-files-found': 'error',
+  },
+});
+
 // Add global environment variables for all tasks
 project.tasks.addEnvironment('PROJECT_NAME', project.name);
 
