@@ -162,7 +162,7 @@ if (autoQueueWorkflow?.file) {
 project.buildWorkflow?.addPostBuildSteps({
   name: 'Upload content artifact',
   if: "github.event_name == 'pull_request'",
-  uses: 'actions/upload-artifact@v4',
+  uses: 'actions/upload-artifact@v7',
   with: {
     'name': 'workshop-content',
     'path': 'dist/content.zip',

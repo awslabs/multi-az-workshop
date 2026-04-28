@@ -149,7 +149,7 @@ function addBuildFromMainJob(workflow: GithubWorkflow): void {
       { name: 'Build', run: 'npx projen build' },
       {
         name: 'Upload content artifact',
-        uses: 'actions/upload-artifact@v4',
+        uses: 'actions/upload-artifact@v7',
         with: {
           'name': 'workshop-content',
           'path': 'dist/content.zip',
@@ -190,14 +190,14 @@ function addDeployJob(workflow: GithubWorkflow): void {
         // Same-run artifact produced by build-from-main.
         name: 'Download content artifact (manual dispatch)',
         if: "github.event_name == 'workflow_dispatch'",
-        uses: 'actions/download-artifact@v4',
+        uses: 'actions/download-artifact@v8',
         with: { name: 'workshop-content', path: 'dist' },
       },
       {
         // Cross-run artifact from the triggering build workflow run.
         name: 'Download content artifact (from build run)',
         if: "github.event_name == 'workflow_run'",
-        uses: 'actions/download-artifact@v4',
+        uses: 'actions/download-artifact@v8',
         with: {
           'name': 'workshop-content',
           'path': 'dist',
