@@ -143,6 +143,19 @@ project.package.addPackageResolutions(
   'uuid@>=14.0.0',
 );
 
+// projen's AutoQueue only triggers on opened/reopened/ready_for_review by default,
+// which means adding an auto-approve/auto-merge label to an existing PR won't enable
+// auto-queue. Add 'labeled' so post-creation labeling works like it did under Mergify.
+const autoQueueWorkflow = project.github?.tryFindWorkflow('auto-queue');
+if (autoQueueWorkflow?.file) {
+  autoQueueWorkflow.file.addOverride('on.pull_request_target.types', [
+    'opened',
+    'reopened',
+    'ready_for_review',
+    'labeled',
+  ]);
+}
+
 // Add global environment variables for all tasks
 project.tasks.addEnvironment('PROJECT_NAME', project.name);
 
