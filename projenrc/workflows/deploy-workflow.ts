@@ -34,7 +34,7 @@ export function createDeployWorkflow(github: GitHub): void {
   });
 
   workflow.file?.addOverride('concurrency', {
-    group: 'deploy-${{ github.event.workflow_run.head_sha || github.sha }}',
+    'group': 'deploy-${{ github.event.workflow_run.head_sha || github.sha }}',
     'cancel-in-progress': true,
   });
 
