@@ -137,10 +137,39 @@ const project = new AwsCdkTypeScriptApp({
 // Pin minimum transitive dependency versions for security patches
 project.package.addPackageResolutions(
   'flatted@>=3.4.2',
-  'fast-xml-parser@>=5.5.7',
+  'fast-xml-parser@>=5.7.0',
   'handlebars@>=4.7.9',
   'picomatch@>=2.3.2',
+  'uuid@>=14.0.0',
 );
+
+// projen's AutoQueue only triggers on opened/reopened/ready_for_review by default,
+// which means adding an auto-approve/auto-merge label to an existing PR won't enable
+// auto-queue. Add 'labeled' so post-creation labeling works like it did under Mergify.
+const autoQueueWorkflow = project.github?.tryFindWorkflow('auto-queue');
+if (autoQueueWorkflow?.file) {
+  autoQueueWorkflow.file.addOverride('on.pull_request_target.types', [
+    'opened',
+    'reopened',
+    'ready_for_review',
+    'labeled',
+  ]);
+}
+
+// After a successful PR build, upload dist/content.zip as an artifact so the
+// privileged deploy workflow can consume it via workflow_run without ever
+// checking out untrusted PR code.
+project.buildWorkflow?.addPostBuildSteps({
+  name: 'Upload content artifact',
+  if: "github.event_name == 'pull_request'",
+  uses: 'actions/upload-artifact@v7',
+  with: {
+    'name': 'workshop-content',
+    'path': 'dist/content.zip',
+    'retention-days': 7,
+    'if-no-files-found': 'error',
+  },
+});
 
 // Add global environment variables for all tasks
 project.tasks.addEnvironment('PROJECT_NAME', project.name);

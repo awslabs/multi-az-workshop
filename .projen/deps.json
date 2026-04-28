@@ -92,7 +92,7 @@
     },
     {
       "name": "fast-xml-parser",
-      "version": ">=5.5.7",
+      "version": ">=5.7.0",
       "type": "override"
     },
     {
@@ -108,6 +108,11 @@
     {
       "name": "picomatch",
       "version": ">=2.3.2",
+      "type": "override"
+    },
+    {
+      "name": "uuid",
+      "version": ">=14.0.0",
       "type": "override"
     },
     {
