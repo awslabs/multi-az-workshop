@@ -86,10 +86,11 @@
     "constructs": "^10.5.0"
   },
   "resolutions": {
-    "fast-xml-parser": ">=5.5.7",
+    "fast-xml-parser": ">=5.7.0",
     "flatted": ">=3.4.2",
     "handlebars": ">=4.7.9",
-    "picomatch": ">=2.3.2"
+    "picomatch": ">=2.3.2",
+    "uuid": ">=14.0.0"
   },
   "devEngines": {
     "packageManager": {
