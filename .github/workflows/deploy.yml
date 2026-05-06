@@ -45,13 +45,12 @@ jobs:
       - name: Create deployment
         id: create
         run: |-
-          DEPLOYMENT_ID=$(jq -nc \
-                      --arg ref "${{ needs.resolve.outputs.ref }}" \
-                      '{ref: $ref, environment: "AWS", auto_merge: false, required_contexts: []}' \
-                      | gh api repos/${{ github.repository }}/deployments \
-                          --method POST \
-                          --input - \
-                          --jq '.id')
+          DEPLOYMENT_ID=$(gh api repos/${{ github.repository }}/deployments \
+                      -f ref=${{ needs.resolve.outputs.ref }} \
+                      -f environment=AWS \
+                      -F auto_merge=false \
+                      -F required_contexts='[]' \
+                      --jq '.id')
                     echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
                     echo "Created deployment: $DEPLOYMENT_ID"
   build-from-main:
