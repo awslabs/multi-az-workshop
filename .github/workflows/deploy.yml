@@ -14,9 +14,12 @@ jobs:
     permissions:
       actions: read
       contents: read
+      pull-requests: read
     outputs:
       ref: ${{ steps.info.outputs.ref }}
       run_id: ${{ steps.info.outputs.run_id }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request' && (github.event.workflow_run.actor.login == 'hakenmt' || github.event.workflow_run.triggering_actor.login == 'hakenmt' || github.event.workflow_run.actor.login == 'github-actions[bot]' || github.event.workflow_run.triggering_actor.login == 'github-actions[bot]'))
     steps:
       - name: Determine ref and source run
@@ -31,6 +34,35 @@ jobs:
                       echo "ref=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
                       echo "run_id=${{ github.event.workflow_run.id }}" >> $GITHUB_OUTPUT
                     fi
+      - name: Require approved PR review
+        if: github.event_name == 'workflow_run'
+        run: |-
+          SHA="${{ github.event.workflow_run.head_sha }}"
+                    REPO="${{ github.repository }}"
+
+                    echo "Looking up PR for SHA $SHA"
+                    PR_NUMBER=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '[.[] | select(.state == "open" or .state == "closed")] | first | .number')
+
+                    if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
+                      echo "::error::No PR found for SHA $SHA. Refusing to deploy."
+                      exit 1
+                    fi
+                    echo "Found PR #$PR_NUMBER"
+
+                    # Fetch the latest review per reviewer. Only APPROVED counts; any
+                    # later CHANGES_REQUESTED or DISMISSED from the same reviewer voids
+                    # their prior approval.
+                    APPROVED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --paginate \
+                      --jq '[.[] | select(.commit_id == "'"$SHA"'")] | group_by(.user.login) | map(sort_by(.submitted_at) | last) | [.[] | select(.state == "APPROVED")] | length')
+
+                    echo "Approved reviews for this head SHA: $APPROVED"
+
+                    if [ "$APPROVED" -lt 1 ]; then
+                      echo "::error::PR #$PR_NUMBER does not have an approved review for SHA $SHA. Refusing to deploy."
+                      exit 1
+                    fi
+
+                    echo "PR #$PR_NUMBER is approved for SHA $SHA"
   create-deployment:
     needs: resolve
     runs-on: ubuntu-latest
@@ -41,18 +73,18 @@ jobs:
       deployment_id: ${{ steps.create.outputs.deployment_id }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REF: ${{ needs.resolve.outputs.ref }}
+      REPO: ${{ github.repository }}
     steps:
       - name: Create deployment
         id: create
         run: |-
-          DEPLOYMENT_ID=$(gh api repos/${{ github.repository }}/deployments \
-                      -f ref=${{ needs.resolve.outputs.ref }} \
-                      -f environment=AWS \
-                      -F auto_merge=false \
-                      -F required_contexts='[]' \
-                      --jq '.id')
-                    echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
-                    echo "Created deployment: $DEPLOYMENT_ID"
+          set -euo pipefail
+          jq -nc --arg ref "$REF" '{ref: $ref, environment: "AWS", auto_merge: false, required_contexts: []}' > /tmp/deployment.json
+          echo "Payload:"; cat /tmp/deployment.json
+          DEPLOYMENT_ID=$(gh api "repos/$REPO/deployments" --method POST --input /tmp/deployment.json --jq .id)
+          echo "deployment_id=$DEPLOYMENT_ID" >> "$GITHUB_OUTPUT"
+          echo "Created deployment: $DEPLOYMENT_ID"
   build-from-main:
     needs:
       - resolve
