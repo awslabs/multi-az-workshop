@@ -131,22 +131,24 @@ function addCreateDeploymentJob(workflow: GithubWorkflow): void {
     outputs: {
       deployment_id: { stepId: 'create', outputName: 'deployment_id' },
     },
-    env: { GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}' },
+    env: {
+      GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}',
+      REF: '${{ needs.resolve.outputs.ref }}',
+      REPO: '${{ github.repository }}',
+    },
     steps: [
       {
         name: 'Create deployment',
         id: 'create',
-        run: `
-          DEPLOYMENT_ID=$(jq -nc \\
-            --arg ref "\${{ needs.resolve.outputs.ref }}" \\
-            '{ref: $ref, environment: "AWS", auto_merge: false, required_contexts: []}' \\
-            | gh api repos/\${{ github.repository }}/deployments \\
-                --method POST \\
-                --input - \\
-                --jq '.id')
-          echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
-          echo "Created deployment: $DEPLOYMENT_ID"
-        `.trim(),
+        run: [
+          'set -euo pipefail',
+          // jq builds the JSON body from $REF and writes to a file.
+          'jq -nc --arg ref "$REF" \'{ref: $ref, environment: "AWS", auto_merge: false, required_contexts: []}\' > /tmp/deployment.json',
+          'echo "Payload:"; cat /tmp/deployment.json',
+          'DEPLOYMENT_ID=$(gh api "repos/$REPO/deployments" --method POST --input /tmp/deployment.json --jq .id)',
+          'echo "deployment_id=$DEPLOYMENT_ID" >> "$GITHUB_OUTPUT"',
+          'echo "Created deployment: $DEPLOYMENT_ID"',
+        ].join('\n'),
       },
     ],
   });

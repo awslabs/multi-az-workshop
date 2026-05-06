@@ -73,19 +73,18 @@ jobs:
       deployment_id: ${{ steps.create.outputs.deployment_id }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REF: ${{ needs.resolve.outputs.ref }}
+      REPO: ${{ github.repository }}
     steps:
       - name: Create deployment
         id: create
         run: |-
-          DEPLOYMENT_ID=$(jq -nc \
-                      --arg ref "${{ needs.resolve.outputs.ref }}" \
-                      '{ref: $ref, environment: "AWS", auto_merge: false, required_contexts: []}' \
-                      | gh api repos/${{ github.repository }}/deployments \
-                          --method POST \
-                          --input - \
-                          --jq '.id')
-                    echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
-                    echo "Created deployment: $DEPLOYMENT_ID"
+          set -euo pipefail
+          jq -nc --arg ref "$REF" '{ref: $ref, environment: "AWS", auto_merge: false, required_contexts: []}' > /tmp/deployment.json
+          echo "Payload:"; cat /tmp/deployment.json
+          DEPLOYMENT_ID=$(gh api "repos/$REPO/deployments" --method POST --input /tmp/deployment.json --jq .id)
+          echo "deployment_id=$DEPLOYMENT_ID" >> "$GITHUB_OUTPUT"
+          echo "Created deployment: $DEPLOYMENT_ID"
   build-from-main:
     needs:
       - resolve
