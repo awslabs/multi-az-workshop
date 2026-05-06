@@ -101,12 +101,13 @@ function addCreateDeploymentJob(workflow: GithubWorkflow): void {
         name: 'Create deployment',
         id: 'create',
         run: `
-          DEPLOYMENT_ID=$(gh api repos/\${{ github.repository }}/deployments \\
-            -f ref=\${{ needs.resolve.outputs.ref }} \\
-            -f environment=AWS \\
-            -F auto_merge=false \\
-            -F required_contexts='[]' \\
-            --jq '.id')
+          DEPLOYMENT_ID=$(jq -nc \\
+            --arg ref "\${{ needs.resolve.outputs.ref }}" \\
+            '{ref: $ref, environment: "AWS", auto_merge: false, required_contexts: []}' \\
+            | gh api repos/\${{ github.repository }}/deployments \\
+                --method POST \\
+                --input - \\
+                --jq '.id')
           echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
           echo "Created deployment: $DEPLOYMENT_ID"
         `.trim(),
