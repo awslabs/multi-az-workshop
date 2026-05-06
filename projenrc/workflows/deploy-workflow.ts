@@ -59,11 +59,13 @@ function addResolveJob(workflow: GithubWorkflow, gate: string): void {
     permissions: {
       actions: JobPermission.READ,
       contents: JobPermission.READ,
+      pullRequests: JobPermission.READ,
     },
     outputs: {
       ref: { stepId: 'info', outputName: 'ref' },
       run_id: { stepId: 'info', outputName: 'run_id' },
     },
+    env: { GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}' },
     steps: [
       {
         name: 'Determine ref and source run',
@@ -78,6 +80,40 @@ function addResolveJob(workflow: GithubWorkflow, gate: string): void {
             echo "ref=\${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
             echo "run_id=\${{ github.event.workflow_run.id }}" >> $GITHUB_OUTPUT
           fi
+        `.trim(),
+      },
+      {
+        // For PR-triggered deploys, require an approved review on the PR for
+        // this head SHA. Dismissed or stale approvals do not count.
+        name: 'Require approved PR review',
+        if: "github.event_name == 'workflow_run'",
+        run: `
+          SHA="\${{ github.event.workflow_run.head_sha }}"
+          REPO="\${{ github.repository }}"
+
+          echo "Looking up PR for SHA $SHA"
+          PR_NUMBER=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '[.[] | select(.state == "open" or .state == "closed")] | first | .number')
+
+          if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
+            echo "::error::No PR found for SHA $SHA. Refusing to deploy."
+            exit 1
+          fi
+          echo "Found PR #$PR_NUMBER"
+
+          # Fetch the latest review per reviewer. Only APPROVED counts; any
+          # later CHANGES_REQUESTED or DISMISSED from the same reviewer voids
+          # their prior approval.
+          APPROVED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --paginate \\
+            --jq '[.[] | select(.commit_id == "'"$SHA"'")] | group_by(.user.login) | map(sort_by(.submitted_at) | last) | [.[] | select(.state == "APPROVED")] | length')
+
+          echo "Approved reviews for this head SHA: $APPROVED"
+
+          if [ "$APPROVED" -lt 1 ]; then
+            echo "::error::PR #$PR_NUMBER does not have an approved review for SHA $SHA. Refusing to deploy."
+            exit 1
+          fi
+
+          echo "PR #$PR_NUMBER is approved for SHA $SHA"
         `.trim(),
       },
     ],
