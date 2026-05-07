@@ -8,6 +8,9 @@ on:
       - build
     types:
       - completed
+  pull_request_review:
+    types:
+      - submitted
 jobs:
   resolve:
     runs-on: ubuntu-latest
@@ -15,54 +18,97 @@ jobs:
       actions: read
       contents: read
       pull-requests: read
+      checks: read
     outputs:
       ref: ${{ steps.info.outputs.ref }}
-      run_id: ${{ steps.info.outputs.run_id }}
+      run_id: ${{ steps.build_check.outputs.run_id }}
+      is_approved: ${{ steps.approval.outputs.is_approved }}
+      build_ok: ${{ steps.build_check.outputs.build_ok }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request' && (github.event.workflow_run.actor.login == 'hakenmt' || github.event.workflow_run.triggering_actor.login == 'hakenmt' || github.event.workflow_run.actor.login == 'github-actions[bot]' || github.event.workflow_run.triggering_actor.login == 'github-actions[bot]'))
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request' && (github.event.workflow_run.actor.login == 'hakenmt' || github.event.workflow_run.triggering_actor.login == 'hakenmt' || github.event.pull_request.user.login == 'hakenmt' || github.event.workflow_run.actor.login == 'github-actions[bot]' || github.event.workflow_run.triggering_actor.login == 'github-actions[bot]' || github.event.pull_request.user.login == 'github-actions[bot]')) || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved' && (github.event.workflow_run.actor.login == 'hakenmt' || github.event.workflow_run.triggering_actor.login == 'hakenmt' || github.event.pull_request.user.login == 'hakenmt' || github.event.workflow_run.actor.login == 'github-actions[bot]' || github.event.workflow_run.triggering_actor.login == 'github-actions[bot]' || github.event.pull_request.user.login == 'github-actions[bot]'))
     steps:
-      - name: Determine ref and source run
+      - name: Determine ref
         id: info
         run: |-
+          set -euo pipefail
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-                      echo "Manual trigger - deploying from main"
-                      echo "ref=main" >> $GITHUB_OUTPUT
-                      echo "run_id=" >> $GITHUB_OUTPUT
-                    else
-                      echo "Triggered by build run ${{ github.event.workflow_run.id }}"
-                      echo "ref=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
-                      echo "run_id=${{ github.event.workflow_run.id }}" >> $GITHUB_OUTPUT
-                    fi
-      - name: Require approved PR review
-        if: github.event_name == 'workflow_run'
+            echo "Manual trigger - deploying from main"
+            echo "ref=main" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" == "workflow_run" ]; then
+            echo "Triggered by build run ${{ github.event.workflow_run.id }}"
+            echo "ref=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "Triggered by PR review on #${{ github.event.pull_request.number }}"
+            echo "ref=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Check build status
+        id: build_check
         run: |-
-          SHA="${{ github.event.workflow_run.head_sha }}"
-                    REPO="${{ github.repository }}"
-
-                    echo "Looking up PR for SHA $SHA"
-                    PR_NUMBER=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '[.[] | select(.state == "open" or .state == "closed")] | first | .number')
-
-                    if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
-                      echo "::error::No PR found for SHA $SHA. Refusing to deploy."
-                      exit 1
-                    fi
-                    echo "Found PR #$PR_NUMBER"
-
-                    # Fetch the latest review per reviewer. Only APPROVED counts; any
-                    # later CHANGES_REQUESTED or DISMISSED from the same reviewer voids
-                    # their prior approval.
-                    APPROVED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --paginate \
-                      --jq '[.[] | select(.commit_id == "'"$SHA"'")] | group_by(.user.login) | map(sort_by(.submitted_at) | last) | [.[] | select(.state == "APPROVED")] | length')
-
-                    echo "Approved reviews for this head SHA: $APPROVED"
-
-                    if [ "$APPROVED" -lt 1 ]; then
-                      echo "::error::PR #$PR_NUMBER does not have an approved review for SHA $SHA. Refusing to deploy."
-                      exit 1
-                    fi
-
-                    echo "PR #$PR_NUMBER is approved for SHA $SHA"
+          set -euo pipefail
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "build_ok=true" >> "$GITHUB_OUTPUT"
+            echo "run_id=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "${{ github.event_name }}" == "workflow_run" ]; then
+            echo "build_ok=true" >> "$GITHUB_OUTPUT"
+            echo "run_id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # pull_request_review: verify build succeeded for this head SHA
+          SHA="${{ github.event.pull_request.head.sha }}"
+          REPO="${{ github.repository }}"
+          echo "Looking for successful build run for SHA $SHA"
+          BUILD_RUN=$(gh api "repos/$REPO/actions/workflows/build.yml/runs?head_sha=$SHA" --jq '[.workflow_runs[]] | sort_by(.run_number) | reverse | first')
+          if [ -z "$BUILD_RUN" ] || [ "$BUILD_RUN" = "null" ]; then
+            echo "No build run found for $SHA - skipping deploy"
+            echo "build_ok=false" >> "$GITHUB_OUTPUT"
+            echo "run_id=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          CONCLUSION=$(echo "$BUILD_RUN" | jq -r .conclusion)
+          RUN_ID=$(echo "$BUILD_RUN" | jq -r .id)
+          echo "Build run $RUN_ID conclusion: $CONCLUSION"
+          if [ "$CONCLUSION" != "success" ]; then
+            echo "Build did not succeed for $SHA - skipping deploy"
+            echo "build_ok=false" >> "$GITHUB_OUTPUT"
+            echo "run_id=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "build_ok=true" >> "$GITHUB_OUTPUT"
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+      - name: Check PR approval status
+        id: approval
+        run: |-
+          set -euo pipefail
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "Manual dispatch - approval not required"
+            echo "is_approved=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "${{ github.event_name }}" == "workflow_run" ]; then
+            SHA="${{ github.event.workflow_run.head_sha }}"
+          else
+            SHA="${{ github.event.pull_request.head.sha }}"
+          fi
+          REPO="${{ github.repository }}"
+          PR_NUMBER=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '[.[]] | first | .number // empty')
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No PR found for SHA $SHA - skipping deploy"
+            echo "is_approved=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Found PR #$PR_NUMBER"
+          APPROVED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --paginate --jq '[.[] | select(.commit_id == "'"$SHA"'")] | group_by(.user.login) | map(sort_by(.submitted_at) | last) | [.[] | select(.state == "APPROVED")] | length')
+          echo "Approved reviews for this head SHA: $APPROVED"
+          if [ "$APPROVED" -ge 1 ]; then
+            echo "PR #$PR_NUMBER is approved for SHA $SHA"
+            echo "is_approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "PR #$PR_NUMBER has no approved review for SHA $SHA - skipping deploy"
+            echo "is_approved=false" >> "$GITHUB_OUTPUT"
+          fi
   create-deployment:
     needs: resolve
     runs-on: ubuntu-latest
@@ -75,6 +121,7 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       REF: ${{ needs.resolve.outputs.ref }}
       REPO: ${{ github.repository }}
+    if: needs.resolve.outputs.is_approved == 'true' && needs.resolve.outputs.build_ok == 'true'
     steps:
       - name: Create deployment
         id: create
@@ -149,7 +196,7 @@ jobs:
           name: workshop-content
           path: dist
       - name: Download content artifact (from build run)
-        if: github.event_name == 'workflow_run'
+        if: github.event_name != 'workflow_dispatch'
         uses: actions/download-artifact@v8
         with:
           name: workshop-content
@@ -250,5 +297,5 @@ jobs:
                       -f state=$STATE
                     echo "Deployment status: $STATE"
 concurrency:
-  group: deploy-${{ github.event.workflow_run.head_sha || github.sha }}
+  group: deploy-${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: true
