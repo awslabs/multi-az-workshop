@@ -31,18 +31,32 @@ export function createDeployWorkflow(github: GitHub): void {
   workflow.on({
     workflowDispatch: {},
     workflowRun: { workflows: ['build'], types: ['completed'] },
+    pullRequestReview: { types: ['submitted'] },
   });
 
   workflow.file?.addOverride('concurrency', {
-    'group': 'deploy-${{ github.event.workflow_run.head_sha || github.sha }}',
+    // Key by the head SHA across all trigger types. For pull_request_review,
+    // that's pull_request.head.sha; for workflow_run, workflow_run.head_sha;
+    // for workflow_dispatch, just github.sha (main).
+    'group': 'deploy-${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha || github.sha }}',
     'cancel-in-progress': true,
   });
 
+  const runActor = `github.event.workflow_run.actor.login`;
+  const runTriggerer = `github.event.workflow_run.triggering_actor.login`;
+  const prAuthor = `github.event.pull_request.user.login`;
+
   const authorAllowlist = TRUSTED_AUTHORS
-    .map((u) => `github.event.workflow_run.actor.login == '${u}' || github.event.workflow_run.triggering_actor.login == '${u}'`)
+    .map((u) => `${runActor} == '${u}' || ${runTriggerer} == '${u}' || ${prAuthor} == '${u}'`)
     .join(' || ');
 
-  const gate = `github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request' && (${authorAllowlist}))`;
+  // Entry gate: drop events from untrusted actors or non-applicable trigger
+  // shapes before doing anything else.
+  const gate = [
+    "github.event_name == 'workflow_dispatch'",
+    `(github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request' && (${authorAllowlist}))`,
+    `(github.event_name == 'pull_request_review' && github.event.review.state == 'approved' && (${authorAllowlist}))`,
+  ].join(' || ');
 
   addResolveJob(workflow, gate);
   addCreateDeploymentJob(workflow);
@@ -60,61 +74,109 @@ function addResolveJob(workflow: GithubWorkflow, gate: string): void {
       actions: JobPermission.READ,
       contents: JobPermission.READ,
       pullRequests: JobPermission.READ,
+      checks: JobPermission.READ,
     },
     outputs: {
       ref: { stepId: 'info', outputName: 'ref' },
-      run_id: { stepId: 'info', outputName: 'run_id' },
+      run_id: { stepId: 'build_check', outputName: 'run_id' },
+      is_approved: { stepId: 'approval', outputName: 'is_approved' },
+      build_ok: { stepId: 'build_check', outputName: 'build_ok' },
     },
     env: { GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}' },
     steps: [
       {
-        name: 'Determine ref and source run',
+        name: 'Determine ref',
         id: 'info',
-        run: `
-          if [ "\${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "Manual trigger - deploying from main"
-            echo "ref=main" >> $GITHUB_OUTPUT
-            echo "run_id=" >> $GITHUB_OUTPUT
-          else
-            echo "Triggered by build run \${{ github.event.workflow_run.id }}"
-            echo "ref=\${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
-            echo "run_id=\${{ github.event.workflow_run.id }}" >> $GITHUB_OUTPUT
-          fi
-        `.trim(),
+        run: [
+          'set -euo pipefail',
+          'if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then',
+          '  echo "Manual trigger - deploying from main"',
+          '  echo "ref=main" >> "$GITHUB_OUTPUT"',
+          'elif [ "${{ github.event_name }}" == "workflow_run" ]; then',
+          '  echo "Triggered by build run ${{ github.event.workflow_run.id }}"',
+          '  echo "ref=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"',
+          'else',
+          '  echo "Triggered by PR review on #${{ github.event.pull_request.number }}"',
+          '  echo "ref=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"',
+          'fi',
+        ].join('\n'),
       },
       {
-        // For PR-triggered deploys, require an approved review on the PR for
-        // this head SHA. Dismissed or stale approvals do not count.
-        name: 'Require approved PR review',
-        if: "github.event_name == 'workflow_run'",
-        run: `
-          SHA="\${{ github.event.workflow_run.head_sha }}"
-          REPO="\${{ github.repository }}"
-
-          echo "Looking up PR for SHA $SHA"
-          PR_NUMBER=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '[.[] | select(.state == "open" or .state == "closed")] | first | .number')
-
-          if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
-            echo "::error::No PR found for SHA $SHA. Refusing to deploy."
-            exit 1
-          fi
-          echo "Found PR #$PR_NUMBER"
-
-          # Fetch the latest review per reviewer. Only APPROVED counts; any
-          # later CHANGES_REQUESTED or DISMISSED from the same reviewer voids
-          # their prior approval.
-          APPROVED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --paginate \\
-            --jq '[.[] | select(.commit_id == "'"$SHA"'")] | group_by(.user.login) | map(sort_by(.submitted_at) | last) | [.[] | select(.state == "APPROVED")] | length')
-
-          echo "Approved reviews for this head SHA: $APPROVED"
-
-          if [ "$APPROVED" -lt 1 ]; then
-            echo "::error::PR #$PR_NUMBER does not have an approved review for SHA $SHA. Refusing to deploy."
-            exit 1
-          fi
-
-          echo "PR #$PR_NUMBER is approved for SHA $SHA"
-        `.trim(),
+        // Determines build_ok and the build run_id for artifact download.
+        // - workflow_dispatch: no build needed; run_id empty
+        // - workflow_run: build already succeeded (gate check); run_id from event
+        // - pull_request_review: look up latest build run for head SHA and verify success
+        name: 'Check build status',
+        id: 'build_check',
+        run: [
+          'set -euo pipefail',
+          'if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then',
+          '  echo "build_ok=true" >> "$GITHUB_OUTPUT"',
+          '  echo "run_id=" >> "$GITHUB_OUTPUT"',
+          '  exit 0',
+          'fi',
+          'if [ "${{ github.event_name }}" == "workflow_run" ]; then',
+          '  echo "build_ok=true" >> "$GITHUB_OUTPUT"',
+          '  echo "run_id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"',
+          '  exit 0',
+          'fi',
+          '# pull_request_review: verify build succeeded for this head SHA',
+          'SHA="${{ github.event.pull_request.head.sha }}"',
+          'REPO="${{ github.repository }}"',
+          'echo "Looking for successful build run for SHA $SHA"',
+          'BUILD_RUN=$(gh api "repos/$REPO/actions/workflows/build.yml/runs?head_sha=$SHA" --jq \'[.workflow_runs[]] | sort_by(.run_number) | reverse | first\')',
+          'if [ -z "$BUILD_RUN" ] || [ "$BUILD_RUN" = "null" ]; then',
+          '  echo "No build run found for $SHA - skipping deploy"',
+          '  echo "build_ok=false" >> "$GITHUB_OUTPUT"',
+          '  echo "run_id=" >> "$GITHUB_OUTPUT"',
+          '  exit 0',
+          'fi',
+          'CONCLUSION=$(echo "$BUILD_RUN" | jq -r .conclusion)',
+          'RUN_ID=$(echo "$BUILD_RUN" | jq -r .id)',
+          'echo "Build run $RUN_ID conclusion: $CONCLUSION"',
+          'if [ "$CONCLUSION" != "success" ]; then',
+          '  echo "Build did not succeed for $SHA - skipping deploy"',
+          '  echo "build_ok=false" >> "$GITHUB_OUTPUT"',
+          '  echo "run_id=" >> "$GITHUB_OUTPUT"',
+          '  exit 0',
+          'fi',
+          'echo "build_ok=true" >> "$GITHUB_OUTPUT"',
+          'echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"',
+        ].join('\n'),
+      },
+      {
+        name: 'Check PR approval status',
+        id: 'approval',
+        run: [
+          'set -euo pipefail',
+          'if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then',
+          '  echo "Manual dispatch - approval not required"',
+          '  echo "is_approved=true" >> "$GITHUB_OUTPUT"',
+          '  exit 0',
+          'fi',
+          'if [ "${{ github.event_name }}" == "workflow_run" ]; then',
+          '  SHA="${{ github.event.workflow_run.head_sha }}"',
+          'else',
+          '  SHA="${{ github.event.pull_request.head.sha }}"',
+          'fi',
+          'REPO="${{ github.repository }}"',
+          'PR_NUMBER=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq \'[.[]] | first | .number // empty\')',
+          'if [ -z "$PR_NUMBER" ]; then',
+          '  echo "No PR found for SHA $SHA - skipping deploy"',
+          '  echo "is_approved=false" >> "$GITHUB_OUTPUT"',
+          '  exit 0',
+          'fi',
+          'echo "Found PR #$PR_NUMBER"',
+          'APPROVED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --paginate --jq \'[.[] | select(.commit_id == "\'"$SHA"\'")] | group_by(.user.login) | map(sort_by(.submitted_at) | last) | [.[] | select(.state == "APPROVED")] | length\')',
+          'echo "Approved reviews for this head SHA: $APPROVED"',
+          'if [ "$APPROVED" -ge 1 ]; then',
+          '  echo "PR #$PR_NUMBER is approved for SHA $SHA"',
+          '  echo "is_approved=true" >> "$GITHUB_OUTPUT"',
+          'else',
+          '  echo "PR #$PR_NUMBER has no approved review for SHA $SHA - skipping deploy"',
+          '  echo "is_approved=false" >> "$GITHUB_OUTPUT"',
+          'fi',
+        ].join('\n'),
       },
     ],
   });
@@ -123,6 +185,10 @@ function addResolveJob(workflow: GithubWorkflow, gate: string): void {
 function addCreateDeploymentJob(workflow: GithubWorkflow): void {
   workflow.addJob('create-deployment', {
     needs: ['resolve'],
+    // Only proceed if the resolve job cleared approval and build checks.
+    // Unapproved PRs result in this and all downstream jobs being skipped
+    // (grey dot), not failed (red X).
+    if: "needs.resolve.outputs.is_approved == 'true' && needs.resolve.outputs.build_ok == 'true'",
     runsOn: ['ubuntu-latest'],
     permissions: {
       contents: JobPermission.READ,
@@ -142,7 +208,6 @@ function addCreateDeploymentJob(workflow: GithubWorkflow): void {
         id: 'create',
         run: [
           'set -euo pipefail',
-          // jq builds the JSON body from $REF and writes to a file.
           'jq -nc --arg ref "$REF" \'{ref: $ref, environment: "AWS", auto_merge: false, required_contexts: []}\' > /tmp/deployment.json',
           'echo "Payload:"; cat /tmp/deployment.json',
           'DEPLOYMENT_ID=$(gh api "repos/$REPO/deployments" --method POST --input /tmp/deployment.json --jq .id)',
@@ -233,9 +298,11 @@ function addDeployJob(workflow: GithubWorkflow): void {
         with: { name: 'workshop-content', path: 'dist' },
       },
       {
-        // Cross-run artifact from the triggering build workflow run.
+        // Cross-run artifact from the build workflow run. Applies to both
+        // workflow_run (triggering build) and pull_request_review (build run
+        // located via SHA lookup in the resolve job).
         name: 'Download content artifact (from build run)',
-        if: "github.event_name == 'workflow_run'",
+        if: "github.event_name != 'workflow_dispatch'",
         uses: 'actions/download-artifact@v8',
         with: {
           'name': 'workshop-content',
