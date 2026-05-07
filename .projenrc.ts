@@ -1,5 +1,6 @@
 import { javascript } from 'projen';
 import { AwsCdkTypeScriptApp } from 'projen/lib/awscdk';
+import { GithubCredentials } from 'projen/lib/github';
 import { NodePackageManager, UpgradeDependenciesSchedule } from 'projen/lib/javascript';
 import { createBuildTasks, createDeployTasks, createPublishTasks } from './projenrc/tasks/';
 import { createDeployWorkflow, createAutoApproveWorkflow, createPublishWorkflow, customizeReleaseWorkflow } from './projenrc/workflows';
@@ -54,7 +55,10 @@ const project = new AwsCdkTypeScriptApp({
         },
       },
     ],
-    mutableBuild: false,
+    // mutableBuild=true causes the build workflow to automatically commit any
+    // file mutations (e.g. from eslint --fix, projen regeneration) back to the
+    // PR branch and re-trigger the build, rather than failing it outright.
+    mutableBuild: true,
   },
   release: true,
 
@@ -81,6 +85,13 @@ const project = new AwsCdkTypeScriptApp({
         labels: ['auto-approve', 'auto-merge'],
       },
     },
+    // Use a PAT for projen-driven operations (self-mutation pushes, dep
+    // upgrades, auto-queue). The default GITHUB_TOKEN cannot trigger downstream
+    // workflows, which would prevent the build from re-running after a
+    // self-mutation push.
+    projenCredentials: GithubCredentials.fromPersonalAccessToken({
+      secret: 'PROJEN_GITHUB_TOKEN',
+    }),
   },
 
   // Minimal dependencies for root project
