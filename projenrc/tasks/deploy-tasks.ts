@@ -54,7 +54,7 @@ function createWorkshopDeployTask(project: AwsCdkTypeScriptApp): void {
         say: 'Uploading assets to S3...',
       },
       {
-        exec: 'aws s3 cp tmp s3://${BUCKET}/$(cat tmp/assets_prefix.txt)/ --recursive',
+        exec: 'aws s3 cp tmp "s3://${BUCKET}/$(cat tmp/assets_prefix.txt)/" --recursive',
       },
       {
         say: 'Determining stack status...',
@@ -62,7 +62,7 @@ function createWorkshopDeployTask(project: AwsCdkTypeScriptApp): void {
       {
         exec: `
         set +e
-        aws cloudformation describe-stacks --stack-name $PROJECT_NAME --region $AWS_REGION >/dev/null 2>&1
+        aws cloudformation describe-stacks --stack-name "$PROJECT_NAME" --region "$AWS_REGION" >/dev/null 2>&1
         EXITCODE=$?
         set -e
 
@@ -82,47 +82,46 @@ function createWorkshopDeployTask(project: AwsCdkTypeScriptApp): void {
       },
       {
         exec: `
-        # Load variables from files
+        set -euo pipefail
+
         ASSETS_PREFIX=$(cat tmp/assets_prefix.txt)
         CHANGE_SET_TYPE=$(cat tmp/change_set_type.txt)
         WAIT_CONDITION=$(cat tmp/wait_condition.txt)
 
-        # Create changeset (matching working test.yml logic)
         echo "Creating changeset of type: $CHANGE_SET_TYPE"
-        
+
         aws cloudformation create-change-set \\
-          --change-set-type $CHANGE_SET_TYPE \\
-          --stack-name $PROJECT_NAME \\
-          --change-set-name $PROJECT_NAME-$ASSETS_PREFIX \\
-          --template-url https://$BUCKET.s3.$AWS_REGION.amazonaws.com/$ASSETS_PREFIX/$PROJECT_NAME.json \\
+          --change-set-type "$CHANGE_SET_TYPE" \\
+          --stack-name "$PROJECT_NAME" \\
+          --change-set-name "$PROJECT_NAME-$ASSETS_PREFIX" \\
+          --template-url "https://$BUCKET.s3.$AWS_REGION.amazonaws.com/$ASSETS_PREFIX/$PROJECT_NAME.json" \\
           --parameters \\
-            ParameterKey=AssetsBucketName,ParameterValue=$BUCKET \\
+            ParameterKey=AssetsBucketName,ParameterValue="$BUCKET" \\
             ParameterKey=AssetsBucketPrefix,ParameterValue="$ASSETS_PREFIX/" \\
             ParameterKey=ParticipantRoleName,ParameterValue=Admin \\
           --capabilities CAPABILITY_IAM \\
-          --region $AWS_REGION
+          --region "$AWS_REGION"
 
-        # Wait for changeset creation
         echo "Waiting for change set to be created..."
         aws cloudformation wait change-set-create-complete \\
-          --stack-name $PROJECT_NAME \\
-          --change-set-name $PROJECT_NAME-$ASSETS_PREFIX \\
-          --region $AWS_REGION
+          --stack-name "$PROJECT_NAME" \\
+          --change-set-name "$PROJECT_NAME-$ASSETS_PREFIX" \\
+          --region "$AWS_REGION"
 
-        # Execute changeset
-        echo "Executing change set..."
-        INITIAL_STATUS=$(aws cloudformation describe-stacks --stack-name $PROJECT_NAME --region $AWS_REGION --query 'Stacks[0].StackStatus' --output text)
+        # Capture pre-execution status to avoid racing the stack-wait call
+        # against the previous status (e.g. UPDATE_ROLLBACK_COMPLETE).
+        INITIAL_STATUS=$(aws cloudformation describe-stacks --stack-name "$PROJECT_NAME" --region "$AWS_REGION" --query 'Stacks[0].StackStatus' --output text)
         echo "Stack status before execution: $INITIAL_STATUS"
 
+        echo "Executing change set..."
         aws cloudformation execute-change-set \\
-          --stack-name $PROJECT_NAME \\
-          --change-set-name $PROJECT_NAME-$ASSETS_PREFIX \\
-          --region $AWS_REGION
+          --stack-name "$PROJECT_NAME" \\
+          --change-set-name "$PROJECT_NAME-$ASSETS_PREFIX" \\
+          --region "$AWS_REGION"
 
-        # Wait for stack to transition from its pre-execution state
-        echo "Waiting for stack to begin updating..."
+        echo "Waiting for stack to begin transitioning..."
         while true; do
-          STATUS=$(aws cloudformation describe-stacks --stack-name $PROJECT_NAME --region $AWS_REGION --query 'Stacks[0].StackStatus' --output text)
+          STATUS=$(aws cloudformation describe-stacks --stack-name "$PROJECT_NAME" --region "$AWS_REGION" --query 'Stacks[0].StackStatus' --output text)
           if [ "$STATUS" != "$INITIAL_STATUS" ]; then
             echo "Stack transitioned to: $STATUS"
             break
@@ -130,12 +129,11 @@ function createWorkshopDeployTask(project: AwsCdkTypeScriptApp): void {
           sleep 5
         done
 
-        # Wait for stack completion
-        if ! aws cloudformation wait stack-$WAIT_CONDITION-complete \\
-          --stack-name $PROJECT_NAME \\
-          --region $AWS_REGION; then
+        if ! aws cloudformation wait "stack-$WAIT_CONDITION-complete" \\
+          --stack-name "$PROJECT_NAME" \\
+          --region "$AWS_REGION"; then
           echo "Stack deployment failed - cleaning up S3 content"
-          aws s3 rm s3://$BUCKET/$ASSETS_PREFIX/ --recursive
+          aws s3 rm "s3://$BUCKET/$ASSETS_PREFIX/" --recursive || true
           exit 1
         fi
       `.trim(),
@@ -146,8 +144,8 @@ function createWorkshopDeployTask(project: AwsCdkTypeScriptApp): void {
       {
         exec: `
         ASSETS_PREFIX=$(cat tmp/assets_prefix.txt)
-        echo "Cleaning up old S3 content due to successful deployment"
-        aws s3 rm s3://$BUCKET/ --recursive --exclude "$ASSETS_PREFIX/*"
+        echo "Cleaning up old S3 content after successful deployment"
+        aws s3 rm "s3://$BUCKET/" --recursive --exclude "$ASSETS_PREFIX/*" || true
       `.trim(),
       },
       {
