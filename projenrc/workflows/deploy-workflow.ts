@@ -42,9 +42,9 @@ export function createDeployWorkflow(github: GitHub): void {
     'cancel-in-progress': true,
   });
 
-  const runActor = `github.event.workflow_run.actor.login`;
-  const runTriggerer = `github.event.workflow_run.triggering_actor.login`;
-  const prAuthor = `github.event.pull_request.user.login`;
+  const runActor = 'github.event.workflow_run.actor.login';
+  const runTriggerer = 'github.event.workflow_run.triggering_actor.login';
+  const prAuthor = 'github.event.pull_request.user.login';
 
   const authorAllowlist = TRUSTED_AUTHORS
     .map((u) => `${runActor} == '${u}' || ${runTriggerer} == '${u}' || ${prAuthor} == '${u}'`)
