@@ -291,6 +291,14 @@ function addDeployJob(workflow: GithubWorkflow): void {
     },
     steps: [
       {
+        // Checkout main (trusted). We need .projen/tasks.json so npx projen
+        // can execute the deploy task. Only trusted code from main runs here;
+        // the PR's content.zip is consumed as passive data by the deploy task.
+        name: 'Checkout main (trusted)',
+        uses: 'actions/checkout@v4',
+        with: { ref: 'main' },
+      },
+      {
         // Same-run artifact produced by build-from-main.
         name: 'Download content artifact (manual dispatch)',
         if: "github.event_name == 'workflow_dispatch'",
@@ -298,9 +306,7 @@ function addDeployJob(workflow: GithubWorkflow): void {
         with: { name: 'workshop-content', path: 'dist' },
       },
       {
-        // Cross-run artifact from the build workflow run. Applies to both
-        // workflow_run (triggering build) and pull_request_review (build run
-        // located via SHA lookup in the resolve job).
+        // Cross-run artifact from the build workflow run.
         name: 'Download content artifact (from build run)',
         if: "github.event_name != 'workflow_dispatch'",
         uses: 'actions/download-artifact@v8',
@@ -321,75 +327,8 @@ function addDeployJob(workflow: GithubWorkflow): void {
         },
       },
       {
-        // Run deploy via projen task executor from npm without installing the
-        // full project. Only needs awscli + unzip which are preinstalled on the
-        // runner, so we invoke the underlying script inline.
         name: 'Deploy workshop to AWS',
-        run: `
-          set -euo pipefail
-          rm -rf tmp && mkdir -p tmp
-          unzip -q dist/content.zip -d tmp
-
-          ASSETS_PREFIX=$(date --utc +"%Y-%m-%dT%H-%M-%SZ")
-          echo "$ASSETS_PREFIX" > tmp/assets_prefix.txt
-
-          echo "Uploading assets to s3://$BUCKET/$ASSETS_PREFIX/"
-          aws s3 cp tmp "s3://$BUCKET/$ASSETS_PREFIX/" --recursive
-
-          set +e
-          aws cloudformation describe-stacks --stack-name "$PROJECT_NAME" --region "$AWS_REGION" >/dev/null 2>&1
-          EXISTS=$?
-          set -e
-
-          if [ $EXISTS -eq 0 ]; then
-            CHANGE_SET_TYPE=UPDATE; WAIT=update
-          else
-            CHANGE_SET_TYPE=CREATE; WAIT=create
-          fi
-          echo "Stack $CHANGE_SET_TYPE"
-
-          aws cloudformation create-change-set \\
-            --change-set-type "$CHANGE_SET_TYPE" \\
-            --stack-name "$PROJECT_NAME" \\
-            --change-set-name "$PROJECT_NAME-$ASSETS_PREFIX" \\
-            --template-url "https://$BUCKET.s3.$AWS_REGION.amazonaws.com/$ASSETS_PREFIX/$PROJECT_NAME.json" \\
-            --parameters \\
-              ParameterKey=AssetsBucketName,ParameterValue="$BUCKET" \\
-              ParameterKey=AssetsBucketPrefix,ParameterValue="$ASSETS_PREFIX/" \\
-              ParameterKey=ParticipantRoleName,ParameterValue=Admin \\
-            --capabilities CAPABILITY_IAM \\
-            --region "$AWS_REGION"
-
-          aws cloudformation wait change-set-create-complete \\
-            --stack-name "$PROJECT_NAME" \\
-            --change-set-name "$PROJECT_NAME-$ASSETS_PREFIX" \\
-            --region "$AWS_REGION"
-
-          INITIAL_STATUS=$(aws cloudformation describe-stacks --stack-name "$PROJECT_NAME" --region "$AWS_REGION" --query 'Stacks[0].StackStatus' --output text)
-
-          aws cloudformation execute-change-set \\
-            --stack-name "$PROJECT_NAME" \\
-            --change-set-name "$PROJECT_NAME-$ASSETS_PREFIX" \\
-            --region "$AWS_REGION"
-
-          while true; do
-            STATUS=$(aws cloudformation describe-stacks --stack-name "$PROJECT_NAME" --region "$AWS_REGION" --query 'Stacks[0].StackStatus' --output text)
-            if [ "$STATUS" != "$INITIAL_STATUS" ]; then
-              echo "Stack transitioned to: $STATUS"
-              break
-            fi
-            sleep 5
-          done
-
-          if ! aws cloudformation wait "stack-$WAIT-complete" --stack-name "$PROJECT_NAME" --region "$AWS_REGION"; then
-            echo "Deployment failed - cleaning up S3 prefix"
-            aws s3 rm "s3://$BUCKET/$ASSETS_PREFIX/" --recursive || true
-            exit 1
-          fi
-
-          echo "Deployment succeeded - cleaning up old S3 content"
-          aws s3 rm "s3://$BUCKET/" --recursive --exclude "$ASSETS_PREFIX/*" || true
-        `.trim(),
+        run: 'npx projen deploy',
       },
     ],
   });
