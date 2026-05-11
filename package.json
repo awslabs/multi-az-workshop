@@ -75,7 +75,7 @@
     "eslint-plugin-import": "^2.32.0",
     "fast-check": "^3.15.0",
     "jest": "^30.4.2",
-    "jest-junit": "^17",
+    "jest-junit": "^16",
     "projen": "^0.99.58",
     "ts-jest": "^29.4.9",
     "ts-node": "^10.9.2",

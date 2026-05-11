@@ -5,18 +5,22 @@
  * Deploy workflow configuration
  *
  * Triggered by:
- *  - workflow_run (build completed) for PR validation pre-merge
- *  - workflow_dispatch for manual deploys from main
+ *  - workflow_run on `auto-approve` (success): this is the primary pre-merge
+ *    path for trusted authors. `auto-approve` only succeeds after the build
+ *    passes, all required checks pass, and it submits an approval review. By
+ *    construction, when it completes successfully every deploy prerequisite
+ *    is satisfied — no approval race, no manual polling.
+ *  - pull_request_review (approved): for human-submitted approvals on PRs
+ *    that did not go through auto-approve. Verifies the build succeeded for
+ *    the approved head SHA before deploying.
+ *  - workflow_dispatch: manual deploys from main.
  *
  * Security model:
- *   Deploy is privileged (holds AWS credentials). To avoid
- *   actions/untrusted-checkout, we never check out PR source in the privileged
- *   context. The `build` workflow builds PR code unprivileged and publishes
- *   dist/content.zip as an artifact. On workflow_run, we fetch that artifact.
- *   On workflow_dispatch, a separate job checks out main (trusted) and builds
- *   dist/content.zip. The deploy job itself only runs aws CLI against the
- *   pre-built artifact — no PR-controlled code executes in the privileged
- *   context.
+ *   Deploy holds AWS credentials. We never check out PR source in this
+ *   privileged context. `dist/content.zip` is produced by the unprivileged
+ *   `build` workflow and downloaded here as passive data for deployment.
+ *   The PR's code never executes in this workflow. Manual dispatches check
+ *   out main (trusted) and rebuild.
  */
 
 import { GithubWorkflow } from 'projen/lib/github';
@@ -30,14 +34,11 @@ export function createDeployWorkflow(github: GitHub): void {
 
   workflow.on({
     workflowDispatch: {},
-    workflowRun: { workflows: ['build'], types: ['completed'] },
+    workflowRun: { workflows: ['auto-approve'], types: ['completed'] },
     pullRequestReview: { types: ['submitted'] },
   });
 
   workflow.file?.addOverride('concurrency', {
-    // Key by the head SHA across all trigger types. For pull_request_review,
-    // that's pull_request.head.sha; for workflow_run, workflow_run.head_sha;
-    // for workflow_dispatch, just github.sha (main).
     'group': 'deploy-${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha || github.sha }}',
     'cancel-in-progress': true,
   });
@@ -50,11 +51,13 @@ export function createDeployWorkflow(github: GitHub): void {
     .map((u) => `${runActor} == '${u}' || ${runTriggerer} == '${u}' || ${prAuthor} == '${u}'`)
     .join(' || ');
 
-  // Entry gate: drop events from untrusted actors or non-applicable trigger
-  // shapes before doing anything else.
+  // Entry gate: auto-approve completing with success means all prerequisites
+  // (build passed, checks passed, review submitted) are satisfied. For PR
+  // review events, require an explicit approval from a trusted actor. For
+  // manual dispatch, always allow.
   const gate = [
     "github.event_name == 'workflow_dispatch'",
-    `(github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request' && (${authorAllowlist}))`,
+    `(github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && (${authorAllowlist}))`,
     `(github.event_name == 'pull_request_review' && github.event.review.state == 'approved' && (${authorAllowlist}))`,
   ].join(' || ');
 
@@ -93,7 +96,7 @@ function addResolveJob(workflow: GithubWorkflow, gate: string): void {
           '  echo "Manual trigger - deploying from main"',
           '  echo "ref=main" >> "$GITHUB_OUTPUT"',
           'elif [ "${{ github.event_name }}" == "workflow_run" ]; then',
-          '  echo "Triggered by build run ${{ github.event.workflow_run.id }}"',
+          '  echo "Triggered by auto-approve run ${{ github.event.workflow_run.id }}"',
           '  echo "ref=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"',
           'else',
           '  echo "Triggered by PR review on #${{ github.event.pull_request.number }}"',
@@ -102,11 +105,15 @@ function addResolveJob(workflow: GithubWorkflow, gate: string): void {
         ].join('\n'),
       },
       {
-        // Determines build_ok and the build run_id for artifact download.
-        // - workflow_dispatch: no build needed; run_id empty
-        // - workflow_run: build already succeeded (gate check); run_id from event
-        // - pull_request_review: look up latest build run for head SHA and verify success
-        name: 'Check build status',
+        // Locates the successful `build` run for the head SHA so the deploy
+        // job can download dist/content.zip from it.
+        //  - workflow_dispatch: no lookup needed; build-from-main produces the
+        //    artifact in this run
+        //  - workflow_run (from auto-approve): auto-approve already verified
+        //    the build succeeded, but we still need its run_id for artifact
+        //    download. Look it up by head_sha.
+        //  - pull_request_review: verify build succeeded for head SHA.
+        name: 'Locate build run',
         id: 'build_check',
         run: [
           'set -euo pipefail',
@@ -116,12 +123,10 @@ function addResolveJob(workflow: GithubWorkflow, gate: string): void {
           '  exit 0',
           'fi',
           'if [ "${{ github.event_name }}" == "workflow_run" ]; then',
-          '  echo "build_ok=true" >> "$GITHUB_OUTPUT"',
-          '  echo "run_id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"',
-          '  exit 0',
+          '  SHA="${{ github.event.workflow_run.head_sha }}"',
+          'else',
+          '  SHA="${{ github.event.pull_request.head.sha }}"',
           'fi',
-          '# pull_request_review: verify build succeeded for this head SHA',
-          'SHA="${{ github.event.pull_request.head.sha }}"',
           'REPO="${{ github.repository }}"',
           'echo "Looking for successful build run for SHA $SHA"',
           'BUILD_RUN=$(gh api "repos/$REPO/actions/workflows/build.yml/runs?head_sha=$SHA" --jq \'[.workflow_runs[]] | sort_by(.run_number) | reverse | first\')',
@@ -145,6 +150,12 @@ function addResolveJob(workflow: GithubWorkflow, gate: string): void {
         ].join('\n'),
       },
       {
+        // Verifies a trusted actor's APPROVED review exists for the head SHA.
+        //  - workflow_dispatch: no approval required
+        //  - workflow_run (from auto-approve): auto-approve completing
+        //    successfully means it already submitted its approval, so this
+        //    will find it. No race since auto-approve finishes first.
+        //  - pull_request_review: approval just happened; find it.
         name: 'Check PR approval status',
         id: 'approval',
         run: [

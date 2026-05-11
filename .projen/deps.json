@@ -71,7 +71,7 @@
     },
     {
       "name": "jest-junit",
-      "version": "^17",
+      "version": "^16",
       "type": "build"
     },
     {

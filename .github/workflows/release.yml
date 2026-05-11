@@ -2,12 +2,7 @@
 
 name: release
 on:
-  workflow_dispatch:
-    inputs:
-      dry_run:
-        description: Dry run (skip actual publishing)
-        required: false
-        type: boolean
+  workflow_dispatch: {}
   pull_request:
     types:
       - closed
@@ -91,7 +86,6 @@ jobs:
         run: cd dist && setfacl --restore=permissions-backup.acl
         continue-on-error: true
       - name: Release
-        if: ${{ !inputs.dry_run }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |-
