@@ -82,7 +82,7 @@ function createWorkshopDeployTask(project: AwsCdkTypeScriptApp): void {
       },
       {
         exec: `
-        set -euo pipefail
+        set -eu
 
         ASSETS_PREFIX=$(cat tmp/assets_prefix.txt)
         CHANGE_SET_TYPE=$(cat tmp/change_set_type.txt)
