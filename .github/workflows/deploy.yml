@@ -31,7 +31,7 @@ jobs:
       - name: Determine ref
         id: info
         run: |-
-          set -eu
+          set -euo pipefail
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "Manual trigger - deploying from main"
             echo "ref=main" >> "$GITHUB_OUTPUT"
@@ -45,7 +45,7 @@ jobs:
       - name: Locate build run
         id: build_check
         run: |-
-          set -eu
+          set -euo pipefail
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "build_ok=true" >> "$GITHUB_OUTPUT"
             echo "run_id=" >> "$GITHUB_OUTPUT"
@@ -79,7 +79,7 @@ jobs:
       - name: Check PR approval status
         id: approval
         run: |-
-          set -eu
+          set -euo pipefail
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "Manual dispatch - approval not required"
             echo "is_approved=true" >> "$GITHUB_OUTPUT"
@@ -124,7 +124,7 @@ jobs:
       - name: Create deployment
         id: create
         run: |-
-          set -eu
+          set -euo pipefail
           jq -nc --arg ref "$REF" '{ref: $ref, environment: "AWS", auto_merge: false, required_contexts: []}' > /tmp/deployment.json
           echo "Payload:"; cat /tmp/deployment.json
           DEPLOYMENT_ID=$(gh api "repos/$REPO/deployments" --method POST --input /tmp/deployment.json --jq .id)
