@@ -5,7 +5,7 @@ on:
   workflow_dispatch: {}
   workflow_run:
     workflows:
-      - build
+      - auto-approve
     types:
       - completed
   pull_request_review:
@@ -26,7 +26,7 @@ jobs:
       build_ok: ${{ steps.build_check.outputs.build_ok }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request' && (github.event.workflow_run.actor.login == 'hakenmt' || github.event.workflow_run.triggering_actor.login == 'hakenmt' || github.event.pull_request.user.login == 'hakenmt' || github.event.workflow_run.actor.login == 'github-actions[bot]' || github.event.workflow_run.triggering_actor.login == 'github-actions[bot]' || github.event.pull_request.user.login == 'github-actions[bot]')) || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved' && (github.event.workflow_run.actor.login == 'hakenmt' || github.event.workflow_run.triggering_actor.login == 'hakenmt' || github.event.pull_request.user.login == 'hakenmt' || github.event.workflow_run.actor.login == 'github-actions[bot]' || github.event.workflow_run.triggering_actor.login == 'github-actions[bot]' || github.event.pull_request.user.login == 'github-actions[bot]'))
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && (github.event.workflow_run.actor.login == 'hakenmt' || github.event.workflow_run.triggering_actor.login == 'hakenmt' || github.event.pull_request.user.login == 'hakenmt' || github.event.workflow_run.actor.login == 'github-actions[bot]' || github.event.workflow_run.triggering_actor.login == 'github-actions[bot]' || github.event.pull_request.user.login == 'github-actions[bot]')) || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved' && (github.event.workflow_run.actor.login == 'hakenmt' || github.event.workflow_run.triggering_actor.login == 'hakenmt' || github.event.pull_request.user.login == 'hakenmt' || github.event.workflow_run.actor.login == 'github-actions[bot]' || github.event.workflow_run.triggering_actor.login == 'github-actions[bot]' || github.event.pull_request.user.login == 'github-actions[bot]'))
     steps:
       - name: Determine ref
         id: info
@@ -36,13 +36,13 @@ jobs:
             echo "Manual trigger - deploying from main"
             echo "ref=main" >> "$GITHUB_OUTPUT"
           elif [ "${{ github.event_name }}" == "workflow_run" ]; then
-            echo "Triggered by build run ${{ github.event.workflow_run.id }}"
+            echo "Triggered by auto-approve run ${{ github.event.workflow_run.id }}"
             echo "ref=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
           else
             echo "Triggered by PR review on #${{ github.event.pull_request.number }}"
             echo "ref=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
           fi
-      - name: Check build status
+      - name: Locate build run
         id: build_check
         run: |-
           set -eu
@@ -52,12 +52,10 @@ jobs:
             exit 0
           fi
           if [ "${{ github.event_name }}" == "workflow_run" ]; then
-            echo "build_ok=true" >> "$GITHUB_OUTPUT"
-            echo "run_id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
-            exit 0
+            SHA="${{ github.event.workflow_run.head_sha }}"
+          else
+            SHA="${{ github.event.pull_request.head.sha }}"
           fi
-          # pull_request_review: verify build succeeded for this head SHA
-          SHA="${{ github.event.pull_request.head.sha }}"
           REPO="${{ github.repository }}"
           echo "Looking for successful build run for SHA $SHA"
           BUILD_RUN=$(gh api "repos/$REPO/actions/workflows/build.yml/runs?head_sha=$SHA" --jq '[.workflow_runs[]] | sort_by(.run_number) | reverse | first')
