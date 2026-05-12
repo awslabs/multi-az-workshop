@@ -91,7 +91,7 @@ function addResolveJob(workflow: GithubWorkflow, gate: string): void {
         name: 'Determine ref',
         id: 'info',
         run: [
-          'set -euo pipefail',
+          'set -eu',
           'if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then',
           '  echo "Manual trigger - deploying from main"',
           '  echo "ref=main" >> "$GITHUB_OUTPUT"',
@@ -116,7 +116,7 @@ function addResolveJob(workflow: GithubWorkflow, gate: string): void {
         name: 'Locate build run',
         id: 'build_check',
         run: [
-          'set -euo pipefail',
+          'set -eu',
           'if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then',
           '  echo "build_ok=true" >> "$GITHUB_OUTPUT"',
           '  echo "run_id=" >> "$GITHUB_OUTPUT"',
@@ -159,7 +159,7 @@ function addResolveJob(workflow: GithubWorkflow, gate: string): void {
         name: 'Check PR approval status',
         id: 'approval',
         run: [
-          'set -euo pipefail',
+          'set -eu',
           'if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then',
           '  echo "Manual dispatch - approval not required"',
           '  echo "is_approved=true" >> "$GITHUB_OUTPUT"',
@@ -218,7 +218,7 @@ function addCreateDeploymentJob(workflow: GithubWorkflow): void {
         name: 'Create deployment',
         id: 'create',
         run: [
-          'set -euo pipefail',
+          'set -eu',
           'jq -nc --arg ref "$REF" \'{ref: $ref, environment: "AWS", auto_merge: false, required_contexts: []}\' > /tmp/deployment.json',
           'echo "Payload:"; cat /tmp/deployment.json',
           'DEPLOYMENT_ID=$(gh api "repos/$REPO/deployments" --method POST --input /tmp/deployment.json --jq .id)',
