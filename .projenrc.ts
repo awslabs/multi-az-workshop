@@ -81,7 +81,7 @@ const project = new AwsCdkTypeScriptApp({
     mergeQueue: true,
     mergeQueueOptions: {
       autoQueueOptions: {
-        allowedUsernames: ['hakenmt', 'github-actions[bot]'],
+        allowedUsernames: ['hakenmt', 'github-actions[bot]', 'dependabot[bot]'],
         labels: ['auto-approve', 'auto-merge'],
       },
     },

@@ -15,7 +15,7 @@ jobs:
     permissions:
       pull-requests: write
       contents: write
-    if: (contains(github.event.pull_request.labels.*.name, 'auto-approve') || contains(github.event.pull_request.labels.*.name, 'auto-merge')) && (github.event.pull_request.user.login == 'hakenmt' || github.event.pull_request.user.login == 'github-actions[bot]')
+    if: (contains(github.event.pull_request.labels.*.name, 'auto-approve') || contains(github.event.pull_request.labels.*.name, 'auto-merge')) && (github.event.pull_request.user.login == 'hakenmt' || github.event.pull_request.user.login == 'github-actions[bot]' || github.event.pull_request.user.login == 'dependabot[bot]')
     steps:
       - uses: peter-evans/enable-pull-request-automerge@v3
         with:
