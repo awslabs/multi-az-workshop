@@ -62,8 +62,10 @@ export function createDeployWorkflow(github: GitHub): void {
   ].join(' || ');
 
   addResolveJob(workflow, gate);
+  addCreateDeploymentJob(workflow);
   addBuildFromMainJob(workflow);
   addDeployJob(workflow);
+  addReportDeploymentJob(workflow);
 }
 
 
@@ -191,11 +193,46 @@ function addResolveJob(workflow: GithubWorkflow, gate: string): void {
   });
 }
 
+function addCreateDeploymentJob(workflow: GithubWorkflow): void {
+  workflow.addJob('create-deployment', {
+    needs: ['resolve'],
+    if: "needs.resolve.outputs.is_approved == 'true' && needs.resolve.outputs.build_ok == 'true'",
+    runsOn: ['ubuntu-latest'],
+    permissions: {
+      contents: JobPermission.READ,
+      deployments: JobPermission.WRITE,
+    },
+    outputs: {
+      deployment_id: { stepId: 'create', outputName: 'deployment_id' },
+    },
+    env: {
+      GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}',
+      REF: '${{ needs.resolve.outputs.ref }}',
+      REPO: '${{ github.repository }}',
+    },
+    steps: [
+      {
+        name: 'Create deployment',
+        id: 'create',
+        run: [
+          'set -eu',
+          'jq -nc --arg ref "$REF" \'{ref: $ref, environment: "AWS", auto_merge: false, required_contexts: [], auto_inactive: false}\' > /tmp/deployment.json',
+          'echo "Payload:"; cat /tmp/deployment.json',
+          'DEPLOYMENT_ID=$(gh api "repos/$REPO/deployments" --method POST --input /tmp/deployment.json --jq .id)',
+          'echo "deployment_id=$DEPLOYMENT_ID" >> "$GITHUB_OUTPUT"',
+          'echo "Created deployment: $DEPLOYMENT_ID"',
+        ].join('\n'),
+      },
+    ],
+  });
+}
+
+
 // Builds dist/content.zip from main (trusted) on manual dispatch only. Uploads
 // the artifact so the deploy job has a uniform input source regardless of trigger.
 function addBuildFromMainJob(workflow: GithubWorkflow): void {
   workflow.addJob('build-from-main', {
-    needs: ['resolve'],
+    needs: ['resolve', 'create-deployment'],
     if: "github.event_name == 'workflow_dispatch'",
     runsOn: ['ubuntu-24.04-arm'],
     permissions: { contents: JobPermission.READ },
@@ -242,17 +279,16 @@ function addBuildFromMainJob(workflow: GithubWorkflow): void {
 // run for workflow_run) and calls aws CLI against it.
 function addDeployJob(workflow: GithubWorkflow): void {
   workflow.addJob('deploy', {
-    needs: ['resolve', 'build-from-main'],
+    needs: ['resolve', 'create-deployment', 'build-from-main'],
     // build-from-main is skipped on workflow_run; only fail if it was required
     // and failed. Use always() + explicit skip-aware condition.
-    if: "always() && needs.resolve.result == 'success' && needs.resolve.outputs.is_approved == 'true' && needs.resolve.outputs.build_ok == 'true' && (needs.build-from-main.result == 'success' || needs.build-from-main.result == 'skipped')",
+    if: "always() && needs.resolve.result == 'success' && needs.create-deployment.result == 'success' && (needs.build-from-main.result == 'success' || needs.build-from-main.result == 'skipped')",
     runsOn: ['ubuntu-latest'],
     permissions: {
       contents: JobPermission.READ,
       idToken: JobPermission.WRITE,
       actions: JobPermission.READ,
     },
-    environment: { name: 'AWS' },
     env: {
       CI: 'true',
       PROJECT_NAME: '${{ github.event.repository.name }}',
@@ -300,6 +336,32 @@ function addDeployJob(workflow: GithubWorkflow): void {
       {
         name: 'Deploy workshop to AWS',
         run: 'npx projen deploy',
+      },
+    ],
+  });
+}
+
+
+function addReportDeploymentJob(workflow: GithubWorkflow): void {
+  workflow.addJob('report-deployment', {
+    needs: ['resolve', 'create-deployment', 'deploy'],
+    if: "always() && needs.create-deployment.result == 'success'",
+    runsOn: ['ubuntu-latest'],
+    permissions: { deployments: JobPermission.WRITE },
+    env: { GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}' },
+    steps: [
+      {
+        name: 'Report deployment status',
+        run: [
+          'if [ "${{ needs.deploy.result }}" == "success" ]; then',
+          '  STATE="success"',
+          'else',
+          '  STATE="failure"',
+          'fi',
+          'gh api repos/${{ github.repository }}/deployments/${{ needs.create-deployment.outputs.deployment_id }}/statuses \\',
+          '  -f state=$STATE',
+          'echo "Deployment status: $STATE"',
+        ].join('\n'),
       },
     ],
   });
