@@ -11,7 +11,7 @@ import type { GitHub } from 'projen/lib/github';
 import { JobPermission } from 'projen/lib/github/workflows-model';
 
 // Centrally defined authorized approvers
-export const AUTHORIZED_APPROVERS = ['hakenmt', 'github-bot'];
+export const AUTHORIZED_APPROVERS = ['hakenmt', 'github-actions[bot]', 'dependabot[bot]'];
 
 /**
  * Creates the auto-approve workflow

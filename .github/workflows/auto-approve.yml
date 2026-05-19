@@ -23,7 +23,7 @@ jobs:
       INTERVAL: "10"
       WORKFLOW_NAME: build
       TERMINATING_STATUS: completed,action_required,cancelled,failure,neutral,skipped,stale,success,timed_out
-    if: contains(github.event.pull_request.labels.*.name, 'auto-approve') && contains('hakenmt,github-bot', github.event.pull_request.user.login)
+    if: contains(github.event.pull_request.labels.*.name, 'auto-approve') && contains('hakenmt,github-actions[bot],dependabot[bot]', github.event.pull_request.user.login)
     steps:
       - name: Wait for Build to Complete
         id: wait-for-build
