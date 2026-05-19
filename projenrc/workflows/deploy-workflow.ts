@@ -27,7 +27,7 @@ import { GithubWorkflow } from 'projen/lib/github';
 import type { GitHub } from 'projen/lib/github';
 import { JobPermission } from 'projen/lib/github/workflows-model';
 
-const TRUSTED_AUTHORS = ['hakenmt', 'github-actions[bot]'];
+const TRUSTED_AUTHORS = ['hakenmt', 'github-actions[bot]', 'dependabot[bot]'];
 
 export function createDeployWorkflow(github: GitHub): void {
   const workflow = new GithubWorkflow(github, 'deploy');
