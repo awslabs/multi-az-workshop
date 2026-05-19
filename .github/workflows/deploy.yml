@@ -107,33 +107,8 @@ jobs:
             echo "PR #$PR_NUMBER has no approved review for SHA $SHA - skipping deploy"
             echo "is_approved=false" >> "$GITHUB_OUTPUT"
           fi
-  create-deployment:
-    needs: resolve
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      deployments: write
-    outputs:
-      deployment_id: ${{ steps.create.outputs.deployment_id }}
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      REF: ${{ needs.resolve.outputs.ref }}
-      REPO: ${{ github.repository }}
-    if: needs.resolve.outputs.is_approved == 'true' && needs.resolve.outputs.build_ok == 'true'
-    steps:
-      - name: Create deployment
-        id: create
-        run: |-
-          set -eu
-          jq -nc --arg ref "$REF" '{ref: $ref, environment: "AWS", auto_merge: false, required_contexts: []}' > /tmp/deployment.json
-          echo "Payload:"; cat /tmp/deployment.json
-          DEPLOYMENT_ID=$(gh api "repos/$REPO/deployments" --method POST --input /tmp/deployment.json --jq .id)
-          echo "deployment_id=$DEPLOYMENT_ID" >> "$GITHUB_OUTPUT"
-          echo "Created deployment: $DEPLOYMENT_ID"
   build-from-main:
-    needs:
-      - resolve
-      - create-deployment
+    needs: resolve
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
@@ -170,7 +145,6 @@ jobs:
   deploy:
     needs:
       - resolve
-      - create-deployment
       - build-from-main
     runs-on: ubuntu-latest
     permissions:
@@ -185,7 +159,7 @@ jobs:
       BUCKET: ${{ secrets.BUCKET }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
       DEPLOYMENT_ROLE: ${{ secrets.DEPLOYMENT_ROLE }}
-    if: always() && needs.resolve.result == 'success' && needs.create-deployment.result == 'success' && (needs.build-from-main.result == 'success' || needs.build-from-main.result == 'skipped')
+    if: always() && needs.resolve.result == 'success' && needs.resolve.outputs.is_approved == 'true' && needs.resolve.outputs.build_ok == 'true' && (needs.build-from-main.result == 'success' || needs.build-from-main.result == 'skipped')
     steps:
       - name: Checkout main (trusted)
         uses: actions/checkout@v4
@@ -213,28 +187,6 @@ jobs:
           mask-aws-account-id: true
       - name: Deploy workshop to AWS
         run: npx projen deploy
-  report-deployment:
-    needs:
-      - resolve
-      - create-deployment
-      - deploy
-    runs-on: ubuntu-latest
-    permissions:
-      deployments: write
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    if: always() && needs.create-deployment.result == 'success'
-    steps:
-      - name: Report deployment status
-        run: |-
-          if [ "${{ needs.deploy.result }}" == "success" ]; then
-                      STATE="success"
-                    else
-                      STATE="failure"
-                    fi
-                    gh api repos/${{ github.repository }}/deployments/${{ needs.create-deployment.outputs.deployment_id }}/statuses \
-                      -f state=$STATE
-                    echo "Deployment status: $STATE"
 concurrency:
   group: deploy-${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: true
