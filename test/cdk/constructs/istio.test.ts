@@ -5,7 +5,7 @@ import { KubectlV35Layer } from '@aws-cdk/lambda-layer-kubectl-v35';
 import * as cdk from 'aws-cdk-lib';
 import { Match } from 'aws-cdk-lib/assertions';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as eks from 'aws-cdk-lib/aws-eks';
+import * as eks from 'aws-cdk-lib/aws-eks-v2';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { ContainerAndRepo } from '../../../src/cdk/lib/constructs/container-and-repo';
 import { Istio } from '../../../src/cdk/lib/constructs/istio';
@@ -37,6 +37,7 @@ describe('Istio', () => {
       vpc: sharedVpc,
       version: eks.KubernetesVersion.of('1.35'),
       defaultCapacity: 0,
+      defaultCapacityType: eks.DefaultCapacityType.NODEGROUP,
       kubectlProviderOptions: { kubectlLayer: new KubectlV35Layer(sharedStack, 'KubectlLayer') },
     });
 
@@ -244,6 +245,7 @@ describe('Istio', () => {
         vpc,
         version: eks.KubernetesVersion.of('1.35'),
         defaultCapacity: 0,
+        defaultCapacityType: eks.DefaultCapacityType.NODEGROUP,
         kubectlProviderOptions: { kubectlLayer: new KubectlV35Layer(stack, 'KubectlLayer') },
       });
       const assetsBucket = new s3.Bucket(stack, 'AssetsBucket', {
@@ -339,6 +341,7 @@ describe('Istio', () => {
           vpc,
           version: eks.KubernetesVersion.of('1.35'),
           defaultCapacity: 0,
+          defaultCapacityType: eks.DefaultCapacityType.NODEGROUP,
           kubectlProviderOptions: { kubectlLayer: new KubectlV35Layer(customVersionStack, 'KubectlLayer') },
         });
         const assetsBucket = new s3.Bucket(customVersionStack, 'AssetsBucket', {
