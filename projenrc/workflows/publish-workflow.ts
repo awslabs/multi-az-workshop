@@ -150,18 +150,13 @@ cp -r \${{ github.workspace }}/content ./
 cp -r \${{ github.workspace }}/static ./
 cp \${{ github.workspace }}/contentspec.yaml ./
 
-# Check for changes and commit if any exist
-set +e
-git diff --quiet
-if [ $? -eq 1 ]; then
-  set -e
-  git add -A
-  git commit -m "Published from release \${{ needs.upload-assets.outputs.release_tag }}"
-  git push
-  echo "✅ Workshop content published successfully"
-else
-  echo "ℹ️ No changes detected, nothing to commit"
-fi`,
+# Write release tag to force a change even if content is identical
+echo "\${{ needs.upload-assets.outputs.release_tag }}" > .version
+
+git add -A
+git commit -m "Published from release \${{ needs.upload-assets.outputs.release_tag }}"
+git push
+echo "✅ Workshop content published successfully"`,
       },
     ],
   });
