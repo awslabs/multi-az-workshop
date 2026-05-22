@@ -49,6 +49,7 @@ jobs:
         run: |-
           mkdir -p extracted
           unzip -q content.zip -d extracted
+          cp content.zip extracted/
       - name: Upload assets to S3
         run: aws s3 sync extracted "$ASSETS_LOCATION" --delete
   publish-workshop:

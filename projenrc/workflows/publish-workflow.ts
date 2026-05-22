@@ -80,7 +80,8 @@ gh release download \${{ steps.release-info.outputs.tag }} \\
       {
         name: 'Extract content.zip',
         run: `mkdir -p extracted
-unzip -q content.zip -d extracted`,
+unzip -q content.zip -d extracted
+cp content.zip extracted/`,
       },
       {
         name: 'Upload assets to S3',
