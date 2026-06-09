@@ -236,17 +236,35 @@ export class EC2FleetStack extends cdk.NestedStack {
       statements: [
         new iam.PolicyStatement({
           actions: [
-            'ssm:GetDeployablePatchSnapshotForInstance',
-            'ssm:PutInventory',
-            'ssm:PutComplianceItems',
             'ssm:DescribeAssociation',
+            'ssm:GetDeployablePatchSnapshotForInstance',
+            'ssm:GetDocument',
             'ssm:ListAssociations',
-            'ssm:ListInstanceAssociations',
+            'ssm:ListInstanceAssociations',        
+            'ssm:PutInventory',
             'ssm:UpdateAssociationStatus',
             'ssm:UpdateInstanceAssociationStatus',
             'ssm:UpdateInstanceInformation',
-            'ssm:GetDocument',
+          ],
+          effect: iam.Effect.ALLOW,
+          resources: ['*'],
+        }),
+        new iam.PolicyStatement({
+          actions: [
             'ssm:DescribeDocument',
+            'ssm:PutComplianceItems',
+          ],
+          effect: iam.Effect.ALLOW,
+          resources: ['*'],
+        }),
+        new iam.PolicyStatement({
+          actions: [
+            'ec2messages:AcknowledgeMessage',
+            'ec2messages:DeleteMessage',
+            'ec2messages:FailMessage',
+            'ec2messages:GetEndpoint',
+            'ec2messages:GetMessages',
+            'ec2messages:SendReply',
           ],
           effect: iam.Effect.ALLOW,
           resources: ['*'],
