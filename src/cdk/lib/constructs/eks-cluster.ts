@@ -174,6 +174,48 @@ export class EKSCluster extends Construct {
       }),
     );
 
+    eksWorkerRole.addManagedPolicy(
+      new iam.ManagedPolicy(this, "SSMPatchingPolicy", {
+        statements: [
+          new iam.PolicyStatement({
+            actions: [
+              'ssm:DescribeAssociation',
+              'ssm:GetDeployablePatchSnapshotForInstance',
+              'ssm:GetDocument',
+              'ssm:ListAssociations',
+              'ssm:ListInstanceAssociations',        
+              'ssm:PutInventory',
+              'ssm:UpdateAssociationStatus',
+              'ssm:UpdateInstanceAssociationStatus',
+              'ssm:UpdateInstanceInformation',
+            ],
+            effect: iam.Effect.ALLOW,
+            resources: ['*'],
+          }),
+          new iam.PolicyStatement({
+            actions: [
+              'ssm:DescribeDocument',
+              'ssm:PutComplianceItems',
+            ],
+            effect: iam.Effect.ALLOW,
+            resources: ['*'],
+          }),
+          new iam.PolicyStatement({
+            actions: [
+              'ec2messages:AcknowledgeMessage',
+              'ec2messages:DeleteMessage',
+              'ec2messages:FailMessage',
+              'ec2messages:GetEndpoint',
+              'ec2messages:GetMessages',
+              'ec2messages:SendReply',
+            ],
+            effect: iam.Effect.ALLOW,
+            resources: ['*'],
+          }),
+        ],
+      }),
+    );
+
     // Create log group for cluster logs
     const clusterLogGroup = new logs.LogGroup(this, 'cluster-log-group', {
       logGroupName: `/aws/eks/${props.clusterName}/cluster`,
