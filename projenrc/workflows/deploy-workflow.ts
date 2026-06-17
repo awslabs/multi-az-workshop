@@ -21,11 +21,30 @@
  *   `build` workflow and downloaded here as passive data for deployment.
  *   The PR's code never executes in this workflow. Manual dispatches check
  *   out main (trusted) and rebuild.
+ *
+ *   Additional hardening:
+ *   - Artifact is only accepted from builds where head_repository matches
+ *     github.repository and the event is 'push' or 'pull_request' from the
+ *     same repo (not a fork).
+ *   - Reviewer approval requires author_association of OWNER, MEMBER, or
+ *     COLLABORATOR (write/admin access).
+ *   - Deploy is restricted to artifacts built from the default branch (main).
+ *   - All action references pinned to immutable commit SHAs.
  */
 
 import { GithubWorkflow } from 'projen/lib/github';
 import type { GitHub } from 'projen/lib/github';
 import { JobPermission } from 'projen/lib/github/workflows-model';
+
+// Pinned action SHAs
+const ACTIONS = {
+  checkout: 'actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5', // v4
+  setupNode: 'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020', // v4
+  setupDotnet: 'actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9', // v4
+  uploadArtifact: 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a', // v7
+  downloadArtifact: 'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c', // v8
+  configureAwsCreds: 'aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8', // v5.1.0
+};
 
 const TRUSTED_AUTHORS = ['hakenmt', 'github-actions[bot]', 'dependabot[bot]'];
 
@@ -51,10 +70,6 @@ export function createDeployWorkflow(github: GitHub): void {
     .map((u) => `${runActor} == '${u}' || ${runTriggerer} == '${u}' || ${prAuthor} == '${u}'`)
     .join(' || ');
 
-  // Entry gate: auto-approve completing with success means all prerequisites
-  // (build passed, checks passed, review submitted) are satisfied. For PR
-  // review events, require an explicit approval from a trusted actor. For
-  // manual dispatch, always allow.
   const gate = [
     "github.event_name == 'workflow_dispatch'",
     `(github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && (${authorAllowlist}))`,
@@ -105,14 +120,10 @@ function addResolveJob(workflow: GithubWorkflow, gate: string): void {
         ].join('\n'),
       },
       {
-        // Locates the successful `build` run for the head SHA so the deploy
-        // job can download dist/content.zip from it.
-        //  - workflow_dispatch: no lookup needed; build-from-main produces the
-        //    artifact in this run
-        //  - workflow_run (from auto-approve): auto-approve already verified
-        //    the build succeeded, but we still need its run_id for artifact
-        //    download. Look it up by head_sha.
-        //  - pull_request_review: verify build succeeded for head SHA.
+        // Locates the successful `build` run for the head SHA. Requires the
+        // build to have run from the same repository (not a fork) and from
+        // the default branch (main) to prevent poisoned fork artifacts from
+        // being deployed.
         name: 'Locate build run',
         id: 'build_check',
         run: [
@@ -129,18 +140,26 @@ function addResolveJob(workflow: GithubWorkflow, gate: string): void {
           'fi',
           'REPO="${{ github.repository }}"',
           'echo "Looking for successful build run for SHA $SHA"',
-          'BUILD_RUN=$(gh api "repos/$REPO/actions/workflows/build.yml/runs?head_sha=$SHA" --jq \'[.workflow_runs[]] | sort_by(.run_number) | reverse | first\')',
+          'BUILD_RUN=$(gh api "repos/$REPO/actions/workflows/build.yml/runs?head_sha=$SHA" --jq \'[.workflow_runs[] | select(.head_repository.full_name == "\'$REPO\'" and .event != "pull_request_target")] | sort_by(.run_number) | reverse | first\')',
           'if [ -z "$BUILD_RUN" ] || [ "$BUILD_RUN" = "null" ]; then',
-          '  echo "No build run found for $SHA - skipping deploy"',
+          '  echo "No build run found for $SHA from trusted repository - skipping deploy"',
           '  echo "build_ok=false" >> "$GITHUB_OUTPUT"',
           '  echo "run_id=" >> "$GITHUB_OUTPUT"',
           '  exit 0',
           'fi',
           'CONCLUSION=$(echo "$BUILD_RUN" | jq -r .conclusion)',
           'RUN_ID=$(echo "$BUILD_RUN" | jq -r .id)',
-          'echo "Build run $RUN_ID conclusion: $CONCLUSION"',
+          'HEAD_BRANCH=$(echo "$BUILD_RUN" | jq -r .head_branch)',
+          'echo "Build run $RUN_ID conclusion: $CONCLUSION, branch: $HEAD_BRANCH"',
           'if [ "$CONCLUSION" != "success" ]; then',
           '  echo "Build did not succeed for $SHA - skipping deploy"',
+          '  echo "build_ok=false" >> "$GITHUB_OUTPUT"',
+          '  echo "run_id=" >> "$GITHUB_OUTPUT"',
+          '  exit 0',
+          'fi',
+          '# Restrict deploy to artifacts built from main branch',
+          'if [ "$HEAD_BRANCH" != "main" ]; then',
+          '  echo "Build was not from main branch ($HEAD_BRANCH) - skipping deploy"',
           '  echo "build_ok=false" >> "$GITHUB_OUTPUT"',
           '  echo "run_id=" >> "$GITHUB_OUTPUT"',
           '  exit 0',
@@ -150,12 +169,8 @@ function addResolveJob(workflow: GithubWorkflow, gate: string): void {
         ].join('\n'),
       },
       {
-        // Verifies a trusted actor's APPROVED review exists for the head SHA.
-        //  - workflow_dispatch: no approval required
-        //  - workflow_run (from auto-approve): auto-approve completing
-        //    successfully means it already submitted its approval, so this
-        //    will find it. No race since auto-approve finishes first.
-        //  - pull_request_review: approval just happened; find it.
+        // Verifies an APPROVED review exists for the head SHA from a reviewer
+        // with write/admin access (OWNER, MEMBER, or COLLABORATOR).
         name: 'Check PR approval status',
         id: 'approval',
         run: [
@@ -178,13 +193,14 @@ function addResolveJob(workflow: GithubWorkflow, gate: string): void {
           '  exit 0',
           'fi',
           'echo "Found PR #$PR_NUMBER"',
-          'APPROVED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --paginate --jq \'[.[] | select(.commit_id == "\'"$SHA"\'")] | group_by(.user.login) | map(sort_by(.submitted_at) | last) | [.[] | select(.state == "APPROVED")] | length\')',
-          'echo "Approved reviews for this head SHA: $APPROVED"',
+          '# Require reviewer to have write/admin access (OWNER, MEMBER, or COLLABORATOR)',
+          'APPROVED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --paginate --jq \'[.[] | select(.commit_id == "\'\"$SHA\"\'") | select(.author_association == "OWNER" or .author_association == "MEMBER" or .author_association == "COLLABORATOR")] | group_by(.user.login) | map(sort_by(.submitted_at) | last) | [.[] | select(.state == "APPROVED")] | length\')',
+          'echo "Approved reviews from authorized reviewers for this head SHA: $APPROVED"',
           'if [ "$APPROVED" -ge 1 ]; then',
-          '  echo "PR #$PR_NUMBER is approved for SHA $SHA"',
+          '  echo "PR #$PR_NUMBER is approved for SHA $SHA by authorized reviewer"',
           '  echo "is_approved=true" >> "$GITHUB_OUTPUT"',
           'else',
-          '  echo "PR #$PR_NUMBER has no approved review for SHA $SHA - skipping deploy"',
+          '  echo "PR #$PR_NUMBER has no approved review from authorized reviewer for SHA $SHA - skipping deploy"',
           '  echo "is_approved=false" >> "$GITHUB_OUTPUT"',
           'fi',
         ].join('\n'),
@@ -228,8 +244,6 @@ function addCreateDeploymentJob(workflow: GithubWorkflow): void {
 }
 
 
-// Builds dist/content.zip from main (trusted) on manual dispatch only. Uploads
-// the artifact so the deploy job has a uniform input source regardless of trigger.
 function addBuildFromMainJob(workflow: GithubWorkflow): void {
   workflow.addJob('build-from-main', {
     needs: ['resolve', 'create-deployment'],
@@ -243,17 +257,17 @@ function addBuildFromMainJob(workflow: GithubWorkflow): void {
     steps: [
       {
         name: 'Checkout main (trusted)',
-        uses: 'actions/checkout@v4',
+        uses: ACTIONS.checkout,
         with: { ref: 'main' },
       },
       {
         name: 'Setup Node.js',
-        uses: 'actions/setup-node@v4',
+        uses: ACTIONS.setupNode,
         with: { 'node-version': '20' },
       },
       {
         name: 'Setup .NET',
-        uses: 'actions/setup-dotnet@v4',
+        uses: ACTIONS.setupDotnet,
         with: { 'dotnet-version': '9.0' },
       },
       { name: 'Enable Corepack', run: 'corepack enable' },
@@ -261,7 +275,7 @@ function addBuildFromMainJob(workflow: GithubWorkflow): void {
       { name: 'Build', run: 'npx projen build' },
       {
         name: 'Upload content artifact',
-        uses: 'actions/upload-artifact@v7',
+        uses: ACTIONS.uploadArtifact,
         with: {
           'name': 'workshop-content',
           'path': 'dist/content.zip',
@@ -274,14 +288,9 @@ function addBuildFromMainJob(workflow: GithubWorkflow): void {
 }
 
 
-// Deploy job. No checkout, no yarn install. Only downloads the pre-built
-// artifact (from this run for workflow_dispatch, or from the triggering build
-// run for workflow_run) and calls aws CLI against it.
 function addDeployJob(workflow: GithubWorkflow): void {
   workflow.addJob('deploy', {
     needs: ['resolve', 'create-deployment', 'build-from-main'],
-    // build-from-main is skipped on workflow_run; only fail if it was required
-    // and failed. Use always() + explicit skip-aware condition.
     if: "always() && needs.resolve.result == 'success' && needs.create-deployment.result == 'success' && (needs.build-from-main.result == 'success' || needs.build-from-main.result == 'skipped')",
     runsOn: ['ubuntu-latest'],
     permissions: {
@@ -298,25 +307,20 @@ function addDeployJob(workflow: GithubWorkflow): void {
     },
     steps: [
       {
-        // Checkout main (trusted). We need .projen/tasks.json so npx projen
-        // can execute the deploy task. Only trusted code from main runs here;
-        // the PR's content.zip is consumed as passive data by the deploy task.
         name: 'Checkout main (trusted)',
-        uses: 'actions/checkout@v4',
+        uses: ACTIONS.checkout,
         with: { ref: 'main' },
       },
       {
-        // Same-run artifact produced by build-from-main.
         name: 'Download content artifact (manual dispatch)',
         if: "github.event_name == 'workflow_dispatch'",
-        uses: 'actions/download-artifact@v8',
+        uses: ACTIONS.downloadArtifact,
         with: { name: 'workshop-content', path: 'dist' },
       },
       {
-        // Cross-run artifact from the build workflow run.
         name: 'Download content artifact (from build run)',
         if: "github.event_name != 'workflow_dispatch'",
-        uses: 'actions/download-artifact@v8',
+        uses: ACTIONS.downloadArtifact,
         with: {
           'name': 'workshop-content',
           'path': 'dist',
@@ -326,7 +330,7 @@ function addDeployJob(workflow: GithubWorkflow): void {
       },
       {
         name: 'Configure AWS credentials',
-        uses: 'aws-actions/configure-aws-credentials@v5.1.0',
+        uses: ACTIONS.configureAwsCreds,
         with: {
           'role-to-assume': '${{ env.DEPLOYMENT_ROLE }}',
           'aws-region': '${{ env.AWS_REGION }}',
@@ -366,5 +370,3 @@ function addReportDeploymentJob(workflow: GithubWorkflow): void {
     ],
   });
 }
-
-

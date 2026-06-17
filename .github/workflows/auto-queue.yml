@@ -17,7 +17,7 @@ jobs:
       contents: write
     if: (contains(github.event.pull_request.labels.*.name, 'auto-approve') || contains(github.event.pull_request.labels.*.name, 'auto-merge')) && (github.event.pull_request.user.login == 'hakenmt' || github.event.pull_request.user.login == 'github-actions[bot]' || github.event.pull_request.user.login == 'dependabot[bot]')
     steps:
-      - uses: peter-evans/enable-pull-request-automerge@v3
+      - uses: peter-evans/enable-pull-request-automerge@a660677d5469627102a1c1e11409dd063606628d
         with:
           token: ${{ secrets.PROJEN_GITHUB_TOKEN }}
           pull-request-number: ${{ github.event.number }}
