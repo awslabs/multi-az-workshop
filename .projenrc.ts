@@ -169,21 +169,6 @@ if (autoQueueWorkflow?.file) {
   ]);
 }
 
-// After a successful PR build, upload dist/content.zip as an artifact so the
-// privileged deploy workflow can consume it via workflow_run without ever
-// checking out untrusted PR code.
-project.buildWorkflow?.addPostBuildSteps({
-  name: 'Upload content artifact',
-  if: "github.event_name == 'pull_request'",
-  uses: 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a', // v7
-  with: {
-    'name': 'workshop-content',
-    'path': 'dist/content.zip',
-    'retention-days': 7,
-    'if-no-files-found': 'error',
-  },
-});
-
 // Harden build workflow: immutable checkout ref (head.sha not head.ref),
 // concurrency group to cancel stale runs, and pin action SHAs.
 const buildWorkflow = project.github?.tryFindWorkflow('build');
@@ -199,8 +184,8 @@ if (buildWorkflow?.file) {
   buildWorkflow.file.addOverride('jobs.build.steps.0.uses', 'actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10'); // v6
   buildWorkflow.file.addOverride('jobs.self-mutation.steps.0.uses', 'actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10'); // v6
   buildWorkflow.file.addOverride('jobs.self-mutation.steps.1.uses', 'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c'); // v8
-  // Pin the Upload patch step (projen-generated, index 7 in build job)
-  buildWorkflow.file.addOverride('jobs.build.steps.7.uses', 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a'); // v7
+  // Pin the Upload patch step (projen-generated, index 6 in build job)
+  buildWorkflow.file.addOverride('jobs.build.steps.6.uses', 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a'); // v7
 }
 
 // Pin action SHAs in remaining projen-managed workflows
