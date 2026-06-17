@@ -3,21 +3,21 @@
 
 /**
  * Publish workflow configuration
- * Handles publishing to Workshop Studio from the latest GitHub release
+ * Downloads the latest release and invokes projen publish tasks.
  */
 
 import { GithubWorkflow } from 'projen/lib/github';
 import type { GitHub } from 'projen/lib/github';
 import { JobPermission } from 'projen/lib/github/workflows-model';
 
-/**
- * Creates the publish workflow
- * @param github The GitHub project instance
- */
-export function createPublishWorkflow(github: GitHub): void {
-  const publishWorkflow = new GithubWorkflow(github, 'publish');
+const ACTIONS = {
+  checkout: 'actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5', // v4
+};
 
-  publishWorkflow.on({
+export function createPublishWorkflow(github: GitHub): void {
+  const workflow = new GithubWorkflow(github, 'publish');
+
+  workflow.on({
     workflowDispatch: {
       inputs: {
         email: {
@@ -29,21 +29,11 @@ export function createPublishWorkflow(github: GitHub): void {
     },
   });
 
-  // Job 1: Get latest release, extract content.zip, and upload to S3
-  publishWorkflow.addJob('upload-assets', {
+  workflow.addJob('publish', {
     runsOn: ['ubuntu-latest'],
+    environment: 'WorkshopStudio',
     permissions: {
       contents: JobPermission.READ,
-    },
-    outputs: {
-      release_tag: {
-        stepId: 'release-info',
-        outputName: 'tag',
-      },
-      release_sha: {
-        stepId: 'release-info',
-        outputName: 'sha',
-      },
     },
     env: {
       GH_TOKEN: '${{ github.token }}',
@@ -52,111 +42,37 @@ export function createPublishWorkflow(github: GitHub): void {
       AWS_SECRET_ACCESS_KEY: '${{ secrets.SECRET_KEY }}',
       AWS_SESSION_TOKEN: '${{ secrets.SESSION_TOKEN }}',
       ASSETS_LOCATION: '${{ secrets.ASSETS_LOCATION }}',
-    },
-    steps: [
-      {
-        name: 'Get latest release info',
-        id: 'release-info',
-        run: `# Get the latest release
-RELEASE_INFO=$(gh api repos/\${{ github.repository }}/releases/latest)
-
-RELEASE_TAG=$(echo "$RELEASE_INFO" | jq -r '.tag_name')
-RELEASE_SHA=$(echo "$RELEASE_INFO" | jq -r '.target_commitish')
-
-echo "Latest release: $RELEASE_TAG"
-echo "Release SHA: $RELEASE_SHA"
-
-echo "tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
-echo "sha=$RELEASE_SHA" >> $GITHUB_OUTPUT`,
-      },
-      {
-        name: 'Download content.zip from release',
-        run: `# Download the content.zip asset from the latest release
-gh release download \${{ steps.release-info.outputs.tag }} \\
-  --repo \${{ github.repository }} \\
-  --pattern 'content.zip' \\
-  --dir ./`,
-      },
-      {
-        name: 'Extract content.zip',
-        run: `mkdir -p extracted
-unzip -q content.zip -d extracted
-cp content.zip extracted/`,
-      },
-      {
-        name: 'Upload assets to S3',
-        run: 'aws s3 sync extracted "$ASSETS_LOCATION" --delete',
-      },
-    ],
-  });
-
-  // Job 2: Push workshop content to WorkshopStudio
-  publishWorkflow.addJob('publish-workshop', {
-    needs: ['upload-assets'],
-    runsOn: ['ubuntu-latest'],
-    permissions: {
-      contents: JobPermission.READ,
-    },
-    env: {
-      GH_TOKEN: '${{ github.token }}',
+      REMOTE_REPO: '${{ secrets.REMOTE_REPO }}',
+      GIT_PLUGIN_LOCATION: '${{ secrets.GIT_PLUGIN_LOCATION }}',
+      GIT_PLUGIN: '${{ secrets.GIT_PLUGIN }}',
       USER_NAME: '${{ github.triggering_actor }}',
       EMAIL: '${{ inputs.email }}',
-      REMOTE_REPO: '${{ secrets.REMOTE_REPO }}',
-      AWS_DEFAULT_REGION: 'us-east-1',
-      WS_REPO_SOURCE: 's3',
-      PLUGIN: '${{ secrets.PLUGIN }}',
-      PACKAGE: '${{ secrets.GIT_PACKAGE }}',
-      AWS_ACCESS_KEY_ID: '${{ secrets.ACCESS_KEY_ID }}',
-      AWS_SECRET_ACCESS_KEY: '${{ secrets.SECRET_KEY }}',
-      AWS_SESSION_TOKEN: '${{ secrets.SESSION_TOKEN }}',
     },
     steps: [
       {
-        name: 'Checkout release SHA',
-        uses: 'actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5', // v4
-        with: {
-          ref: '${{ needs.upload-assets.outputs.release_sha }}',
-        },
+        name: 'Checkout',
+        uses: ACTIONS.checkout,
       },
       {
-        name: 'Install git tools',
-        run: `pip config set global.trusted-host "$PLUGIN"
-pip config set global.extra-index-url https://"$PLUGIN"
-pipx install "$PACKAGE"
-git config --global user.email "$EMAIL"
-git config --global user.name "$USER_NAME"`,
+        name: 'Download release content',
+        run: [
+          'RELEASE_TAG=$(gh api repos/${{ github.repository }}/releases/latest --jq .tag_name)',
+          'echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"',
+          'mkdir -p dist',
+          'gh release download "$RELEASE_TAG" --repo ${{ github.repository }} --pattern content.zip --dir dist',
+        ].join('\n'),
       },
       {
-        name: 'Extract CloudFormation template from release',
-        run: `gh release download \${{ needs.upload-assets.outputs.release_tag }} \\
-  --repo \${{ github.repository }} \\
-  --pattern 'content.zip' \\
-  --dir /tmp
-unzip -jo /tmp/content.zip multi-az-workshop.json -d \${{ github.workspace }}/static/
-rm /tmp/content.zip`,
+        name: 'Enable Corepack',
+        run: 'corepack enable',
       },
       {
-        name: 'Push workshop content',
-        run: `# Clone Workshop Studio repository
-git clone --branch mainline "$REMOTE_REPO" \${{ github.workspace }}/workshop-repo
-
-cd \${{ github.workspace }}/workshop-repo
-
-# Remove all existing content except .git
-find . -path ./.git -prune -o ! -name . ! -name .. -exec rm -rf {} + 2> /dev/null
-
-# Copy content, static, and contentspec.yaml from the checked out release
-cp -r \${{ github.workspace }}/content ./
-cp -r \${{ github.workspace }}/static ./
-cp \${{ github.workspace }}/contentspec.yaml ./
-
-# Write release tag to force a change even if content is identical
-echo "\${{ needs.upload-assets.outputs.release_tag }}" > .version
-
-git add -A
-git commit -m "Published from release \${{ needs.upload-assets.outputs.release_tag }}"
-git push
-echo "✅ Workshop content published successfully"`,
+        name: 'Install dependencies',
+        run: 'yarn install --immutable',
+      },
+      {
+        name: 'Publish',
+        run: 'npx projen publish',
       },
     ],
   });

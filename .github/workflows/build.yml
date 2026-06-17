@@ -30,14 +30,6 @@ jobs:
           dotnet-version: "9.0"
       - name: build
         run: yarn projen build
-      - name: Upload content artifact
-        if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: workshop-content
-          path: dist/content.zip
-          retention-days: 7
-          if-no-files-found: error
       - name: Find mutations
         id: self_mutation
         run: |-
