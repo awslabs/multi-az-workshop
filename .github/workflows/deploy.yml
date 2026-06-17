@@ -58,18 +58,26 @@ jobs:
           fi
           REPO="${{ github.repository }}"
           echo "Looking for successful build run for SHA $SHA"
-          BUILD_RUN=$(gh api "repos/$REPO/actions/workflows/build.yml/runs?head_sha=$SHA" --jq '[.workflow_runs[]] | sort_by(.run_number) | reverse | first')
+          BUILD_RUN=$(gh api "repos/$REPO/actions/workflows/build.yml/runs?head_sha=$SHA" --jq '[.workflow_runs[] | select(.head_repository.full_name == "'$REPO'" and .event != "pull_request_target")] | sort_by(.run_number) | reverse | first')
           if [ -z "$BUILD_RUN" ] || [ "$BUILD_RUN" = "null" ]; then
-            echo "No build run found for $SHA - skipping deploy"
+            echo "No build run found for $SHA from trusted repository - skipping deploy"
             echo "build_ok=false" >> "$GITHUB_OUTPUT"
             echo "run_id=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           CONCLUSION=$(echo "$BUILD_RUN" | jq -r .conclusion)
           RUN_ID=$(echo "$BUILD_RUN" | jq -r .id)
-          echo "Build run $RUN_ID conclusion: $CONCLUSION"
+          HEAD_BRANCH=$(echo "$BUILD_RUN" | jq -r .head_branch)
+          echo "Build run $RUN_ID conclusion: $CONCLUSION, branch: $HEAD_BRANCH"
           if [ "$CONCLUSION" != "success" ]; then
             echo "Build did not succeed for $SHA - skipping deploy"
+            echo "build_ok=false" >> "$GITHUB_OUTPUT"
+            echo "run_id=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Restrict deploy to artifacts built from main branch
+          if [ "$HEAD_BRANCH" != "main" ]; then
+            echo "Build was not from main branch ($HEAD_BRANCH) - skipping deploy"
             echo "build_ok=false" >> "$GITHUB_OUTPUT"
             echo "run_id=" >> "$GITHUB_OUTPUT"
             exit 0
@@ -98,13 +106,14 @@ jobs:
             exit 0
           fi
           echo "Found PR #$PR_NUMBER"
-          APPROVED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --paginate --jq '[.[] | select(.commit_id == "'"$SHA"'")] | group_by(.user.login) | map(sort_by(.submitted_at) | last) | [.[] | select(.state == "APPROVED")] | length')
-          echo "Approved reviews for this head SHA: $APPROVED"
+          # Require reviewer to have write/admin access (OWNER, MEMBER, or COLLABORATOR)
+          APPROVED=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --paginate --jq '[.[] | select(.commit_id == "'"$SHA"'") | select(.author_association == "OWNER" or .author_association == "MEMBER" or .author_association == "COLLABORATOR")] | group_by(.user.login) | map(sort_by(.submitted_at) | last) | [.[] | select(.state == "APPROVED")] | length')
+          echo "Approved reviews from authorized reviewers for this head SHA: $APPROVED"
           if [ "$APPROVED" -ge 1 ]; then
-            echo "PR #$PR_NUMBER is approved for SHA $SHA"
+            echo "PR #$PR_NUMBER is approved for SHA $SHA by authorized reviewer"
             echo "is_approved=true" >> "$GITHUB_OUTPUT"
           else
-            echo "PR #$PR_NUMBER has no approved review for SHA $SHA - skipping deploy"
+            echo "PR #$PR_NUMBER has no approved review from authorized reviewer for SHA $SHA - skipping deploy"
             echo "is_approved=false" >> "$GITHUB_OUTPUT"
           fi
   create-deployment:
@@ -143,15 +152,15 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout main (trusted)
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           ref: main
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: "20"
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
         with:
           dotnet-version: "9.0"
       - name: Enable Corepack
@@ -161,7 +170,7 @@ jobs:
       - name: Build
         run: npx projen build
       - name: Upload content artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: workshop-content
           path: dist/content.zip
@@ -186,25 +195,25 @@ jobs:
     if: always() && needs.resolve.result == 'success' && needs.create-deployment.result == 'success' && (needs.build-from-main.result == 'success' || needs.build-from-main.result == 'skipped')
     steps:
       - name: Checkout main (trusted)
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           ref: main
       - name: Download content artifact (manual dispatch)
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           name: workshop-content
           path: dist
       - name: Download content artifact (from build run)
         if: github.event_name != 'workflow_dispatch'
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           name: workshop-content
           path: dist
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ needs.resolve.outputs.run_id }}
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v5.1.0
+        uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8
         with:
           role-to-assume: ${{ env.DEPLOYMENT_ROLE }}
           aws-region: ${{ env.AWS_REGION }}

@@ -49,7 +49,7 @@ const project = new AwsCdkTypeScriptApp({
     preBuildSteps: [
       {
         name: 'Install dotnet',
-        uses: 'actions/setup-dotnet@v4',
+        uses: 'actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9', // v4
         with: {
           'dotnet-version': '9.0',
         },
@@ -175,7 +175,7 @@ if (autoQueueWorkflow?.file) {
 project.buildWorkflow?.addPostBuildSteps({
   name: 'Upload content artifact',
   if: "github.event_name == 'pull_request'",
-  uses: 'actions/upload-artifact@v7',
+  uses: 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a', // v7
   with: {
     'name': 'workshop-content',
     'path': 'dist/content.zip',
@@ -183,6 +183,50 @@ project.buildWorkflow?.addPostBuildSteps({
     'if-no-files-found': 'error',
   },
 });
+
+// Harden build workflow: immutable checkout ref (head.sha not head.ref),
+// concurrency group to cancel stale runs, and pin action SHAs.
+const buildWorkflow = project.github?.tryFindWorkflow('build');
+if (buildWorkflow?.file) {
+  // Add concurrency group with cancel-in-progress to prevent TOCTOU races
+  buildWorkflow.file.addOverride('concurrency', {
+    'group': 'build-${{ github.event.pull_request.number || github.ref }}',
+    'cancel-in-progress': true,
+  });
+  // Use immutable head.sha instead of mutable head.ref for checkout
+  buildWorkflow.file.addOverride('jobs.build.steps.0.with.ref', '${{ github.event.pull_request.head.sha }}');
+  // Pin actions to SHAs
+  buildWorkflow.file.addOverride('jobs.build.steps.0.uses', 'actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10'); // v6
+  buildWorkflow.file.addOverride('jobs.self-mutation.steps.0.uses', 'actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10'); // v6
+  buildWorkflow.file.addOverride('jobs.self-mutation.steps.1.uses', 'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c'); // v8
+  // Pin the Upload patch step (projen-generated, index 7 in build job)
+  buildWorkflow.file.addOverride('jobs.build.steps.7.uses', 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a'); // v7
+}
+
+// Pin action SHAs in remaining projen-managed workflows
+const releaseWorkflow = project.github?.tryFindWorkflow('release');
+if (releaseWorkflow?.file) {
+  releaseWorkflow.file.addOverride('jobs.release.steps.0.uses', 'actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10'); // v6
+  releaseWorkflow.file.addOverride('jobs.release.steps.8.uses', 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a'); // v7
+  releaseWorkflow.file.addOverride('jobs.release_github.steps.0.uses', 'actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e'); // v6
+  releaseWorkflow.file.addOverride('jobs.release_github.steps.1.uses', 'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c'); // v8
+}
+const upgradeWorkflow = project.github?.tryFindWorkflow('upgrade-main');
+if (upgradeWorkflow?.file) {
+  upgradeWorkflow.file.addOverride('jobs.upgrade.steps.0.uses', 'actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10'); // v6
+  upgradeWorkflow.file.addOverride('jobs.upgrade.steps.5.uses', 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a'); // v7
+  upgradeWorkflow.file.addOverride('jobs.pr.steps.0.uses', 'actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10'); // v6
+  upgradeWorkflow.file.addOverride('jobs.pr.steps.1.uses', 'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c'); // v8
+  upgradeWorkflow.file.addOverride('jobs.pr.steps.4.uses', 'peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1'); // v8
+}
+const autoQueueWorkflowRef = project.github?.tryFindWorkflow('auto-queue');
+if (autoQueueWorkflowRef?.file) {
+  autoQueueWorkflowRef.file.addOverride('jobs.enableAutoQueue.steps.0.uses', 'peter-evans/enable-pull-request-automerge@a660677d5469627102a1c1e11409dd063606628d'); // v3
+}
+const prLintWorkflow = project.github?.tryFindWorkflow('pull-request-lint');
+if (prLintWorkflow?.file) {
+  prLintWorkflow.file.addOverride('jobs.validate.steps.0.uses', 'amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50'); // v6
+}
 
 // Add global environment variables for all tasks
 project.tasks.addEnvironment('PROJECT_NAME', project.name);

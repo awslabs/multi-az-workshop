@@ -158,7 +158,7 @@ steps.wait-for-required-checks.outputs.conclusion != 'success'`,
       {
         name: 'Auto-Approve PR',
         id: 'auto-approve',
-        uses: 'hmarr/auto-approve-action@v2.2.1',
+        uses: 'hmarr/auto-approve-action@24ec4c8cc344fe1cdde70ff37e55ace9e848a1d8', // v2.2.1
         if: 'contains(\'success,neutral,skipped\', steps.wait-for-build.outputs.conclusion)',
         with: {
           'github-token': '${{ secrets.GITHUB_TOKEN }}',
