@@ -550,7 +550,7 @@
     },
     "publish": {
       "name": "publish",
-      "description": "Publish workshop content to S3 and Workshop Studio (requires WORKSHOP_ID, REMOTE_REPO, EMAIL, USER_NAME, AWS credentials)",
+      "description": "Publish workshop content to S3 and Workshop Studio",
       "steps": [
         {
           "spawn": "publish:upload-assets"
@@ -562,43 +562,28 @@
     },
     "publish:push-workshop": {
       "name": "publish:push-workshop",
-      "description": "Push workshop content to Workshop Studio repository (requires REMOTE_REPO, EMAIL, USER_NAME env vars)",
+      "description": "Push workshop content to Workshop Studio repository (requires REMOTE_REPO, EMAIL, USER_NAME, GIT_PLUGIN_LOCATION, GIT_PLUGIN)",
       "steps": [
         {
-          "say": "Preparing to push to Workshop Studio..."
+          "exec": "pip config set global.trusted-host \"$GIT_PLUGIN_LOCATION\" && pip install --index-url https://\"$GIT_PLUGIN_LOCATION\" \"$GIT_PLUGIN\" && git config --global user.email \"$EMAIL\" && git config --global user.name \"$USER_NAME\""
         },
         {
-          "exec": "rm -rf tmp && mkdir -p tmp"
+          "exec": "git clone --branch mainline \"$REMOTE_REPO\" tmp/workshop-repo"
         },
         {
-          "say": "Cloning Workshop Studio repository..."
+          "exec": "find tmp/workshop-repo -path tmp/workshop-repo/.git -prune -o ! -name . ! -name .. -exec rm -rf {} + 2>/dev/null || true"
         },
         {
-          "exec": "git clone $REMOTE_REPO tmp/workshop-studio"
+          "exec": "cp -r content tmp/workshop-repo/"
         },
         {
-          "say": "Copying workshop content..."
+          "exec": "cp -r static tmp/workshop-repo/"
         },
         {
-          "exec": "rm -rf tmp/workshop-studio/content tmp/workshop-studio/static"
+          "exec": "cp contentspec.yaml tmp/workshop-repo/"
         },
         {
-          "exec": "cp -r content tmp/workshop-studio/"
-        },
-        {
-          "exec": "cp -r static tmp/workshop-studio/"
-        },
-        {
-          "exec": "cp contentspec.yaml tmp/workshop-studio/"
-        },
-        {
-          "say": "Checking for changes..."
-        },
-        {
-          "exec": "cd tmp/workshop-studio\n        git config user.email \"$EMAIL\"\n        git config user.name \"$USER_NAME\"\n        git add .\n        \n        # Check if there are any changes to commit\n        if git diff --staged --quiet; then\n          echo \"No changes to commit - skipping push\"\n        else\n          echo \"Changes detected - committing and pushing\"\n          COMMIT_SHA=$(git rev-parse HEAD)\n          git commit -m \"Update workshop content from commit $COMMIT_SHA\"\n          git push\n          echo \"Successfully pushed changes to Workshop Studio\"\n        fi"
-        },
-        {
-          "say": "Workshop Studio push complete!"
+          "exec": "cd tmp/workshop-repo && git add -A && git commit -m \"Published from release ${RELEASE_TAG:-unknown}\" || echo \"No changes to commit\" && git push || echo \"Nothing to push\""
         },
         {
           "exec": "rm -rf tmp"
@@ -607,11 +592,8 @@
     },
     "publish:upload-assets": {
       "name": "publish:upload-assets",
-      "description": "Upload workshop assets to Workshop Studio S3 bucket (requires AWS credentials)",
+      "description": "Upload workshop assets to S3 (requires ASSETS_LOCATION, AWS credentials)",
       "steps": [
-        {
-          "say": "Preparing assets for upload..."
-        },
         {
           "exec": "rm -rf tmp && mkdir -p tmp"
         },
@@ -619,13 +601,10 @@
           "exec": "unzip -q dist/content.zip -d tmp"
         },
         {
-          "say": "Uploading assets to S3..."
+          "exec": "cp dist/content.zip tmp/"
         },
         {
-          "exec": "aws s3 cp tmp s3://ws-assets-prod-iad-r-iad-ed304a55c2ca1aee.s3.us-east-1.amazonaws.com/public/$WORKSHOP_ID/ --recursive"
-        },
-        {
-          "say": "Asset upload complete!"
+          "exec": "aws s3 sync tmp \"$ASSETS_LOCATION\" --delete"
         },
         {
           "exec": "rm -rf tmp"
