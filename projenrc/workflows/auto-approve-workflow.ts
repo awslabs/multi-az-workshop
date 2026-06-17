@@ -76,6 +76,18 @@ export function createAutoApproveWorkflow(github: GitHub): void {
               echo "Build workflow status: $STATUS"
 
               if [[ ",$TERMINATING_STATUS," == *",$STATUS,"* ]]; then
+                # If build failed due to self-mutation, a new commit is incoming.
+                # Exit neutrally — the synchronize event for the new SHA will
+                # re-trigger this workflow.
+                if [ "$STATUS" == "failure" ]; then
+                  SELF_MUTATION=$(gh api "/repos/\${{ github.repository }}/actions/runs/$RUN_ID/jobs" \
+                    --jq '.jobs[] | select(.name == "self-mutation") | .conclusion')
+                  if [ "$SELF_MUTATION" == "success" ]; then
+                    echo "Build failed due to self-mutation (new commit incoming). Exiting neutrally."
+                    echo "conclusion=neutral" >> "$GITHUB_OUTPUT"
+                    break
+                  fi
+                fi
                 echo "Build workflow finished with conclusion: $STATUS"
                 echo "conclusion=$STATUS" >> "$GITHUB_OUTPUT"
                 break
@@ -97,6 +109,7 @@ export function createAutoApproveWorkflow(github: GitHub): void {
       {
         name: 'Wait for Required Checks to Complete',
         id: 'wait-for-required-checks',
+        if: "steps.wait-for-build.outputs.conclusion == 'success'",
         run: `
           START_TIME=$(date +%s)
 
@@ -146,8 +159,8 @@ export function createAutoApproveWorkflow(github: GitHub): void {
       {
         name: 'Fail If Checks or Build Failed',
         id: 'fail',
-        if: `steps.wait-for-build.outputs.conclusion != 'success' ||
-steps.wait-for-required-checks.outputs.conclusion != 'success'`,
+        if: `steps.wait-for-build.outputs.conclusion != 'success' && steps.wait-for-build.outputs.conclusion != 'neutral' ||
+steps.wait-for-required-checks.outputs.conclusion == 'failure'`,
         run: `
           echo "❌ Build or required checks did not succeed."
           echo "Build status: \${{ steps.wait-for-build.outputs.conclusion }}"
@@ -159,7 +172,7 @@ steps.wait-for-required-checks.outputs.conclusion != 'success'`,
         name: 'Auto-Approve PR',
         id: 'auto-approve',
         uses: 'hmarr/auto-approve-action@24ec4c8cc344fe1cdde70ff37e55ace9e848a1d8', // v2.2.1
-        if: 'contains(\'success,neutral,skipped\', steps.wait-for-build.outputs.conclusion)',
+        if: 'steps.wait-for-build.outputs.conclusion == \'success\'',
         with: {
           'github-token': '${{ secrets.GITHUB_TOKEN }}',
         },
