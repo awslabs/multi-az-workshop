@@ -21,6 +21,7 @@ jobs:
       BUCKET: ${{ secrets.BUCKET }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
       DEPLOYMENT_ROLE: ${{ secrets.DEPLOYMENT_ROLE }}
+      CLOUDFORMATION_ROLE: ${{ secrets.CLOUDFORMATION_ROLE }}
     steps:
       - name: Checkout main
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
