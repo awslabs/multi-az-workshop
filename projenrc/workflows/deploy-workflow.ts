@@ -52,6 +52,7 @@ export function createDeployWorkflow(github: GitHub): void {
       BUCKET: '${{ secrets.BUCKET }}',
       AWS_REGION: '${{ secrets.AWS_REGION }}',
       DEPLOYMENT_ROLE: '${{ secrets.DEPLOYMENT_ROLE }}',
+      CLOUDFORMATION_ROLE: '${{ secrets.CLOUDFORMATION_ROLE }}',
     },
     steps: [
       {

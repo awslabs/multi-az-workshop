@@ -48,13 +48,13 @@ function createWorkshopDeployTask(project: AwsCdkTypeScriptApp): void {
         say: 'Setting deployment timestamp...',
       },
       {
-        exec: 'date --utc +"%Y-%m-%dT%H-%M-%SZ" > tmp/assets_prefix.txt',
+        exec: 'date -u +"%Y-%m-%dT%H-%M-%SZ" > tmp/assets_prefix.txt',
       },
       {
         say: 'Uploading assets to S3...',
       },
       {
-        exec: 'aws s3 cp tmp "s3://${BUCKET}/$(cat tmp/assets_prefix.txt)/" --recursive',
+        exec: 'aws s3 sync tmp "s3://${BUCKET}/$(cat tmp/assets_prefix.txt)/"',
       },
       {
         say: 'Determining stack status...',
@@ -100,6 +100,7 @@ function createWorkshopDeployTask(project: AwsCdkTypeScriptApp): void {
             ParameterKey=AssetsBucketPrefix,ParameterValue="$ASSETS_PREFIX/" \\
             ParameterKey=ParticipantRoleName,ParameterValue=Admin \\
           --capabilities CAPABILITY_IAM \\
+          --role-arn "$CLOUDFORMATION_ROLE" \\
           --region "$AWS_REGION"
 
         echo "Waiting for change set to be created..."
