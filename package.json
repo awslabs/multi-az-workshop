@@ -76,7 +76,7 @@
     "fast-check": "^3.15.0",
     "jest": "^30.4.2",
     "jest-junit": "^17",
-    "projen": "^0.100.2",
+    "projen": "^0.100.7",
     "ts-jest": "^29.4.11",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3"
@@ -148,7 +148,7 @@
       "^.+\\.[t]sx?$": [
         "ts-jest",
         {
-          "tsconfig": "tsconfig.dev.json"
+          "tsconfig": "test/tsconfig.json"
         }
       ]
     }
