@@ -1,5 +1,5 @@
 {
-  "manifestVersion": 2,
+  "manifestVersion": 3,
   "env": {
     "PATH": "$(yarn exec node --print process.env.PATH)",
     "PROJECT_NAME": "multi-az-workshop"
@@ -391,7 +391,12 @@
       "description": "Synthesize project files",
       "steps": [
         {
-          "exec": "ts-node --project test/tsconfig.json .projenrc.ts"
+          "execArgs": [
+            "ts-node",
+            "--project",
+            "projenrc/tsconfig.json",
+            ".projenrc.ts"
+          ]
         }
       ]
     },
@@ -755,13 +760,49 @@
       },
       "steps": [
         {
-          "exec": "yarn dlx npm-check-updates@20 --upgrade --target=minor --peer --no-deprecated --dep=dev,peer,prod,optional --filter=@types/jest,@types/node,esbuild,eslint-import-resolver-typescript,eslint-plugin-import,jest,projen,ts-jest,ts-node,typescript"
+          "execArgs": [
+            "yarn",
+            "dlx",
+            "npm-check-updates@20",
+            "--upgrade",
+            "--target=minor",
+            "--peer",
+            "--no-deprecated",
+            "--dep=dev,prod,peer,optional",
+            "--filter=@types/jest,@types/node,esbuild,eslint-import-resolver-typescript,eslint-plugin-import,jest,projen,ts-jest,ts-node,typescript"
+          ]
         },
         {
           "exec": "yarn install --no-immutable"
         },
         {
-          "exec": "yarn up -R @aws-cdk/lambda-layer-kubectl-v35 @cdklabs/multi-az-observability @stylistic/eslint-plugin @types/jest @types/node @typescript-eslint/eslint-plugin @typescript-eslint/parser aws-cdk commit-and-tag-version esbuild eslint-import-resolver-typescript eslint-plugin-import eslint fast-check jest jest-junit projen ts-jest ts-node typescript aws-cdk-lib constructs"
+          "execArgs": [
+            "yarn",
+            "up",
+            "-R",
+            "@aws-cdk/lambda-layer-kubectl-v35",
+            "@cdklabs/multi-az-observability",
+            "@stylistic/eslint-plugin",
+            "@types/jest",
+            "@types/node",
+            "@typescript-eslint/eslint-plugin",
+            "@typescript-eslint/parser",
+            "aws-cdk",
+            "commit-and-tag-version",
+            "esbuild",
+            "eslint-import-resolver-typescript",
+            "eslint-plugin-import",
+            "eslint",
+            "fast-check",
+            "jest",
+            "jest-junit",
+            "projen",
+            "ts-jest",
+            "ts-node",
+            "typescript",
+            "aws-cdk-lib",
+            "constructs"
+          ]
         },
         {
           "exec": "yarn projen"
