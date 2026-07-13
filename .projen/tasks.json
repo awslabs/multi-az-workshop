@@ -4,6 +4,7 @@
     "PATH": "$(yarn exec node --print process.env.PATH)",
     "PROJECT_NAME": "multi-az-workshop"
   },
+  "shell": "system",
   "tasks": {
     "assets:arm64-container": {
       "name": "assets:arm64-container",
