@@ -1,4 +1,4 @@
-import { javascript } from 'projen';
+import { javascript, TaskShell } from 'projen';
 import { AwsCdkTypeScriptApp } from 'projen/lib/awscdk';
 import { GithubCredentials } from 'projen/lib/github';
 import { NodePackageManager, UpgradeDependenciesSchedule } from 'projen/lib/javascript';
@@ -124,6 +124,9 @@ const project = new AwsCdkTypeScriptApp({
     // IDE
     '.kiro/',
 
+    // Local-only facilitator notes (not part of published workshop content)
+    'FACILITATOR_GUIDE.md',
+
     // CDK specific
     'static/multi-az-workshop.json',
     'cdk.out*/',
@@ -212,6 +215,15 @@ const prLintWorkflow = project.github?.tryFindWorkflow('pull-request-lint');
 if (prLintWorkflow?.file) {
   prLintWorkflow.file.addOverride('jobs.validate.steps.0.uses', 'amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50'); // v6
 }
+
+// projen >=0.101 runs every task command through its built-in cross-platform
+// shell (dax) on all platforms, replacing the system shell used previously.
+// dax does not implement `eval`, `for` loops, or the `[ ... ]` test, all of
+// which the asset-building tasks rely on (e.g. `eval "$(node build/load-versions.js)"`,
+// `for chart in ...; do ...; done`, `[ -f ... ] && cp ...`). Restore the
+// pre-0.101 behavior by running task commands through the OS native shell.
+// See https://projen.io/docs/concepts/tasks/#shell
+project.tasks.shell = TaskShell.system();
 
 // Add global environment variables for all tasks
 project.tasks.addEnvironment('PROJECT_NAME', project.name);

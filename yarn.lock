@@ -3046,12 +3046,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dax@npm:^0.48.3":
-  version: 0.48.3
-  resolution: "dax@npm:0.48.3"
+"dax@npm:^0.48.6":
+  version: 0.48.6
+  resolution: "dax@npm:0.48.6"
   dependencies:
     undici-types: "npm:^5.26"
-  checksum: 10c0/6db49de2d94c5951050175035141a5a53288d5b2526f4c6a143fa5c981feb0b85194d12d66636b977d8676d8764d2674e4029a454d4cf12f3d2b031332763eae
+  checksum: 10c0/e89cbbac36f17f6420251c49a93d43db9b716c50c0d6d7d140b5951b6f773b8d5373172ad8b7518a1aa8fbe842af4eace86eefe28375d529227c17c7fb2fc4aa
   languageName: node
   linkType: hard
 
@@ -6081,7 +6081,7 @@ __metadata:
     fast-check: "npm:^3.15.0"
     jest: "npm:^30.4.2"
     jest-junit: "npm:^17"
-    projen: "npm:^0.100.7"
+    projen: "npm:0.101.11"
     ts-jest: "npm:^29.4.11"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^6.0.3"
@@ -6632,9 +6632,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"projen@npm:^0.100.7":
-  version: 0.100.7
-  resolution: "projen@npm:0.100.7"
+"projen@npm:0.101.11":
+  version: 0.101.11
+  resolution: "projen@npm:0.101.11"
   dependencies:
     "@iarna/toml": "npm:^2.2.5"
     case: "npm:^1.6.3"
@@ -6642,7 +6642,7 @@ __metadata:
     comment-json: "npm:4.2.2"
     constructs: "npm:^10.5.0"
     conventional-changelog-config-spec: "npm:^2.1.0"
-    dax: "npm:^0.48.3"
+    dax: "npm:^0.48.6"
     fast-glob: "npm:^3.3.3"
     fast-json-patch: "npm:^3.1.1"
     ini: "npm:^2.0.0"
@@ -6655,7 +6655,7 @@ __metadata:
     constructs: ^10.5.0
   bin:
     projen: bin/projen
-  checksum: 10c0/de6da1b17867218a5c51f7c411fde99be633992477f7ed995b03e8817cc3571c890bc5aa53408ab90fe0aa5c7339cc190892608dd2bb2861641af8a406631694
+  checksum: 10c0/8f29459f137341bcb31793ef77883208c78d8f7802ab65c22f527cc1d3539787c8c2ee11bfb5ffa7c130db9327cebada4d4b8fb3776430b3e2ea9bde3a8962ad
   languageName: node
   linkType: hard
 
