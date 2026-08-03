@@ -28,16 +28,21 @@ jobs:
       EMAIL: ${{ inputs.email }}
     steps:
       - name: Checkout
+        id: checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - name: Download release content
+        id: download_release_content
         run: |-
           RELEASE_TAG=$(gh api repos/${{ github.repository }}/releases/latest --jq .tag_name)
           echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
           mkdir -p dist
           gh release download "$RELEASE_TAG" --repo ${{ github.repository }} --pattern content.zip --dir dist
       - name: Enable Corepack
+        id: enable_corepack
         run: corepack enable
       - name: Install dependencies
+        id: install_dependencies
         run: yarn install --immutable
       - name: Publish
+        id: publish
         run: npx projen publish

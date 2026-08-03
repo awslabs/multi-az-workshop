@@ -24,30 +24,38 @@ jobs:
       CLOUDFORMATION_ROLE: ${{ secrets.CLOUDFORMATION_ROLE }}
     steps:
       - name: Checkout main
+        id: checkout_main
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           ref: main
       - name: Setup Node.js
+        id: setup_node_js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: "20"
       - name: Setup .NET
+        id: setup_net
         uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
         with:
           dotnet-version: "9.0"
       - name: Enable Corepack
+        id: enable_corepack
         run: corepack enable
       - name: Install dependencies
+        id: install_dependencies
         run: yarn install --immutable
       - name: Build
+        id: build
         run: npx projen build
       - name: Configure AWS credentials
+        id: configure_aws_credentials
         uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8
         with:
           role-to-assume: ${{ env.DEPLOYMENT_ROLE }}
           aws-region: ${{ env.AWS_REGION }}
           mask-aws-account-id: true
       - name: Deploy
+        id: deploy
         run: npx projen deploy
 concurrency:
   group: deploy
