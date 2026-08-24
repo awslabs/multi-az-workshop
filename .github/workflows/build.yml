@@ -7,7 +7,7 @@ on:
   merge_group: {}
 jobs:
   build:
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     outputs:
@@ -52,7 +52,7 @@ jobs:
           exit 1
   self-mutation:
     needs: build
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     if: always() && needs.build.outputs.self_mutation_happened && !(github.event.pull_request.head.repo.full_name != github.repository)

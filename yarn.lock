@@ -2317,11 +2317,11 @@ __metadata:
   linkType: hard
 
 "aws-cdk@npm:^2":
-  version: 2.1136.0
-  resolution: "aws-cdk@npm:2.1136.0"
+  version: 2.1138.0
+  resolution: "aws-cdk@npm:2.1138.0"
   bin:
     cdk: bin/cdk
-  checksum: 10c0/569c22708d521318aa06692d8b8d7fb5a08c8698b1a108a4dca1b5a0b31ed3b725545fd642a2fb22d15d28eb2645d3e8579ad0e4cba282d85260c816f239ab84
+  checksum: 10c0/67f1f98cf0f93f828677fa2d7ee6ef122ea3f08cf5d7ecac140ac7fdfcc71698a8a67a3872ea41da2c1173fdb409f6459551fcd21b563c0d450c2a7adce6c434
   languageName: node
   linkType: hard
 
@@ -6092,7 +6092,7 @@ __metadata:
     fast-check: "npm:^3.15.0"
     jest: "npm:^30.4.2"
     jest-junit: "npm:^17"
-    projen: "npm:0.101.31"
+    projen: "npm:0.103.1"
     ts-jest: "npm:^29.4.12"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^6.0.3"
@@ -6643,9 +6643,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"projen@npm:0.101.31":
-  version: 0.101.31
-  resolution: "projen@npm:0.101.31"
+"projen@npm:0.103.1":
+  version: 0.103.1
+  resolution: "projen@npm:0.103.1"
   dependencies:
     "@iarna/toml": "npm:^2.2.5"
     case: "npm:^1.6.3"
@@ -6666,7 +6666,7 @@ __metadata:
     constructs: ^10.5.0
   bin:
     projen: bin/projen
-  checksum: 10c0/66a05bb02da17b1aebb734c67497c62ba60a5db5753a43b44a2e7d2b9625563308b9f62a0e7c7d897b3edcc7db5240c34c396aa2ccad60f37e89852adb281495
+  checksum: 10c0/aba2782aa2028b036dfab3928b484ac33530a91548334c6f9dc6994d97eb2559ae2c1b987554d97e8de9e3f8efc87cc3bc328ac75c274b00ec2f7d2e50964c3a
   languageName: node
   linkType: hard
 
