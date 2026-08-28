@@ -17,9 +17,10 @@ jobs:
       contents: write
     if: (contains(github.event.pull_request.labels.*.name, 'auto-approve') || contains(github.event.pull_request.labels.*.name, 'auto-merge')) && (github.event.pull_request.user.login == 'hakenmt' || github.event.pull_request.user.login == 'github-actions[bot]' || github.event.pull_request.user.login == 'dependabot[bot]')
     steps:
-      - id: auto_edce8315
+      - id: auto-queue-pr
+        env:
+          GH_TOKEN: ${{ secrets.PROJEN_GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.number }}
+        run: gh pr merge --auto --squash "$PR_NUMBER" --repo "$GH_REPO"
         uses: peter-evans/enable-pull-request-automerge@a660677d5469627102a1c1e11409dd063606628d
-        with:
-          token: ${{ secrets.PROJEN_GITHUB_TOKEN }}
-          pull-request-number: ${{ github.event.number }}
-          merge-method: squash

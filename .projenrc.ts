@@ -46,6 +46,11 @@ const project = new AwsCdkTypeScriptApp({
   workflowRunsOn: ['ubuntu-24.04-arm'],
   buildWorkflow: true,
   buildWorkflowOptions: {
+    // projen >=0.103 no longer applies `workflowRunsOn` to the build workflow;
+    // set the build (and self-mutation) job runner explicitly so the arm64
+    // container build does not fall back to an x64 runner (ubuntu-latest),
+    // which fails with "exec /bin/sh: exec format error".
+    runsOn: ['ubuntu-24.04-arm'],
     preBuildSteps: [
       {
         name: 'Install dotnet',
