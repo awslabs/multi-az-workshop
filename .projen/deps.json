@@ -92,7 +92,7 @@
     },
     {
       "name": "fast-uri",
-      "version": ">=3.1.2",
+      "version": ">=4.1.2",
       "type": "override"
     },
     {
