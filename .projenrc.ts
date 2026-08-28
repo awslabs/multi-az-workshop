@@ -153,7 +153,7 @@ project.package.addPackageResolutions(
   'flatted@>=3.4.2',
   'fast-xml-parser@>=5.7.0',
   'fast-xml-builder@>=1.2.0',
-  'fast-uri@>=3.1.2',
+  'fast-uri@>=4.1.2',
   'handlebars@>=4.7.9',
   'picomatch@>=2.3.2',
   'uuid@>=14.0.0',
