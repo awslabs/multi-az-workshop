@@ -3,7 +3,7 @@ import { AwsCdkTypeScriptApp } from 'projen/lib/awscdk';
 import { GithubCredentials } from 'projen/lib/github';
 import { NodePackageManager, UpgradeDependenciesSchedule } from 'projen/lib/javascript';
 import { createBuildTasks, createDeployTasks, createPublishTasks } from './projenrc/tasks/';
-import { createDeployWorkflow, createAutoApproveWorkflow, createPublishWorkflow, customizeReleaseWorkflow } from './projenrc/workflows';
+import { createDeployWorkflow, createPublishWorkflow, customizeReleaseWorkflow } from './projenrc/workflows';
 
 // Root project that manages the entire multi-az-workshop monorepo
 const project = new AwsCdkTypeScriptApp({
@@ -78,6 +78,16 @@ const project = new AwsCdkTypeScriptApp({
       labels: ['auto-approve', 'auto-merge'],
       schedule: UpgradeDependenciesSchedule.WEEKLY,
     },
+  },
+
+  // Native projen auto-approve. Approves PRs that carry the 'auto-approve'
+  // label and are authored by a trusted account. Uses the pull_request_target
+  // event (see projen's AutoApprove) so the GITHUB_TOKEN has write permission
+  // even on Dependabot PRs, unlike the previous hand-rolled auto-approve
+  // workflow which ran on `pull_request` and could not approve bot PRs.
+  autoApproveOptions: {
+    allowedUsernames: ['hakenmt', 'github-actions[bot]', 'dependabot[bot]'],
+    label: 'auto-approve',
   },
 
   // GitHub settings
@@ -212,10 +222,12 @@ if (upgradeWorkflow?.file) {
   upgradeWorkflow.file.addOverride('jobs.pr.steps.1.uses', 'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c'); // v8
   upgradeWorkflow.file.addOverride('jobs.pr.steps.4.uses', 'peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1'); // v8
 }
-const autoQueueWorkflowRef = project.github?.tryFindWorkflow('auto-queue');
-if (autoQueueWorkflowRef?.file) {
-  autoQueueWorkflowRef.file.addOverride('jobs.enableAutoQueue.steps.0.uses', 'peter-evans/enable-pull-request-automerge@a660677d5469627102a1c1e11409dd063606628d'); // v3
-}
+// NOTE: auto-queue's merge step is intentionally left as projen generates it.
+// projen's AutoQueue emits a valid single `run: gh pr merge --auto` step
+// (authenticated with the projenCredentials PAT). A previous override added a
+// `uses:` key on top of that `run:` step, producing a step with BOTH keys — an
+// invalid workflow that GitHub refused to run, so auto-merge was never enabled.
+// Do not re-introduce a `.../steps.0.uses` override here.
 const prLintWorkflow = project.github?.tryFindWorkflow('pull-request-lint');
 if (prLintWorkflow?.file) {
   prLintWorkflow.file.addOverride('jobs.validate.steps.0.uses', 'amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50'); // v6
@@ -235,7 +247,6 @@ project.tasks.addEnvironment('PROJECT_NAME', project.name);
 
 // Create workflows using externalized modules
 createDeployWorkflow(project.github!);
-createAutoApproveWorkflow(project.github!);
 createPublishWorkflow(project.github!);
 customizeReleaseWorkflow(project);
 
