@@ -2,7 +2,7 @@
 
 name: auto-approve
 on:
-  pull_request:
+  pull_request_target:
     types:
       - labeled
       - opened
@@ -14,130 +14,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
-      actions: read
-      checks: read
-    env:
-      SHA: ${{ github.event.pull_request.head.sha }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      TIMEOUT: "600"
-      INTERVAL: "10"
-      WORKFLOW_NAME: build
-      TERMINATING_STATUS: completed,action_required,cancelled,failure,neutral,skipped,stale,success,timed_out
-    if: contains(github.event.pull_request.labels.*.name, 'auto-approve') && contains('hakenmt,github-actions[bot],dependabot[bot]', github.event.pull_request.user.login)
+    if: contains(github.event.pull_request.labels.*.name, 'auto-approve') && (github.event.pull_request.user.login == 'hakenmt' || github.event.pull_request.user.login == 'github-actions[bot]' || github.event.pull_request.user.login == 'dependabot[bot]')
     steps:
-      - name: Wait for Build to Complete
-        id: wait-for-build
-        run: |-
-          START_TIME=$(date +%s)
-
-                    while true; do
-                      # Fetch latest workflow run matching SHA and workflow name
-                      WORKFLOW_RUN=$(gh api /repos/${{ github.repository }}/actions/runs \
-                      --jq ".workflow_runs | map(select(.head_sha == \"$SHA\" and .name == \"$WORKFLOW_NAME\")) | sort_by(.run_number) | reverse | first")
-                      
-                      if [ -z "$WORKFLOW_RUN" ]; then
-                        echo "No build workflow run found for commit $SHA."
-                        echo "conclusion=success" >> "$GITHUB_OUTPUT"
-                        break
-                      else
-                        STATUS=$(echo "$WORKFLOW_RUN" | jq -r '.conclusion')
-                        RUN_NUMBER=$(echo "$WORKFLOW_RUN" | jq -r '.run_number')
-                        RUN_ID=$(echo "$WORKFLOW_RUN" | jq -r '.id')
-                        RUN_ATTEMPT=$(echo "$WORKFLOW_RUN" | jq -r '.run_attempt')
-                        WORKFLOW_ID=$(echo "$WORKFLOW_RUN" | jq -r '.workflow_id')
-
-                        echo "Build SHA: $SHA"
-                        echo "Build workflow run: $RUN_ID"
-                        echo "Build workflow status: $STATUS"
-
-                        if [[ ",$TERMINATING_STATUS," == *",$STATUS,"* ]]; then
-                          # If build failed due to self-mutation, a new commit is incoming.
-                          # Exit neutrally — the synchronize event for the new SHA will
-                          # re-trigger this workflow.
-                          if [ "$STATUS" == "failure" ]; then
-                            SELF_MUTATION=$(gh api "/repos/${{ github.repository }}/actions/runs/$RUN_ID/jobs"                     --jq '.jobs[] | select(.name == "self-mutation") | .conclusion')
-                            if [ "$SELF_MUTATION" == "success" ]; then
-                              echo "Build failed due to self-mutation (new commit incoming). Exiting neutrally."
-                              echo "conclusion=neutral" >> "$GITHUB_OUTPUT"
-                              break
-                            fi
-                          fi
-                          echo "Build workflow finished with conclusion: $STATUS"
-                          echo "conclusion=$STATUS" >> "$GITHUB_OUTPUT"
-                          break
-                        fi
-                      fi
-
-                      # Check if timeout has been reached
-                      ELAPSED=$(( $(date +%s) - START_TIME ))
-                      if [ $ELAPSED -ge $TIMEOUT ]; then
-                        echo "Timeout reached. Build workflow did not succeed within $TIMEOUT seconds."
-                        echo "conclusion=timed_out" >> "$GITHUB_OUTPUT"
-                        break
-                      fi
-
-                      sleep $INTERVAL
-                    done
-      - name: Wait for Required Checks to Complete
-        id: wait-for-required-checks
-        if: steps.wait-for-build.outputs.conclusion == 'success'
-        run: |-
-          START_TIME=$(date +%s)
-
-                    SELF_JOB_NAME="approve"
-
-                    while true; do
-                      echo "🔍 Checking status of check runs for $SHA"
-
-                      CHECK_RUNS=$(gh api repos/${{ github.repository }}/commits/$SHA/check-runs --paginate \
-                        --jq '[.check_runs[] | select(.name != "'"$SELF_JOB_NAME"'")] | group_by(.name) | map(sort_by(.started_at) | reverse | .[0])')
-
-                      echo "📋 All check run statuses:"
-                      echo "$CHECK_RUNS" | jq -r '.[] | "- \(.name): \(.status) / \(.conclusion)"'
-
-                      FAILED=$(echo "$CHECK_RUNS" | jq '[.[] | select(.conclusion == "failure" or .conclusion == "cancelled" or .conclusion == "timed_out")] | length')
-                      PENDING=$(echo "$CHECK_RUNS" | jq '[.[] | select(.status != "completed")] | length')
-
-                      echo "Pending checks (excluding this job): $PENDING"
-                      echo "Failed checks: $FAILED"
-
-                      if [ "$FAILED" -gt 0 ]; then
-                        echo "❌ One or more required checks failed."
-                        echo "conclusion=failure" >> "$GITHUB_OUTPUT"
-                        break
-                      fi
-
-                      if [ "$PENDING" -eq 0 ]; then
-                        echo "✅ All required checks (excluding this job) have completed successfully."
-                        echo "conclusion=success" >> "$GITHUB_OUTPUT"
-                        break
-                      else
-                        echo "⏳ Still waiting on the following checks:"
-                        echo "$PENDING_CHECKS" | jq -r '.[] | "- \(.name): \(.status)"'
-                      fi
-
-                      ELAPSED=$(( $(date +%s) - START_TIME ))
-                      if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
-                        echo "⏰ Timeout reached while waiting for checks."
-                        echo "conclusion=timed_out" >> "$GITHUB_OUTPUT"
-                        break
-                      fi
-
-                      sleep $INTERVAL
-                    done
-      - name: Fail If Checks or Build Failed
-        id: fail
-        if: |-
-          steps.wait-for-build.outputs.conclusion != 'success' && steps.wait-for-build.outputs.conclusion != 'neutral' ||
-          steps.wait-for-required-checks.outputs.conclusion == 'failure'
-        run: |-
-          echo "❌ Build or required checks did not succeed."
-                    echo "Build status: ${{ steps.wait-for-build.outputs.conclusion }}"
-                    echo "Checks status: ${{ steps.wait-for-required-checks.outputs.conclusion }}"
-                    exit 1
-      - name: Auto-Approve PR
-        id: auto-approve
-        if: steps.wait-for-build.outputs.conclusion == 'success'
-        uses: hmarr/auto-approve-action@24ec4c8cc344fe1cdde70ff37e55ace9e848a1d8
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - id: auto_08f238e2
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: gh pr review --approve "$PR_NUMBER" --repo "$GH_REPO"

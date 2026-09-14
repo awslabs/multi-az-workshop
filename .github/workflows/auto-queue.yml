@@ -23,4 +23,3 @@ jobs:
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.number }}
         run: gh pr merge --auto --squash "$PR_NUMBER" --repo "$GH_REPO"
-        uses: peter-evans/enable-pull-request-automerge@a660677d5469627102a1c1e11409dd063606628d
