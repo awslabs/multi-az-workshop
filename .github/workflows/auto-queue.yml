@@ -15,7 +15,7 @@ jobs:
     permissions:
       pull-requests: write
       contents: write
-    if: (contains(github.event.pull_request.labels.*.name, 'auto-approve') || contains(github.event.pull_request.labels.*.name, 'auto-merge')) && (github.event.pull_request.user.login == 'hakenmt' || github.event.pull_request.user.login == 'aws-cre-automation[bot]' || github.event.pull_request.user.login == 'github-actions[bot]' || github.event.pull_request.user.login == 'dependabot[bot]')
+    if: (contains(github.event.pull_request.labels.*.name, 'auto-approve') || contains(github.event.pull_request.labels.*.name, 'auto-merge')) && (github.event.pull_request.user.login == 'hakenmt' || github.event.pull_request.user.login == 'aws-cre-automation-mhaken[bot]' || github.event.pull_request.user.login == 'github-actions[bot]' || github.event.pull_request.user.login == 'dependabot[bot]')
     steps:
       - name: Generate token
         id: generate_token
