@@ -15,11 +15,20 @@ jobs:
     permissions:
       pull-requests: write
       contents: write
-    if: (contains(github.event.pull_request.labels.*.name, 'auto-approve') || contains(github.event.pull_request.labels.*.name, 'auto-merge')) && (github.event.pull_request.user.login == 'hakenmt' || github.event.pull_request.user.login == 'github-actions[bot]' || github.event.pull_request.user.login == 'dependabot[bot]')
+    if: (contains(github.event.pull_request.labels.*.name, 'auto-approve') || contains(github.event.pull_request.labels.*.name, 'auto-merge')) && (github.event.pull_request.user.login == 'hakenmt' || github.event.pull_request.user.login == 'aws-cre-automation[bot]' || github.event.pull_request.user.login == 'github-actions[bot]' || github.event.pull_request.user.login == 'dependabot[bot]')
     steps:
+      - name: Generate token
+        id: generate_token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
+        with:
+          app-id: ${{ secrets.PROJEN_APP_ID }}
+          private-key: ${{ secrets.PROJEN_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
       - id: auto-queue-pr
         env:
-          GH_TOKEN: ${{ secrets.PROJEN_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.number }}
         run: gh pr merge --auto --squash "$PR_NUMBER" --repo "$GH_REPO"
