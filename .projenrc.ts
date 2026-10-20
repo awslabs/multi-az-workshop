@@ -1,6 +1,7 @@
 import { javascript, TaskShell } from 'projen';
 import { AwsCdkTypeScriptApp } from 'projen/lib/awscdk';
 import { GithubCredentials } from 'projen/lib/github';
+import { AppPermission } from 'projen/lib/github/workflows-model';
 import { NodePackageManager, UpgradeDependenciesSchedule } from 'projen/lib/javascript';
 import { createBuildTasks, createDeployTasks, createPublishTasks } from './projenrc/tasks/';
 import { createDeployWorkflow, createPublishWorkflow, customizeReleaseWorkflow } from './projenrc/workflows';
@@ -86,7 +87,7 @@ const project = new AwsCdkTypeScriptApp({
   // even on Dependabot PRs, unlike the previous hand-rolled auto-approve
   // workflow which ran on `pull_request` and could not approve bot PRs.
   autoApproveOptions: {
-    allowedUsernames: ['hakenmt', 'github-actions[bot]', 'dependabot[bot]'],
+    allowedUsernames: ['hakenmt', 'aws-cre-automation[bot]', 'github-actions[bot]', 'dependabot[bot]'],
     label: 'auto-approve',
   },
 
@@ -96,16 +97,25 @@ const project = new AwsCdkTypeScriptApp({
     mergeQueue: true,
     mergeQueueOptions: {
       autoQueueOptions: {
-        allowedUsernames: ['hakenmt', 'github-actions[bot]', 'dependabot[bot]'],
+        allowedUsernames: ['hakenmt', 'aws-cre-automation[bot]', 'github-actions[bot]', 'dependabot[bot]'],
         labels: ['auto-approve', 'auto-merge'],
       },
     },
-    // Use a PAT for projen-driven operations (self-mutation pushes, dep
-    // upgrades, auto-queue). The default GITHUB_TOKEN cannot trigger downstream
-    // workflows, which would prevent the build from re-running after a
-    // self-mutation push.
-    projenCredentials: GithubCredentials.fromPersonalAccessToken({
-      secret: 'PROJEN_GITHUB_TOKEN',
+    // projen-driven operations (self-mutation pushes, dependency-upgrade PRs,
+    // auto-queue's auto-merge) use the aws-cre-automation GitHub App. The
+    // default GITHUB_TOKEN can't: what it pushes, opens or merges starts no
+    // other workflow, so the build would never re-run after a self-mutation
+    // push and an upgrade PR would never build. The App's token is minted per
+    // run, lasts an hour, reaches only the repositories the App is installed
+    // on, and is limited here to what these jobs do. Its PRs are authored by
+    // aws-cre-automation[bot], trusted by auto-approve and auto-queue above.
+    // Secrets: PROJEN_APP_ID, PROJEN_APP_PRIVATE_KEY.
+    projenCredentials: GithubCredentials.fromApp({
+      permissions: {
+        contents: AppPermission.WRITE,
+        pullRequests: AppPermission.WRITE,
+        workflows: AppPermission.WRITE,
+      },
     }),
   },
 
@@ -187,8 +197,17 @@ if (autoQueueWorkflow?.file) {
   ]);
 }
 
-// Harden build workflow: immutable checkout ref (head.sha not head.ref),
-// concurrency group to cancel stale runs, and pin action SHAs.
+// Pin every action projen's own workflows use that it doesn't already pin to a commit. Done
+// through projen's actions provider, which rewrites each `uses:` wherever it appears, rather than
+// per-step overrides by position: projen inserts steps (the GitHub App's "Generate token" step),
+// and a positional override then lands on the wrong step. Each override names the exact version
+// projen uses, so actions the repo's own workflows pin are left alone.
+project.github?.actions.set('actions/create-github-app-token@v3.2.0', 'actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1');
+project.github?.actions.set('actions/setup-node@v7.0.0', 'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020');
+project.github?.actions.set('peter-evans/create-pull-request@v8.1.1', 'peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1');
+
+// Harden build workflow: immutable checkout ref (head.sha not head.ref) and a
+// concurrency group to cancel stale runs.
 const buildWorkflow = project.github?.tryFindWorkflow('build');
 if (buildWorkflow?.file) {
   // Add concurrency group with cancel-in-progress to prevent TOCTOU races
@@ -198,30 +217,8 @@ if (buildWorkflow?.file) {
   });
   // Use immutable head.sha instead of mutable head.ref for checkout
   buildWorkflow.file.addOverride('jobs.build.steps.0.with.ref', '${{ github.event.pull_request.head.sha }}');
-  // Pin actions to SHAs
-  buildWorkflow.file.addOverride('jobs.build.steps.0.uses', 'actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10'); // v6
-  buildWorkflow.file.addOverride('jobs.self-mutation.steps.0.uses', 'actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10'); // v6
-  buildWorkflow.file.addOverride('jobs.self-mutation.steps.1.uses', 'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c'); // v8
-  // Pin the Upload patch step (projen-generated, index 6 in build job)
-  buildWorkflow.file.addOverride('jobs.build.steps.6.uses', 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a'); // v7
 }
 
-// Pin action SHAs in remaining projen-managed workflows
-const releaseWorkflow = project.github?.tryFindWorkflow('release');
-if (releaseWorkflow?.file) {
-  releaseWorkflow.file.addOverride('jobs.release.steps.0.uses', 'actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10'); // v6
-  releaseWorkflow.file.addOverride('jobs.release.steps.8.uses', 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a'); // v7
-  releaseWorkflow.file.addOverride('jobs.release_github.steps.0.uses', 'actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e'); // v6
-  releaseWorkflow.file.addOverride('jobs.release_github.steps.1.uses', 'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c'); // v8
-}
-const upgradeWorkflow = project.github?.tryFindWorkflow('upgrade-main');
-if (upgradeWorkflow?.file) {
-  upgradeWorkflow.file.addOverride('jobs.upgrade.steps.0.uses', 'actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10'); // v6
-  upgradeWorkflow.file.addOverride('jobs.upgrade.steps.5.uses', 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a'); // v7
-  upgradeWorkflow.file.addOverride('jobs.pr.steps.0.uses', 'actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10'); // v6
-  upgradeWorkflow.file.addOverride('jobs.pr.steps.1.uses', 'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c'); // v8
-  upgradeWorkflow.file.addOverride('jobs.pr.steps.4.uses', 'peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1'); // v8
-}
 // NOTE: auto-queue's merge step is intentionally left as projen generates it.
 // projen's AutoQueue emits a valid single `run: gh pr merge --auto` step
 // (authenticated with the projenCredentials PAT). A previous override added a
