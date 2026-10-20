@@ -87,7 +87,7 @@ const project = new AwsCdkTypeScriptApp({
   // even on Dependabot PRs, unlike the previous hand-rolled auto-approve
   // workflow which ran on `pull_request` and could not approve bot PRs.
   autoApproveOptions: {
-    allowedUsernames: ['hakenmt', 'aws-cre-automation[bot]', 'github-actions[bot]', 'dependabot[bot]'],
+    allowedUsernames: ['hakenmt', 'aws-cre-automation-mhaken[bot]', 'github-actions[bot]', 'dependabot[bot]'],
     label: 'auto-approve',
   },
 
@@ -97,18 +97,18 @@ const project = new AwsCdkTypeScriptApp({
     mergeQueue: true,
     mergeQueueOptions: {
       autoQueueOptions: {
-        allowedUsernames: ['hakenmt', 'aws-cre-automation[bot]', 'github-actions[bot]', 'dependabot[bot]'],
+        allowedUsernames: ['hakenmt', 'aws-cre-automation-mhaken[bot]', 'github-actions[bot]', 'dependabot[bot]'],
         labels: ['auto-approve', 'auto-merge'],
       },
     },
     // projen-driven operations (self-mutation pushes, dependency-upgrade PRs,
-    // auto-queue's auto-merge) use the aws-cre-automation GitHub App. The
+    // auto-queue's auto-merge) use the aws-cre-automation-mhaken GitHub App. The
     // default GITHUB_TOKEN can't: what it pushes, opens or merges starts no
     // other workflow, so the build would never re-run after a self-mutation
     // push and an upgrade PR would never build. The App's token is minted per
     // run, lasts an hour, reaches only the repositories the App is installed
     // on, and is limited here to what these jobs do. Its PRs are authored by
-    // aws-cre-automation[bot], trusted by auto-approve and auto-queue above.
+    // aws-cre-automation-mhaken[bot], trusted by auto-approve and auto-queue above.
     // Secrets: PROJEN_APP_ID, PROJEN_APP_PRIVATE_KEY.
     projenCredentials: GithubCredentials.fromApp({
       permissions: {
