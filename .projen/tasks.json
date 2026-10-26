@@ -607,7 +607,13 @@
     },
     "post-upgrade": {
       "name": "post-upgrade",
-      "description": "Runs after upgrading dependencies"
+      "description": "Runs after upgrading dependencies",
+      "steps": [
+        {
+          "exec": "yarn up -R '*' '@*/*'",
+          "name": "Re-resolve transitive dependencies to the newest versions their ranges allow"
+        }
+      ]
     },
     "pre-compile": {
       "name": "pre-compile",

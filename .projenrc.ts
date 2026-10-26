@@ -3,7 +3,7 @@ import { AwsCdkTypeScriptApp } from 'projen/lib/awscdk';
 import { GithubCredentials } from 'projen/lib/github';
 import { AppPermission } from 'projen/lib/github/workflows-model';
 import { NodePackageManager, UpgradeDependenciesSchedule } from 'projen/lib/javascript';
-import { createBuildTasks, createDeployTasks, createPublishTasks } from './projenrc/tasks/';
+import { addTransitiveDependencyUpgrade, createBuildTasks, createDeployTasks, createPublishTasks } from './projenrc/tasks/';
 import { createDeployWorkflow, createPublishWorkflow, customizeReleaseWorkflow } from './projenrc/workflows';
 
 // Root project that manages the entire multi-az-workshop monorepo
@@ -251,5 +251,6 @@ customizeReleaseWorkflow(project);
 createBuildTasks(project);
 createDeployTasks(project);
 createPublishTasks(project);
+addTransitiveDependencyUpgrade(project);
 
 project.synth();
