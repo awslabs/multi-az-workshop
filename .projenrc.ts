@@ -4,7 +4,10 @@ import { GithubCredentials } from 'projen/lib/github';
 import { AppPermission } from 'projen/lib/github/workflows-model';
 import { NodePackageManager, UpgradeDependenciesSchedule } from 'projen/lib/javascript';
 import { addTransitiveDependencyUpgrade, createBuildTasks, createDeployTasks, createPublishTasks } from './projenrc/tasks/';
-import { createDeployWorkflow, createPublishWorkflow, customizeReleaseWorkflow } from './projenrc/workflows';
+import { approveOncePerLabel, createDeployWorkflow, createPublishWorkflow, customizeReleaseWorkflow } from './projenrc/workflows';
+
+// Accounts whose labelled PRs auto-approve approves and auto-queue merges.
+const TRUSTED_USERNAMES = ['hakenmt', 'aws-cre-automation-mhaken[bot]', 'github-actions[bot]', 'dependabot[bot]'];
 
 // Root project that manages the entire multi-az-workshop monorepo
 const project = new AwsCdkTypeScriptApp({
@@ -87,7 +90,7 @@ const project = new AwsCdkTypeScriptApp({
   // even on Dependabot PRs, unlike the previous hand-rolled auto-approve
   // workflow which ran on `pull_request` and could not approve bot PRs.
   autoApproveOptions: {
-    allowedUsernames: ['hakenmt', 'aws-cre-automation-mhaken[bot]', 'github-actions[bot]', 'dependabot[bot]'],
+    allowedUsernames: TRUSTED_USERNAMES,
     label: 'auto-approve',
   },
 
@@ -97,7 +100,7 @@ const project = new AwsCdkTypeScriptApp({
     mergeQueue: true,
     mergeQueueOptions: {
       autoQueueOptions: {
-        allowedUsernames: ['hakenmt', 'aws-cre-automation-mhaken[bot]', 'github-actions[bot]', 'dependabot[bot]'],
+        allowedUsernames: TRUSTED_USERNAMES,
         labels: ['auto-approve', 'auto-merge'],
       },
     },
@@ -252,5 +255,6 @@ createBuildTasks(project);
 createDeployTasks(project);
 createPublishTasks(project);
 addTransitiveDependencyUpgrade(project);
+approveOncePerLabel(project, TRUSTED_USERNAMES);
 
 project.synth();
