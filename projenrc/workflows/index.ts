@@ -9,3 +9,4 @@
 export { createDeployWorkflow } from './deploy-workflow';
 export { createPublishWorkflow } from './publish-workflow';
 export { customizeReleaseWorkflow } from './release-workflow';
+export { approveOncePerLabel } from './auto-approve-workflow';
