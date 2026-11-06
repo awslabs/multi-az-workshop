@@ -219,6 +219,28 @@ describe('EKSStack', () => {
       );
       expect(lbControllerCharts.length).toBeGreaterThan(0);
     });
+
+    // A TargetGroupBinding's finalizer is removed by the controller, which runs
+    // on the node group and gets its AWS credentials from the Pod Identity agent.
+    // CloudFormation deletes in reverse dependency order, so without these
+    // dependencies it deleted the nodes and the agent alongside the binding and
+    // the binding's delete hung until the custom resource timed out.
+    test('Helm chart depends on the node group and the Pod Identity agent add-on', () => {
+      const charts = sharedTemplate.findResources('Custom::AWSCDK-EKS-HelmChart', {
+        Properties: { Chart: 'aws-load-balancer-controller' },
+      });
+      const chartIds = Object.keys(charts);
+      expect(chartIds).toHaveLength(1);
+      const dependsOn: string[] = charts[chartIds[0]].DependsOn ?? [];
+
+      const nodegroupIds = Object.keys(sharedTemplate.findResources('AWS::EKS::Nodegroup'));
+      const addonIds = Object.keys(sharedTemplate.findResources('AWS::EKS::Addon', {
+        Properties: { AddonName: 'eks-pod-identity-agent' },
+      }));
+      expect(nodegroupIds).toHaveLength(1);
+      expect(addonIds).toHaveLength(1);
+      expect(dependsOn).toEqual(expect.arrayContaining([...nodegroupIds, ...addonIds]));
+    });
   });
 
   describe('application deployment', () => {
