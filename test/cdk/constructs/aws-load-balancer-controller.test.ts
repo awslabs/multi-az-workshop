@@ -3,10 +3,11 @@
 
 import { KubectlV35Layer } from '@aws-cdk/lambda-layer-kubectl-v35';
 import * as cdk from 'aws-cdk-lib';
-import { Match } from 'aws-cdk-lib/assertions';
+import { Match, Template } from 'aws-cdk-lib/assertions';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as eks from 'aws-cdk-lib/aws-eks-v2';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import { DependencyGroup } from 'constructs';
 import { AwsLoadBalancerController } from '../../../src/cdk/lib/constructs/aws-load-balancer-controller';
 import { ContainerAndRepo } from '../../../src/cdk/lib/constructs/container-and-repo';
 import { createMockUploaderFunction } from '../../helpers';
@@ -63,10 +64,18 @@ describe('AwsLoadBalancerController', () => {
       { uploaderFunction },
     );
 
+    // What the controller needs to run: nodes and the Pod Identity agent
+    const nodegroup = sharedCluster.addNodegroupCapacity('Nodes', { minSize: 1 });
+    const podIdentityAgent = new eks.Addon(sharedStack, 'PodIdentityAgent', {
+      cluster: sharedCluster,
+      addonName: 'eks-pod-identity-agent',
+    });
+
     // Create the load balancer controller with default configuration
     new AwsLoadBalancerController(sharedStack, 'LoadBalancerController', {
       cluster: sharedCluster,
       containerAndRepoBuilder: sharedContainerAndRepoBuilder,
+      workloadCapacity: new DependencyGroup(nodegroup, podIdentityAgent),
     });
 
     sharedTemplate = synthesizeStack(sharedStack);
@@ -242,6 +251,19 @@ describe('AwsLoadBalancerController', () => {
       assertResourceExists(sharedTemplate, 'AWS::EKS::PodIdentityAssociation');
     });
 
+    test('Helm chart depends on the workload capacity (nodes and Pod Identity agent)', () => {
+      const template = Template.fromStack(sharedStack);
+      const charts = template.findResources('Custom::AWSCDK-EKS-HelmChart');
+      const chartIds = Object.keys(charts);
+      expect(chartIds).toHaveLength(1);
+      const expected = [
+        ...Object.keys(template.findResources('AWS::EKS::Nodegroup')),
+        ...Object.keys(template.findResources('AWS::EKS::Addon')),
+      ];
+      expect(expected).toHaveLength(2);
+      expect(charts[chartIds[0]].DependsOn).toEqual(expect.arrayContaining(expected));
+    });
+
     test('pod identity depends on service account', () => {
       assertResourceExists(sharedTemplate, 'AWS::EKS::PodIdentityAssociation');
       assertResourceExists(sharedTemplate, 'Custom::AWSCDK-EKS-KubernetesResource');
@@ -287,6 +309,7 @@ describe('AwsLoadBalancerController', () => {
       controller = new AwsLoadBalancerController(stack, 'TestLoadBalancerController', {
         cluster,
         containerAndRepoBuilder,
+        workloadCapacity: new DependencyGroup(),
       });
     });
 
@@ -346,6 +369,7 @@ describe('AwsLoadBalancerController', () => {
       new AwsLoadBalancerController(stack, 'LoadBalancerController', {
         cluster,
         containerAndRepoBuilder,
+        workloadCapacity: new DependencyGroup(),
         version: 'v2.9.0',
       });
 
@@ -396,6 +420,7 @@ describe('AwsLoadBalancerController', () => {
       new AwsLoadBalancerController(stack, 'LoadBalancerController', {
         cluster,
         containerAndRepoBuilder,
+        workloadCapacity: new DependencyGroup(),
         version: '1.11.0',
       });
 

@@ -7,7 +7,9 @@ FROM --platform=${PLATFORM} public.ecr.aws/docker/library/alpine:latest
 ARG SRC=src
 
 ADD ${SRC} /var/www/multi-az-workshop-application
-RUN apk --no-cache add curl libstdc++ libgcc
+# Upgrade the base image's packages first: alpine:latest can lag behind
+# package fixes published after the image was cut.
+RUN apk --no-cache upgrade && apk --no-cache add curl libstdc++ libgcc
 
 EXPOSE 5000
 ENTRYPOINT [ "/var/www/multi-az-workshop-application/multi-az-workshop-application" ]

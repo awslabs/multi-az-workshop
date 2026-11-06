@@ -9,7 +9,7 @@ import * as eks_legacy from 'aws-cdk-lib/aws-eks';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
-import { Construct } from 'constructs';
+import { Construct, DependencyGroup, IDependable } from 'constructs';
 
 /**
  * Instance architecture for EKS nodes
@@ -67,6 +67,15 @@ export class EKSCluster extends Construct {
    * The EKS cluster
    */
   public readonly cluster: eks.ICluster;
+
+  /**
+   * What a pod needs in order to run on this cluster and call AWS: the
+   * managed node group and the EKS Pod Identity agent add-on. Anything whose
+   * delete needs a running controller (e.g. the AWS Load Balancer Controller
+   * removing a TargetGroupBinding's finalizer) must depend on this, so that
+   * CloudFormation deletes it before the nodes and the agent.
+   */
+  public readonly workloadCapacity: IDependable;
 
   constructor(scope: Construct, id: string, props: EKSClusterProps) {
     super(scope, id);
@@ -290,7 +299,7 @@ export class EKSCluster extends Construct {
     });
 
     // Create managed node group
-    cluster.addNodegroupCapacity('ManagedNodeGroup', {
+    const nodegroup = cluster.addNodegroupCapacity('ManagedNodeGroup', {
       amiType:
         props.cpuArch === InstanceArchitecture.ARM_64
           ? eks.NodegroupAmiType.AL2023_ARM_64_STANDARD
@@ -313,10 +322,12 @@ export class EKSCluster extends Construct {
     });
 
     // Add EKS Pod Identity Agent addon
-    new eks.Addon(this, 'PodIdentityAgentAddOn', {
+    const podIdentityAgent = new eks.Addon(this, 'PodIdentityAgentAddOn', {
       cluster,
       addonName: 'eks-pod-identity-agent',
     });
+
+    this.workloadCapacity = new DependencyGroup(nodegroup, podIdentityAgent);
 
     cluster.grantAccess(
       "ParticipantRoleReadOnlyAccess", 

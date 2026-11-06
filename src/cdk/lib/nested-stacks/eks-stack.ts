@@ -119,7 +119,8 @@ export class EKSStack extends NestedStackWithSource {
     const lbController = new AwsLoadBalancerController(this, 'AwsLoadBalancerController', {
       cluster: cluster.cluster,
       containerAndRepoBuilder: repoHelmContainerCreator,
-      version: props.awsLoadBalancerControllerVersion
+      version: props.awsLoadBalancerControllerVersion,
+      workloadCapacity: cluster.workloadCapacity,
     });
     lbController.node.addDependency(istio.waitableNode);
 

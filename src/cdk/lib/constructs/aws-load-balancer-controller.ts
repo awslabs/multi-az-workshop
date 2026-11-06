@@ -28,6 +28,15 @@ export interface AwsLoadBalancerControllerProps {
    * @default "3.0.0"
    */
   readonly version?: string;
+
+  /**
+   * What the controller pod needs in order to run: the worker nodes it is
+   * scheduled on and the EKS Pod Identity agent that gives it AWS credentials.
+   * The Helm chart depends on it, so CloudFormation deletes the chart (and,
+   * before the chart, every TargetGroupBinding) while the controller can still
+   * deregister targets and remove the bindings' finalizers.
+   */
+  readonly workloadCapacity: IDependable;
 }
 
 /**
@@ -124,6 +133,7 @@ export class AwsLoadBalancerController extends HelmRepoAndChartConstruct {
     });
 
     loadBalancerController.node.addDependency(loadBalancerControllerPodIdentityAssociation);
+    loadBalancerController.node.addDependency(props.workloadCapacity);
     loadBalancerController.node.addDependency(awsLB.dependable);
     loadBalancerController.node.addDependency(loadBalancerControllerManagedPolicy);
     loadBalancerController.node.addDependency(loadBalancerControllerHelmChartRepo.dependable);
