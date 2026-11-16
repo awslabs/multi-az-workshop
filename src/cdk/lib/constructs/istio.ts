@@ -114,6 +114,8 @@ export class Istio extends HelmRepoAndChartConstruct {
       values: {
         global: {
           hub: cdk.Fn.sub('${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/istio'),
+          // The distroless images (assets:istio-containers pulls <version>-distroless).
+          variant: 'distroless',
         },
       },
     });
@@ -136,6 +138,8 @@ export class Istio extends HelmRepoAndChartConstruct {
       values: {
         global: {
           hub: cdk.Fn.sub('${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/istio'),
+          // The distroless images (assets:istio-containers pulls <version>-distroless).
+          variant: 'distroless',
         },
       },
     });

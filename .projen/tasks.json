@@ -173,7 +173,7 @@
       "description": "Pull Istio container images",
       "steps": [
         {
-          "exec": "eval \"$(node build/load-versions.js)\" && for image in install-cni proxyv2 pilot; do build/docker-pull-with-retry.sh docker.io/istio/${image}:$ISTIO && docker save istio/${image}:$ISTIO | gzip > assets/${image}.tar.gz; done"
+          "exec": "eval \"$(node build/load-versions.js)\" && for image in install-cni proxyv2 pilot; do build/docker-pull-with-retry.sh docker.io/istio/${image}:$ISTIO-distroless && docker save istio/${image}:$ISTIO-distroless | gzip > assets/${image}.tar.gz; done"
         }
       ]
     },
