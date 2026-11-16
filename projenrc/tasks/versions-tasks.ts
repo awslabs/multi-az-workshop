@@ -39,6 +39,9 @@ export function addVersionTasks(project: AwsCdkTypeScriptApp): void {
   if (!postUpgrade) throw new Error('post-upgrade task not found; is depsUpgrade enabled?');
   postUpgrade.prependSpawn(update);
 
+  // The build scripts' own unit tests (build/*_test.py).
+  project.testTask.exec("python3 -B -m unittest discover -s build -p '*_test.py'");
+
   const wf = project.upgradeWorkflow?.workflows[0];
   if (!wf) throw new Error('upgrade-main workflow not found; is depsUpgrade enabled?');
   const job = wf.getJob('upgrade') as { permissions?: Record<string, string>; steps?: Array<Record<string, unknown>> };

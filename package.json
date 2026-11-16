@@ -33,6 +33,7 @@
     "deploy": "projen deploy",
     "deploy:workshop": "projen deploy:workshop",
     "destroy": "projen destroy",
+    "destroy:workshop": "projen destroy:workshop",
     "diff": "projen diff",
     "eject": "projen eject",
     "eslint": "projen eslint",

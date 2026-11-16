@@ -148,12 +148,12 @@ function createAssetBuildTasks(project: AwsCdkTypeScriptApp): Task {
 
   const downloadIstioCharts = project.addTask('assets:istio-charts', {
     description: 'Download Istio helm charts',
-    exec: 'eval "$(node build/load-versions.js)" && for chart in base istiod gateway cni; do curl --location https://istio-release.storage.googleapis.com/charts/${chart}-$ISTIO.tgz --output assets/${chart}-$ISTIO.tgz; done',
+    exec: 'eval "$(node build/load-versions.js)" && for chart in base istiod gateway cni; do curl --fail --location $ISTIO_REPO/${chart}-$ISTIO.tgz --output assets/${chart}-$ISTIO.tgz; done',
   });
 
   const downloadLbControllerChart = project.addTask('assets:lb-controller-chart', {
     description: 'Download AWS LB controller helm chart',
-    exec: 'eval "$(node build/load-versions.js)" && curl --location https://aws.github.io/eks-charts/aws-load-balancer-controller-$AWS_LOAD_BALANCER_CONTROLLER.tgz --output assets/aws-load-balancer-controller-$AWS_LOAD_BALANCER_CONTROLLER.tgz',
+    exec: 'eval "$(node build/load-versions.js)" && curl --fail --location $AWS_LOAD_BALANCER_CONTROLLER_REPO/aws-load-balancer-controller-$AWS_LOAD_BALANCER_CONTROLLER.tgz --output assets/aws-load-balancer-controller-$AWS_LOAD_BALANCER_CONTROLLER.tgz',
   });
 
   const pullIstioContainers = project.addTask('assets:istio-containers', {
