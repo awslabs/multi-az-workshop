@@ -2,7 +2,12 @@
 
 name: deploy
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      keep:
+        description: Leave the stack deployed (delete it later with the teardown workflow)
+        type: boolean
+        default: "false"
   push:
     branches:
       - main
@@ -58,6 +63,19 @@ jobs:
       - name: Deploy
         id: deploy
         run: npx projen deploy
+      - name: Configure AWS credentials for the teardown
+        id: configure_aws_credentials_for_the_teardown
+        if: ${{ !cancelled() && steps.deploy.outcome != 'skipped' && !(github.event_name == 'workflow_dispatch' && inputs.keep) }}
+        uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8
+        with:
+          role-to-assume: ${{ env.DEPLOYMENT_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+          mask-aws-account-id: true
+          role-duration-seconds: 10800
+      - name: Teardown
+        id: teardown
+        if: ${{ !cancelled() && steps.deploy.outcome != 'skipped' && !(github.event_name == 'workflow_dispatch' && inputs.keep) }}
+        run: npx projen destroy:workshop --region ${{ env.AWS_REGION }}
 concurrency:
   group: deploy
   cancel-in-progress: false

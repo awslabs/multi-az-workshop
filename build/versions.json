@@ -76,11 +76,11 @@
   },
   "ISTIO": {
     "kind": "helm-chart",
-    "repo": "https://istio-release.storage.googleapis.com/charts",
+    "repo": "https://blob.istio.io/istio-release/charts",
     "chart": "istiod",
-    "version": "1.29.10",
-    "update": "patch",
-    "note": "charts and the install-cni, proxyv2 and pilot images (<version>-distroless) share this version"
+    "version": "1.32.0",
+    "update": "minor",
+    "note": "charts and the install-cni, proxyv2 and pilot images (<version>-distroless) share this version. Charts moved to blob.istio.io from 1.31 (istio-release.storage.googleapis.com stops at 1.30)"
   },
   "AWS_LOAD_BALANCER_CONTROLLER": {
     "kind": "helm-chart",

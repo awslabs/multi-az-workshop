@@ -68,6 +68,7 @@ describe('Istio', () => {
     new Istio(sharedStack, 'Istio', {
       cluster: sharedCluster,
       containerAndRepoBuilder: sharedContainerAndRepoBuilder,
+      version: '1.29.0',
     });
 
     // Synthesize once for all default configuration tests
@@ -130,7 +131,7 @@ describe('Istio', () => {
       });
     });
 
-    test('uses default version 1.29.0', () => {
+    test('installs the version it is given', () => {
       assertResourceProperties(sharedTemplate, 'Custom::AWSCDK-EKS-HelmChart', {
         Version: '1.29.0',
       });
@@ -269,6 +270,7 @@ describe('Istio', () => {
       const istio = new Istio(stack, 'Istio', {
         cluster,
         containerAndRepoBuilder,
+        version: '1.29.0',
       });
 
       expect(istio.waitableNode).toBeDefined();

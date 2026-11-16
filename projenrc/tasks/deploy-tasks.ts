@@ -15,6 +15,12 @@ export function createDeployTasks(project: AwsCdkTypeScriptApp): void {
   createWorkshopDeployTask(project);
   createMainDeployTask(project);
   createBuildAndDeployShortcut(project);
+  // The teardown both CI workflows call: delete the stack and wait until it is gone (build/teardown.py).
+  project.addTask('destroy:workshop', {
+    description: 'Delete the multi-az-workshop stack and wait until it is gone (takes over an hour)',
+    exec: 'python3 build/teardown.py "$@"',
+    receiveArgs: true,
+  });
 }
 
 /**

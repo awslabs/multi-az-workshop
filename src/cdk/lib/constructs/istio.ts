@@ -22,10 +22,9 @@ export interface IstioProps {
   readonly containerAndRepoBuilder: ContainerAndRepo;
 
   /**
-   * Istio version to install
-   * @default "1.29.0"
+   * Istio version to install (build/versions.json ISTIO)
    */
-  readonly version?: string;
+  readonly version: string;
 
   /**
    * If you have created an access entry, provide the istio admins group name to
@@ -48,7 +47,7 @@ export class Istio extends HelmRepoAndChartConstruct {
   constructor(scope: Construct, id: string, props: IstioProps) {
     super(scope, id);
 
-    const version = props.version ?? '1.29.0';
+    const version = props.version;
 
     // Create Helm chart repositories
     const istioBaseHelmChartRepo = props.containerAndRepoBuilder.createRepoAndHelmChart({
