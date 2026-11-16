@@ -12,3 +12,4 @@ export { createBuildTasks } from './build-tasks';
 export { createDeployTasks } from './deploy-tasks';
 export { createPublishTasks } from './publish-tasks';
 export { addTransitiveDependencyUpgrade } from './upgrade-tasks';
+export { addVersionTasks } from './versions-tasks';

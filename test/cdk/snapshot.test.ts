@@ -13,15 +13,9 @@ jest.mock('fs', () => {
   return {
     ...actual,
     readFileSync: jest.fn((path: any, options?: any) => {
-      if (path.toString().includes('versions.json')) {
-        return JSON.stringify({
-          EKS: '1.35',
-          HELM: '4.1.1',
-          KUBECTL: '1.35.0',
-          ISTIO: '1.29.0',
-          AWS_LOAD_BALANCER_CONTROLLER: '3.0.0',
-          POSTGRES: '16.8',
-        });
+      // A fixed copy, so the weekly version update never changes what these tests see.
+      if (path.toString().endsWith('build/versions.json')) {
+        return originalReadFileSync(`${process.cwd()}/test/fixtures/versions.json`, 'utf-8');
       }
       return originalReadFileSync(path, options);
     }),

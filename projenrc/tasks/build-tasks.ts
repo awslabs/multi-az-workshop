@@ -168,7 +168,8 @@ function createAssetBuildTasks(project: AwsCdkTypeScriptApp): Task {
 
   const pullCloudwatchAgent = project.addTask('assets:cloudwatch-agent', {
     description: 'Pull CloudWatch agent container image',
-    exec: 'build/docker-pull-with-retry.sh public.ecr.aws/cloudwatch-agent/cloudwatch-agent:latest && docker tag public.ecr.aws/cloudwatch-agent/cloudwatch-agent:latest cloudwatch-agent/cloudwatch-agent:latest && docker save cloudwatch-agent/cloudwatch-agent:latest | gzip > assets/cloudwatch-agent.tar.gz',
+    // The pinned tag from build/versions.json, saved as :latest, the tag the EKS app and docker-compose use.
+    exec: 'eval "$(node build/load-versions.js)" && build/docker-pull-with-retry.sh $CLOUDWATCH_AGENT_IMAGE:$CLOUDWATCH_AGENT && docker tag $CLOUDWATCH_AGENT_IMAGE:$CLOUDWATCH_AGENT cloudwatch-agent/cloudwatch-agent:latest && docker save cloudwatch-agent/cloudwatch-agent:latest | gzip > assets/cloudwatch-agent.tar.gz',
   });
 
   const downloadDockerCompose = project.addTask('assets:docker-compose', {
@@ -192,7 +193,7 @@ function createAssetBuildTasks(project: AwsCdkTypeScriptApp): Task {
         exec: 'cd src/app && dotnet publish --configuration Release --runtime linux-musl-arm64 --output output/src -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained',
       },
       {
-        exec: 'docker build --tag $PROJECT_NAME:latest --platform linux/arm64 --build-arg SRC=src --file build/dockerfile src/app/output',
+        exec: 'eval "$(node build/load-versions.js)" && docker build --tag $PROJECT_NAME:latest --platform linux/arm64 --build-arg SRC=src --build-arg BASE=$ALPINE_IMAGE:$ALPINE --file build/dockerfile src/app/output',
       },
       {
         exec: 'docker save $PROJECT_NAME:latest | gzip > assets/container.tar.gz',
@@ -228,7 +229,7 @@ function createAssetBuildTasks(project: AwsCdkTypeScriptApp): Task {
         exec: 'cd src/app && dotnet publish --configuration Release --runtime linux-musl-arm64 --output output/src -p:DefineConstants="FAIL" -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained',
       },
       {
-        exec: 'docker build --tag $PROJECT_NAME:latest --platform linux/arm64 --build-arg SRC=src --file build/dockerfile src/app/output',
+        exec: 'eval "$(node build/load-versions.js)" && docker build --tag $PROJECT_NAME:latest --platform linux/arm64 --build-arg SRC=src --build-arg BASE=$ALPINE_IMAGE:$ALPINE --file build/dockerfile src/app/output',
       },
       {
         exec: 'docker save $PROJECT_NAME:latest | gzip > /tmp/container.tar.gz',

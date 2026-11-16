@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
     outputs:
       patch_created: ${{ steps.create_patch.outputs.patch_created }}
     steps:
@@ -25,6 +26,12 @@ jobs:
       - name: Install dependencies
         id: install_dependencies
         run: yarn install --immutable
+      - name: AWS credentials for the version lookups (read-only)
+        id: versions_credentials
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd
+        with:
+          role-to-assume: ${{ secrets.VERSIONS_ROLE_ARN }}
+          aws-region: us-east-1
       - name: Upgrade dependencies
         id: upgrade_dependencies
         run: yarn projen upgrade

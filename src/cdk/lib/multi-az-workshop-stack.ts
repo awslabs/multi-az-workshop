@@ -17,6 +17,7 @@ import { Construct } from 'constructs';
 import { InstanceArchitecture } from './constructs/eks-cluster';
 import { EnhancedApplicationLoadBalancer } from './constructs/enhanced-load-balancer';
 import { NestedStackWithSource } from './constructs/nested-stack-with-source';
+import { Versions } from './versions';
 import { ApplicationRecoveryControllerStack } from './nested-stacks/application-recovery-controller-stack';
 import { AZTaggerStack } from './nested-stacks/az-tagger-stack';
 import { CodeDeployApplicationStack } from './nested-stacks/code-deploy-application-stack';
@@ -34,8 +35,6 @@ import { SelfManagedHttpEndpointS3Stack } from './nested-stacks/self-managed-htt
 import { SSMRandomFaultStack } from './nested-stacks/ssm-random-fault-stack';
 import { EvacuationMethod } from './types';
 import { createService } from './utils/service-factory';
-import * as fs from 'fs';
-import * as path from 'path';
 import { AuroraPostgresEngineVersion } from 'aws-cdk-lib/aws-rds';
 import { KubernetesVersion } from 'aws-cdk-lib/aws-eks';
 
@@ -141,15 +140,14 @@ export class MultiAZWorkshopStack extends cdk.Stack {
       availabilityZoneNames,
     });
 
-    // Read versions from build configuration
-    const versionsPath = path.join(__dirname, '..', '..', '..', 'build', 'versions.json');
-    const versions = JSON.parse(fs.readFileSync(versionsPath, 'utf-8'));
-    console.log(JSON.stringify(versions));
+    // Every externally sourced version, from build/versions.json (the weekly upgrade moves them).
+    const versions = Versions.load();
 
     // Create Database Stack
     this.databaseStack = new DatabaseStack(this, 'database', {
       vpc: this.networkStack.vpc,
-      version: AuroraPostgresEngineVersion.of(versions.POSTGRES, versions.POSTGRES.split('.')[0]),
+      version: AuroraPostgresEngineVersion.of(versions.version('POSTGRES', 'rds-engine'),
+        versions.version('POSTGRES', 'rds-engine').split('.')[0]),
     });
 
     // Create ECR Uploader Stack (shared Lambda function)
@@ -191,6 +189,7 @@ export class MultiAZWorkshopStack extends cdk.Stack {
       logGroup: frontEndLogGroup,
       fleetSize,
       cpuArch: this.ec2Arch,
+      versions,
       iamResourcePath: '/front-end/ec2-fleet/',
       database: this.databaseStack.database,
       loadBalancerSecurityGroup: albSecurityGroup,
@@ -210,9 +209,10 @@ export class MultiAZWorkshopStack extends cdk.Stack {
       adminRoleName: participantRoleName.valueAsString,
       iamResourcePath: '/front-end/eks-fleet/',
       uploaderFunction: this.ecrUploaderStack.uploaderFunction,
-      eksVersion: KubernetesVersion.of(versions.EKS),
-      istioVersion: versions.ISTIO,
-      awsLoadBalancerControllerVersion: versions.AWS_LOAD_BALANCER_CONTROLLER
+      eksVersion: KubernetesVersion.of(versions.version('EKS', 'eks-kubernetes')),
+      istioVersion: versions.version('ISTIO', 'helm-chart'),
+      awsLoadBalancerControllerVersion: versions.version('AWS_LOAD_BALANCER_CONTROLLER', 'helm-chart'),
+      versions,
     });
 
     this.eksStack.node.addDependency(this.azTaggerStack);

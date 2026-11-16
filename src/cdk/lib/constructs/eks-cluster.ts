@@ -10,6 +10,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct, DependencyGroup, IDependable } from 'constructs';
+import { Versions } from '../versions';
 
 /**
  * Instance architecture for EKS nodes
@@ -54,6 +55,13 @@ export interface EKSClusterProps {
   readonly version: eks.KubernetesVersion;
 
   /**
+   * The workshop's versions (build/versions.json): the add-ons (VPC_CNI, KUBE_PROXY, COREDNS,
+   * POD_IDENTITY_AGENT) and the node group's AMI release (EKS_NODE_AMI).
+   * @default Versions.load(), build/versions.json
+   */
+  readonly versions?: Versions;
+
+  /**
    * Groups to add to the access entry of the user role
    */
   readonly userRoleKubernetesGroups?: string[];
@@ -70,7 +78,8 @@ export class EKSCluster extends Construct {
 
   /**
    * What a pod needs in order to run on this cluster and call AWS: the
-   * managed node group and the EKS Pod Identity agent add-on. Anything whose
+   * managed node group and the add-ons (networking, DNS, the EKS Pod Identity
+   * agent). Anything whose
    * delete needs a running controller (e.g. the AWS Load Balancer Controller
    * removing a TargetGroupBinding's finalizer) must depend on this, so that
    * CloudFormation deletes it before the nodes and the agent.
@@ -78,6 +87,7 @@ export class EKSCluster extends Construct {
   public readonly workloadCapacity: IDependable;
 
   constructor(scope: Construct, id: string, props: EKSClusterProps) {
+    const versions = props.versions ?? Versions.load();
     super(scope, id);
 
     // Worker node security group
@@ -305,6 +315,8 @@ export class EKSCluster extends Construct {
           ? eks.NodegroupAmiType.AL2023_ARM_64_STANDARD
           : eks.NodegroupAmiType.AL2023_X86_64_STANDARD,
       capacityType: eks.CapacityType.ON_DEMAND,
+      // EKS's AMI release, from build/versions.json: unset, the nodes never move off the AMI they were created with.
+      releaseVersion: versions.version('EKS_NODE_AMI', 'eks-node-ami'),
       enableNodeAutoRepair: true,   
       minSize: 3,
       maxSize: 3,
@@ -321,13 +333,24 @@ export class EKSCluster extends Construct {
       },
     });
 
-    // Add EKS Pod Identity Agent addon
-    const podIdentityAgent = new eks.Addon(this, 'PodIdentityAgentAddOn', {
-      cluster,
-      addonName: 'eks-pod-identity-agent',
-    });
+    // The add-ons, each at its build/versions.json version. EKS installs vpc-cni, kube-proxy and
+    // coredns itself as unmanaged DaemonSets, which nothing upgrades: as managed add-ons they move
+    // with the file. OVERWRITE lets each take over the objects EKS made. One at a time: replacing
+    // the CNI, kube-proxy and CoreDNS together leaves pods without addressing, routing and DNS at
+    // once. Never rename these constructs: an add-on's physical id is cluster/addonName.
+    const addon = (id: string, name: string, after: IDependable[]) => {
+      const a = new eks.Addon(this, id, { cluster, ...versions.addon(name) });
+      (a.node.defaultChild as eks_legacy.CfnAddon).resolveConflicts = 'OVERWRITE';
+      after.forEach((d) => a.node.addDependency(d));
+      return a;
+    };
+    const vpcCni = addon('VpcCniAddOn', 'VPC_CNI', []);
+    const kubeProxy = addon('KubeProxyAddOn', 'KUBE_PROXY', [vpcCni]);
+    // CoreDNS's pods need nodes to schedule on.
+    const coreDns = addon('CoreDnsAddOn', 'COREDNS', [kubeProxy, nodegroup]);
+    const podIdentityAgent = addon('PodIdentityAgentAddOn', 'POD_IDENTITY_AGENT', []);
 
-    this.workloadCapacity = new DependencyGroup(nodegroup, podIdentityAgent);
+    this.workloadCapacity = new DependencyGroup(nodegroup, vpcCni, kubeProxy, coreDns, podIdentityAgent);
 
     cluster.grantAccess(
       "ParticipantRoleReadOnlyAccess", 

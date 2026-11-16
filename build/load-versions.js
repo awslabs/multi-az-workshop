@@ -5,7 +5,7 @@
 
 /**
  * Runtime version loader for build tasks
- * Reads versions.json and outputs environment variable exports
+ * Reads versions.json and outputs environment variable exports (each entry's version)
  */
 
 const fs = require('fs');
@@ -16,9 +16,11 @@ const versionsPath = path.join(__dirname, 'versions.json');
 try {
   const versions = JSON.parse(fs.readFileSync(versionsPath, 'utf-8'));
   
-  // Output as environment variables for shell consumption
-  Object.entries(versions).forEach(([key, value]) => {
-    console.log(`export ${key}="${value}"`);
+  // Output as environment variables for shell consumption: each entry's version, and a container
+  // image's name without its tag as <KEY>_IMAGE (build/versions.py documents the entry kinds).
+  Object.entries(versions).forEach(([key, entry]) => {
+    console.log(`export ${key}="${entry.version}"`);
+    if (entry.image) console.log(`export ${key}_IMAGE="${entry.image}"`);
   });
 } catch (error) {
   console.error('Error loading versions.json:', error.message);
