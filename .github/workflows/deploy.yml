@@ -8,6 +8,7 @@ on:
       - main
     paths:
       - src/**
+      - build/versions.json
 jobs:
   deploy:
     runs-on: ubuntu-24.04-arm

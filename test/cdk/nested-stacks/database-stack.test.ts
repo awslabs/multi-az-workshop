@@ -16,8 +16,8 @@ import { synthesizeStack, findResourcesByType } from '../../helpers/stack-helper
 const versionsPath = path.join(process.cwd(), 'build', 'versions.json');
 const versions = JSON.parse(fs.readFileSync(versionsPath, 'utf-8'));
 const postgresVersion = rds.AuroraPostgresEngineVersion.of(
-  versions.POSTGRES,
-  versions.POSTGRES.split('.')[0],
+  versions.POSTGRES.version,
+  versions.POSTGRES.version.split('.')[0],
 );
 
 describe('DatabaseStack', () => {
@@ -79,7 +79,7 @@ describe('DatabaseStack', () => {
 
       template.hasResourceProperties('AWS::RDS::DBCluster', {
         Engine: 'aurora-postgresql',
-        EngineVersion: versions.POSTGRES,
+        EngineVersion: versions.POSTGRES.version,
       });
     });
 

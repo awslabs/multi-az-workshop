@@ -69,7 +69,7 @@ export function customizeReleaseWorkflow(project: AwsCdkTypeScriptApp): void {
             '  exit 0',
             'fi',
             '# For push events, skip release if src/ changed (deploy will handle it)',
-            'SRC_CHANGED=$(gh api repos/${{ github.repository }}/commits/${{ github.sha }} --jq \'.files[].filename\' | grep "^src/" || true)',
+            'SRC_CHANGED=$(gh api repos/${{ github.repository }}/commits/${{ github.sha }} --jq \'.files[].filename\' | grep -E "^(src/|build/versions\\.json$)" || true)',
             'if [ -n "$SRC_CHANGED" ]; then',
             '  echo "src/ changed — deploy will trigger release via workflow_run. Skipping."',
             '  echo "should_release=false" >> "$GITHUB_OUTPUT"',

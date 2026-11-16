@@ -1,14 +1,16 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 ARG PLATFORM=linux/arm64
+# The base image, from build/versions.json (ALPINE), so it moves with the weekly version update.
+ARG BASE
 
-FROM --platform=${PLATFORM} public.ecr.aws/docker/library/alpine:latest
+FROM --platform=${PLATFORM} ${BASE}
 
 ARG SRC=src
 
 ADD ${SRC} /var/www/multi-az-workshop-application
-# Upgrade the base image's packages first: alpine:latest can lag behind
-# package fixes published after the image was cut.
+# Upgrade the base image's packages first: a base image can lag behind
+# package fixes published after it was cut.
 RUN apk --no-cache upgrade && apk --no-cache add curl libstdc++ libgcc
 
 EXPOSE 5000

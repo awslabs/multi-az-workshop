@@ -12,11 +12,18 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { IVpcIpV6 } from '../constructs/vpc-ipv6-construct';
+import { Versions } from '../versions';
 
 /**
  * Props for EC2 Fleet Stack
  */
 export interface EC2FleetStackProps extends cdk.NestedStackProps {
+  /**
+   * The workshop's versions (build/versions.json): the fleet's AMI is its EC2_AMI_<ARCH> entry.
+   * @default Versions.load(), build/versions.json
+   */
+  readonly versions?: Versions;
+
   /**
    * VPC where the EC2 fleet will be deployed
    */
@@ -322,9 +329,9 @@ export class EC2FleetStack extends cdk.NestedStack {
     // Create launch template with role using high-level properties
     this.launchTemplate = new ec2.LaunchTemplate(this, 'front-end-launch-template', {
       userData,
-      machineImage: ec2.MachineImage.latestAmazonLinux2023({
-        cpuType: cpuArch === ec2.InstanceArchitecture.ARM_64 ? ec2.AmazonLinuxCpuType.ARM_64 : ec2.AmazonLinuxCpuType.X86_64,
-      }),
+      // A region mapping from build/versions.json, not an SSM-typed parameter: a new AMI arrives
+      // only as a change to that file, which deploys.
+      machineImage: (props.versions ?? Versions.load()).machineImage(cpuArch === ec2.InstanceArchitecture.ARM_64 ? 'EC2_AMI_ARM64' : 'EC2_AMI_X86_64'),
       instanceType: ec2.InstanceType.of(
         cpuArch === ec2.InstanceArchitecture.ARM_64 ? ec2.InstanceClass.T4G : ec2.InstanceClass.T3A,
         ec2.InstanceSize.MICRO,

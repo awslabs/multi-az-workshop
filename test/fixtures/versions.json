@@ -1,0 +1,112 @@
+{
+  "EKS": {
+    "kind": "eks-kubernetes",
+    "version": "1.35",
+    "update": "none",
+    "note": "the kubectl Lambda layer package is @aws-cdk/lambda-layer-kubectl-v35; move both together"
+  },
+  "VPC_CNI": {
+    "kind": "eks-addon",
+    "addon": "vpc-cni",
+    "version": "v1.23.3-eksbuild.1",
+    "update": "minor"
+  },
+  "KUBE_PROXY": {
+    "kind": "eks-addon",
+    "addon": "kube-proxy",
+    "version": "v1.35.3-eksbuild.69",
+    "update": "minor"
+  },
+  "COREDNS": {
+    "kind": "eks-addon",
+    "addon": "coredns",
+    "version": "v1.14.7-eksbuild.35",
+    "update": "minor"
+  },
+  "POD_IDENTITY_AGENT": {
+    "kind": "eks-addon",
+    "addon": "eks-pod-identity-agent",
+    "version": "v1.4.1-eksbuild.3",
+    "update": "minor"
+  },
+  "EKS_NODE_AMI": {
+    "kind": "eks-node-ami",
+    "ami": "amazon-linux-2023/arm64/standard",
+    "version": "1.35.9-20261112",
+    "update": "patch"
+  },
+  "EC2_AMI_ARM64": {
+    "kind": "ec2-ami",
+    "parameter": "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64",
+    "version": "al2023-ami-2023.12.20261112.0-kernel-6.18-arm64",
+    "update": "patch",
+    "ids": {
+      "ap-southeast-1": "ami-070afc23991351d6d",
+      "ap-southeast-2": "ami-071733a41b3cc3de4",
+      "eu-west-1": "ami-01feb2929337f1f0f",
+      "us-east-1": "ami-04bde3808fe5f70cf",
+      "us-east-2": "ami-0984c50e3efa82711",
+      "us-west-2": "ami-0c09db4d8b86a32d2"
+    }
+  },
+  "EC2_AMI_X86_64": {
+    "kind": "ec2-ami",
+    "parameter": "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64",
+    "version": "al2023-ami-2023.12.20261112.0-kernel-6.18-x86_64",
+    "update": "patch",
+    "ids": {
+      "ap-southeast-1": "ami-0c7fe98adcbb622fc",
+      "ap-southeast-2": "ami-0e9262cbb2344d5ee",
+      "eu-west-1": "ami-0f00e1cf9df80b6ac",
+      "us-east-1": "ami-096ef200a877f36af",
+      "us-east-2": "ami-0df8a753693e6366d",
+      "us-west-2": "ami-0dac6cd09676c9fb1"
+    }
+  },
+  "KUBECTL": {
+    "kind": "kubectl",
+    "version": "1.35.10",
+    "update": "patch"
+  },
+  "HELM": {
+    "kind": "github-release",
+    "repo": "helm/helm",
+    "version": "4.3.2",
+    "update": "minor"
+  },
+  "ISTIO": {
+    "kind": "helm-chart",
+    "repo": "https://istio-release.storage.googleapis.com/charts",
+    "chart": "istiod",
+    "version": "1.29.10",
+    "update": "patch",
+    "note": "charts and the install-cni, proxyv2 and pilot images share this version"
+  },
+  "AWS_LOAD_BALANCER_CONTROLLER": {
+    "kind": "helm-chart",
+    "repo": "https://aws.github.io/eks-charts",
+    "chart": "aws-load-balancer-controller",
+    "version": "3.6.3",
+    "update": "minor",
+    "note": "the chart and its image (v<version>-linux_arm64) share this version"
+  },
+  "POSTGRES": {
+    "kind": "rds-engine",
+    "engine": "aurora-postgresql",
+    "version": "16.15",
+    "update": "minor"
+  },
+  "ALPINE": {
+    "kind": "container-image",
+    "image": "public.ecr.aws/docker/library/alpine",
+    "version": "3.24.4",
+    "update": "minor",
+    "note": "the app image's base (build/dockerfile)"
+  },
+  "CLOUDWATCH_AGENT": {
+    "kind": "container-image",
+    "image": "public.ecr.aws/cloudwatch-agent/cloudwatch-agent",
+    "version": "1.300074.1b2005",
+    "update": "minor"
+  }
+}

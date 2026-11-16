@@ -31,7 +31,8 @@ export function createDeployWorkflow(github: GitHub): void {
 
   workflow.on({
     workflowDispatch: {},
-    push: { branches: ['main'], paths: ['src/**'] },
+    // build/versions.json too: a version change (the weekly upgrade's included) must deploy.
+    push: { branches: ['main'], paths: ['src/**', 'build/versions.json'] },
   });
 
   workflow.file?.addOverride('concurrency', {

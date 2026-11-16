@@ -3,7 +3,7 @@ import { AwsCdkTypeScriptApp } from 'projen/lib/awscdk';
 import { GithubCredentials } from 'projen/lib/github';
 import { AppPermission } from 'projen/lib/github/workflows-model';
 import { NodePackageManager, UpgradeDependenciesSchedule } from 'projen/lib/javascript';
-import { addTransitiveDependencyUpgrade, createBuildTasks, createDeployTasks, createPublishTasks } from './projenrc/tasks/';
+import { addTransitiveDependencyUpgrade, addVersionTasks, createBuildTasks, createDeployTasks, createPublishTasks } from './projenrc/tasks/';
 import { approveOncePerLabel, createDeployWorkflow, createPublishWorkflow, customizeReleaseWorkflow } from './projenrc/workflows';
 
 // Accounts whose labelled PRs auto-approve approves and auto-queue merges.
@@ -255,6 +255,7 @@ createBuildTasks(project);
 createDeployTasks(project);
 createPublishTasks(project);
 addTransitiveDependencyUpgrade(project);
+addVersionTasks(project);
 approveOncePerLabel(project, TRUSTED_USERNAMES);
 
 project.synth();

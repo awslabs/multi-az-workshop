@@ -14,6 +14,7 @@ import { EKSCluster, InstanceArchitecture } from '../constructs/eks-cluster';
 import { Istio } from '../constructs/istio';
 import { NestedStackWithSource } from '../constructs/nested-stack-with-source';
 import { KubernetesVersion } from 'aws-cdk-lib/aws-eks';
+import { Versions } from '../versions';
 
 /**
  * Props for EKS Stack
@@ -70,6 +71,12 @@ export interface EKSStackProps extends cdk.NestedStackProps {
    * The version of the AWS Load Balancer Controller
    */
   readonly awsLoadBalancerControllerVersion: string;
+
+  /**
+   * The workshop's versions (build/versions.json): the cluster's add-ons and node AMI.
+   * @default Versions.load(), build/versions.json
+   */
+  readonly versions?: Versions;
 }
 
 /**
@@ -101,6 +108,7 @@ export class EKSStack extends NestedStackWithSource {
       loadBalancerSecurityGroup: props.loadBalancerSecurityGroup,
       clusterName: 'multi-az-workshop-eks-cluster-v2',
       version: props.eksVersion,
+      versions: props.versions,
       userRoleKubernetesGroups: [ "istio-admins" ]
     });
 
