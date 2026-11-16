@@ -86,6 +86,7 @@ describe('EKSApplication', () => {
       containerAndRepoBuilder,
       databaseCluster,
       namespace: 'test-app',
+      istioProxyVersion: '1.29.10-distroless',
     });
 
     // Synthesize once and reuse
@@ -381,5 +382,9 @@ describe('EKSApplication', () => {
       assertResourceExists(sharedTemplate, 'AWS::ECR::Repository');
       assertResourceCount(sharedTemplate, 'AWS::ECR::Repository', 2);
     });
+  });
+
+  test('the pod template names the Istio proxy, so a new proxy rolls the pods', () => {
+    expect(JSON.stringify(sharedTemplate.toJSON())).toContain('multi-az-workshop/istio-proxy\\":\\"1.29.10-distroless');
   });
 });
