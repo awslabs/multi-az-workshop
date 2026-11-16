@@ -195,7 +195,9 @@ function createAssetBuildTasks(project: AwsCdkTypeScriptApp): Task {
         exec: 'cd src/app && dotnet publish --configuration Release --runtime linux-musl-arm64 --output output/src -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained',
       },
       {
-        exec: 'eval "$(node build/load-versions.js)" && docker build --tag $PROJECT_NAME:latest --platform linux/arm64 --build-arg SRC=src --build-arg BASE=$ALPINE_IMAGE:$ALPINE --file build/dockerfile src/app/output',
+        // The base image through the retrying pull first: docker build reads it from the local store
+        // then, instead of fetching it once with no retry (a single network timeout failed a deploy).
+        exec: 'eval "$(node build/load-versions.js)" && build/docker-pull-with-retry.sh --platform linux/arm64 $ALPINE_IMAGE:$ALPINE && docker build --tag $PROJECT_NAME:latest --platform linux/arm64 --build-arg SRC=src --build-arg BASE=$ALPINE_IMAGE:$ALPINE --file build/dockerfile src/app/output',
       },
       {
         exec: 'docker save $PROJECT_NAME:latest | gzip > assets/container.tar.gz',
@@ -231,7 +233,9 @@ function createAssetBuildTasks(project: AwsCdkTypeScriptApp): Task {
         exec: 'cd src/app && dotnet publish --configuration Release --runtime linux-musl-arm64 --output output/src -p:DefineConstants="FAIL" -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained',
       },
       {
-        exec: 'eval "$(node build/load-versions.js)" && docker build --tag $PROJECT_NAME:latest --platform linux/arm64 --build-arg SRC=src --build-arg BASE=$ALPINE_IMAGE:$ALPINE --file build/dockerfile src/app/output',
+        // The base image through the retrying pull first: docker build reads it from the local store
+        // then, instead of fetching it once with no retry (a single network timeout failed a deploy).
+        exec: 'eval "$(node build/load-versions.js)" && build/docker-pull-with-retry.sh --platform linux/arm64 $ALPINE_IMAGE:$ALPINE && docker build --tag $PROJECT_NAME:latest --platform linux/arm64 --build-arg SRC=src --build-arg BASE=$ALPINE_IMAGE:$ALPINE --file build/dockerfile src/app/output',
       },
       {
         exec: 'docker save $PROJECT_NAME:latest | gzip > /tmp/container.tar.gz',
