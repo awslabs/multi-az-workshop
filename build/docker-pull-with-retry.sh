@@ -4,15 +4,20 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Pulls a docker image with exponential backoff and jitter on rate limit errors.
-# Usage: docker-pull-with-retry.sh <image> [max_retries]
+# Usage: docker-pull-with-retry.sh [--platform <os/arch>] <image> [max_retries]
 
 set -euo pipefail
 
+PLATFORM=()
+if [ "${1:-}" = "--platform" ]; then
+  PLATFORM=(--platform "$2")
+  shift 2
+fi
 IMAGE="$1"
 MAX_RETRIES="${2:-3}"
 
 for attempt in $(seq 1 "$MAX_RETRIES"); do
-  if docker pull "$IMAGE"; then
+  if docker pull ${PLATFORM[@]+"${PLATFORM[@]}"} "$IMAGE"; then
     exit 0
   fi
 
@@ -25,6 +30,6 @@ for attempt in $(seq 1 "$MAX_RETRIES"); do
   BASE_DELAY=$(( 2 ** attempt * 10 ))
   JITTER=$(( RANDOM % (BASE_DELAY / 2 + 1) ))
   DELAY=$(( BASE_DELAY + JITTER ))
-  echo "Rate limited pulling $IMAGE. Retrying in ${DELAY}s (attempt $attempt/$MAX_RETRIES)..."
+  echo "Pull of $IMAGE failed (rate limit or network). Retrying in ${DELAY}s (attempt $attempt/$MAX_RETRIES)..."
   sleep "$DELAY"
 done
