@@ -246,7 +246,8 @@ project.tasks.shell = TaskShell.system();
 project.tasks.addEnvironment('PROJECT_NAME', project.name);
 
 // Create workflows using externalized modules
-createDeployWorkflow(project.github!);
+// Delete the stack again after each deploy: nothing stays up to age into security findings.
+createDeployWorkflow(project.github!, { teardownAfterDeploy: true });
 createPublishWorkflow(project.github!);
 customizeReleaseWorkflow(project);
 
