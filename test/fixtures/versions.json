@@ -80,7 +80,7 @@
     "chart": "istiod",
     "version": "1.29.10",
     "update": "patch",
-    "note": "charts and the install-cni, proxyv2 and pilot images share this version"
+    "note": "charts and the install-cni, proxyv2 and pilot images (<version>-distroless) share this version"
   },
   "AWS_LOAD_BALANCER_CONTROLLER": {
     "kind": "helm-chart",

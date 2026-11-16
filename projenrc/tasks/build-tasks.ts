@@ -158,7 +158,9 @@ function createAssetBuildTasks(project: AwsCdkTypeScriptApp): Task {
 
   const pullIstioContainers = project.addTask('assets:istio-containers', {
     description: 'Pull Istio container images',
-    exec: 'eval "$(node build/load-versions.js)" && for image in install-cni proxyv2 pilot; do build/docker-pull-with-retry.sh docker.io/istio/${image}:$ISTIO && docker save istio/${image}:$ISTIO | gzip > assets/${image}.tar.gz; done',
+    // The distroless variant: no OS package set, so none of the Ubuntu base image's CVEs. Saved
+    // with its own tag (<version>-distroless), which the charts' global.variant selects.
+    exec: 'eval "$(node build/load-versions.js)" && for image in install-cni proxyv2 pilot; do build/docker-pull-with-retry.sh docker.io/istio/${image}:$ISTIO-distroless && docker save istio/${image}:$ISTIO-distroless | gzip > assets/${image}.tar.gz; done',
   });
 
   const pullLbControllerContainer = project.addTask('assets:lb-controller-container', {
