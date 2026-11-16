@@ -33,6 +33,13 @@ export interface EKSApplicationProps {
    * Namespace for the application
    */
   readonly namespace: string;
+
+  /**
+   * The Istio proxy image the sidecars are injected with (e.g. `1.29.10-distroless`). Written into
+   * the pod template, so a new proxy rolls the pods: a sidecar is injected only when a pod is
+   * created, and otherwise the running pods keep the old proxy (and its CVEs).
+   */
+  readonly istioProxyVersion: string;
 }
 
 /**
@@ -323,6 +330,7 @@ export class EKSApplication extends Construct {
                 },
                 annotations: {
                   version: cdk.Fn.select(2, cdk.Fn.split('/', cdk.Aws.STACK_ID)), // Using stack ID fragment as nonce
+                  'multi-az-workshop/istio-proxy': props.istioProxyVersion,
                 },
               },
               spec: {

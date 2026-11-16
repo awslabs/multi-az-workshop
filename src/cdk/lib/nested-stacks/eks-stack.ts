@@ -138,6 +138,7 @@ export class EKSStack extends NestedStackWithSource {
       containerAndRepoBuilder: repoHelmContainerCreator,
       databaseCluster: props.database,
       namespace: 'multi-az-workshop',
+      istioProxyVersion: `${props.istioVersion}-distroless`,
     });
     app.node.addDependency(istio);
     app.node.addDependency(lbController.waitableNode);
