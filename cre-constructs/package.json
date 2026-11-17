@@ -1,0 +1,12 @@
+{
+  "name": "@cre/constructs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "CRE construct library, installed from cre-demo-template/constructs/src. Do not edit: change it in cre-demo-template; npx projen installs the modules .projenrc.ts lists.",
+  "main": "index.ts",
+  "types": "index.ts",
+  "creTemplateSha": "c207da3936d265b0c36609ade575fa06de26933a",
+  "creModules": [
+    "ecr-import"
+  ]
+}

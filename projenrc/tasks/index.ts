@@ -2,14 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Barrel export file for projenrc task modules.
- *
- * This file exports all task creation functions from the task modules,
- * making them easily importable in the main .projenrc.ts file.
+ * The workshop's own tasks, on top of what the CreWorkshopStudio project type provides.
  */
 
-export { createBuildTasks } from './build-tasks';
-export { createDeployTasks } from './deploy-tasks';
-export { createPublishTasks } from './publish-tasks';
+export { createBuildTasks, ECR_IMPORT_DIR } from './build-tasks';
 export { addTransitiveDependencyUpgrade } from './upgrade-tasks';
-export { addVersionTasks } from './versions-tasks';

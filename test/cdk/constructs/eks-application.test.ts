@@ -2,20 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { KubectlV35Layer } from '@aws-cdk/lambda-layer-kubectl-v35';
+import { CreEcrImport } from '@cre/constructs';
 import * as cdk from 'aws-cdk-lib';
 import { Match } from 'aws-cdk-lib/assertions';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as eks from 'aws-cdk-lib/aws-eks-v2';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import * as s3 from 'aws-cdk-lib/aws-s3';
-import { ContainerAndRepo } from '../../../src/cdk/lib/constructs/container-and-repo';
 import { EKSApplication } from '../../../src/cdk/lib/constructs/eks-application';
 import {
   assertResourceExists,
   assertResourceProperties,
   assertResourceCount,
 } from '../../helpers/assertion-helpers';
-import { createMockVpc, createMockUploaderFunction } from '../../helpers/mock-factories';
+import { createMockVpc } from '../../helpers/mock-factories';
 import { synthesizeStack } from '../../helpers/stack-helpers';
 import { createTestApp, createTestStack } from '../../helpers/test-fixtures';
 
@@ -25,7 +25,7 @@ describe('EKSApplication', () => {
   let vpc: ec2.Vpc;
   let cluster: eks.Cluster;
   let databaseCluster: rds.DatabaseCluster;
-  let containerAndRepoBuilder: ContainerAndRepo;
+  let ecrImport: CreEcrImport;
   let assetsBucket: s3.Bucket;
   let sharedTemplate: any;
   let application: EKSApplication;
@@ -62,7 +62,7 @@ describe('EKSApplication', () => {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // Set up parameters for ContainerAndRepo
+    // Assets bucket parameters, as the workshop stack has
     new cdk.CfnParameter(stack, 'AssetsBucketName', {
       type: 'String',
       default: assetsBucket.bucketName,
@@ -72,18 +72,13 @@ describe('EKSApplication', () => {
       default: 'assets/',
     });
 
-    // Create container and repo builder
-    const uploaderFunction = createMockUploaderFunction(stack);
-    containerAndRepoBuilder = new ContainerAndRepo(
-      stack,
-      'ContainerAndRepo',
-      { uploaderFunction },
-    );
+    // The ECR import the construct loads its images and charts with
+    ecrImport = new CreEcrImport(stack, 'EcrImport');
 
     // Create the EKS application once
     application = new EKSApplication(stack, 'Application', {
       cluster,
-      containerAndRepoBuilder,
+      ecrImport,
       databaseCluster,
       namespace: 'test-app',
       istioProxyVersion: '1.29.10-distroless',

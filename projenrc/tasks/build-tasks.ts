@@ -1,60 +1,43 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import { TaskShell } from 'projen';
 import { AwsCdkTypeScriptApp } from 'projen/lib/awscdk';
 import { Task } from 'projen/lib/task';
+import { CURL_RETRY, curlRetry } from '../cre/src';
 
 /**
- * Configuration for a task step
+ * Where the asset tasks write the container image tarballs and Helm charts CreEcrImport loads into
+ * ECR (src/cdk/lib/build-assets.ts ECR_IMPORT_DIR). Each is a CDK asset, so it stays out of
+ * assets/, which holds the files the stack and the guide fetch by name under AssetsBucketPrefix.
  */
-export interface TaskStep {
-  exec?: string;
-  spawn?: string;
-  say?: string;
-}
+export const ECR_IMPORT_DIR = 'dist/ecr-import';
 
-/**
- * Configuration for a task
- */
-export interface TaskConfig {
-  name: string;
-  description: string;
-  steps?: TaskStep[];
-  env?: Record<string, string>;
-  requiredEnv?: string[];
-}
+/** The versions in build/versions.json as shell variables (ISTIO, ISTIO_REPO, ...). */
+const LOAD_VERSIONS = 'eval "$(node build/load-versions.js)"';
 
-/**
- * Configuration for asset building
- */
-export interface AssetConfig {
-  name: string;
-  description: string;
-  buildSteps: TaskStep[];
-  dependencies?: string[];
-}
+// kubectl and docker compose are 50-60 MB: CURL_RETRY's 300 s cap fails them below ~200 KB/s.
+const LARGE_DOWNLOAD = curlRetry(1800);
+
+// These tasks use eval, for loops and [ ]: bash, not projen's built-in shell.
+const BASH = TaskShell.bash();
 
 /**
  * Creates .NET application build tasks
  * @param project The AwsCdkTypeScriptApp project instance
  */
 function createDotnetBuildTasks(project: AwsCdkTypeScriptApp): Task {
-  const buildApp = project.addTask('build:app', {
+  return project.addTask('build:app', {
     description: 'Build .NET application',
+    shell: BASH,
     steps: [
-      {
-        exec: 'rm -rf src/app/output',
-      },
-      {
-        exec: 'mkdir -p src/app/output/src',
-      },
+      { exec: 'rm -rf src/app/output' },
+      { exec: 'mkdir -p src/app/output/src' },
       {
         exec: 'dotnet publish src/app/multi-az-workshop-application.csproj --configuration Release --runtime linux-musl-arm64 --output src/app/output/src -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained',
       },
     ],
   });
-
-  return buildApp;
 }
 
 /**
@@ -62,29 +45,51 @@ function createDotnetBuildTasks(project: AwsCdkTypeScriptApp): Task {
  * @param project The AwsCdkTypeScriptApp project instance
  */
 function createDotnetTestTasks(project: AwsCdkTypeScriptApp): { unit: Task; integration: Task } {
-  const testAppUnit = project.addTask('test:app:unit', {
+  const env = {
+    AWS_EC2_METADATA_DISABLED: 'true',
+    AWS_ACCESS_KEY_ID: 'fake',
+    AWS_SECRET_ACCESS_KEY: 'fake',
+    AWS_DEFAULT_REGION: 'us-east-1',
+  };
+  const unit = project.addTask('test:app:unit', {
     description: 'Run .NET unit tests',
-    env: {
-      AWS_EC2_METADATA_DISABLED: 'true',
-      AWS_ACCESS_KEY_ID: 'fake',
-      AWS_SECRET_ACCESS_KEY: 'fake',
-      AWS_DEFAULT_REGION: 'us-east-1',
-    },
+    env,
     exec: 'dotnet test test/app --filter "FullyQualifiedName!~Integration" --configuration Release --logger "console;verbosity=detailed"',
   });
-
-  const testAppIntegration = project.addTask('test:app:integration', {
+  const integration = project.addTask('test:app:integration', {
     description: 'Run .NET integration tests',
-    env: {
-      AWS_EC2_METADATA_DISABLED: 'true',
-      AWS_ACCESS_KEY_ID: 'fake',
-      AWS_SECRET_ACCESS_KEY: 'fake',
-      AWS_DEFAULT_REGION: 'us-east-1',
-    },
+    env,
     exec: 'dotnet test test/app --filter "FullyQualifiedName~Integration" --configuration Release --logger "console;verbosity=detailed"',
   });
+  return { unit, integration };
+}
 
-  return { unit: testAppUnit, integration: testAppIntegration };
+/** Builds the app's container image (with `FAIL` defined: the failing build) and saves it to `out`. */
+function containerBuildSteps(out: string, failing: boolean): { exec: string }[] {
+  const constants = failing ? '-p:DefineConstants="FAIL" ' : '';
+  return [
+    { exec: 'rm -rf src/app/output' },
+    { exec: 'mkdir -p src/app/output/src' },
+    {
+      exec: `cd src/app && dotnet publish --configuration Release --runtime linux-musl-arm64 --output output/src ${constants}-p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained`,
+    },
+    {
+      // The base image through the retrying pull first: docker build reads it from the local store
+      // then, instead of fetching it once with no retry (a single network timeout failed a deploy).
+      exec: `${LOAD_VERSIONS} && build/docker-pull-with-retry.sh --platform linux/arm64 $ALPINE_IMAGE:$ALPINE && docker build --tag $PROJECT_NAME:latest --platform linux/arm64 --build-arg SRC=src --build-arg BASE=$ALPINE_IMAGE:$ALPINE --file build/dockerfile src/app/output`,
+    },
+    { exec: `docker save $PROJECT_NAME:latest | gzip > ${out}` },
+  ];
+}
+
+/** The CodeDeploy bundle the EC2 fleet installs: the app and CloudWatch agent images, and src/app/docker. */
+function bundleSteps(image: string, bundle: string): { exec: string }[] {
+  return [
+    { exec: `zip -j assets/${bundle} ${image} ${ECR_IMPORT_DIR}/cloudwatch-agent.tar.gz` },
+    { exec: `cd src/app && zip -r ../../assets/${bundle} docker/` },
+    { exec: `cd src/app/docker && zip ../../../assets/${bundle} appspec.yml` },
+    { exec: 'rm -rf src/app/output' },
+  ];
 }
 
 /**
@@ -92,297 +97,121 @@ function createDotnetTestTasks(project: AwsCdkTypeScriptApp): { unit: Task; inte
  * @param project The AwsCdkTypeScriptApp project instance
  */
 function createAssetBuildTasks(project: AwsCdkTypeScriptApp): Task {
-  // Individual asset building tasks
+  // pre-compile has emptied assets/ (the project type's clean step).
   const createDirectories = project.addTask('assets:create-directories', {
     description: 'Create required directories for asset building',
+    shell: BASH,
     steps: [
-      {
-        exec: 'rm -rf assets && mkdir -p assets',
-      },
-      {
-        exec: 'mkdir -p dist',
-      },
-    ],
-  });
-
-  const buildHelmLayer = project.addTask('assets:helm-layer', {
-    description: 'Build helm lambda layer',
-    steps: [
-      {
-        exec: 'eval "$(node build/load-versions.js)" && curl --location https://get.helm.sh/helm-v$HELM-linux-arm64.tar.gz --output assets/helm.tar.gz',
-      },
-      {
-        exec: 'mkdir -p assets/helm',
-      },
-      {
-        exec: 'tar -zxvf assets/helm.tar.gz --strip-components=1 --directory assets/helm linux-arm64/helm',
-      },
-      {
-        exec: 'chmod 0755 assets/helm/helm',
-      },
-      {
-        exec: 'cd assets && zip -r helm-layer.zip helm/',
-      },
-      {
-        exec: 'rm -rf assets/helm.tar.gz assets/helm',
-      },
+      { exec: 'mkdir -p assets dist' },
+      { exec: `rm -rf ${ECR_IMPORT_DIR} && mkdir -p ${ECR_IMPORT_DIR}` },
     ],
   });
 
   const copyDestinationRules = project.addTask('assets:destination-rules', {
     description: 'Copy destination rules to assets',
+    shell: BASH,
     steps: [
+      { exec: 'cp src/cdk/configs/destination-rule.yaml assets/' },
       {
-        exec: 'cp src/cdk/configs/destination-rule.yaml assets/',
-      },
-      {
-        exec: 'for region in us-east-1 us-east-2 us-west-2 eu-west-1 ap-southeast-1 ap-southeast-2; do [ -f "src/cdk/configs/destination-rule-${region}.yaml" ] && cp "src/cdk/configs/destination-rule-${region}.yaml" "assets/"; done',
+        exec: 'for region in us-east-1 us-east-2 us-west-2 eu-west-1 ap-southeast-1 ap-southeast-2; do if [ -f "src/cdk/configs/destination-rule-${region}.yaml" ]; then cp "src/cdk/configs/destination-rule-${region}.yaml" assets/; fi; done',
       },
     ],
   });
 
   const downloadKubectl = project.addTask('assets:kubectl', {
     description: 'Download kubectl binary',
-    exec: 'eval "$(node build/load-versions.js)" && curl --location https://dl.k8s.io/release/v$KUBECTL/bin/linux/arm64/kubectl --output assets/kubectl',
+    shell: BASH,
+    exec: `${LOAD_VERSIONS} && curl --fail --location ${LARGE_DOWNLOAD} https://dl.k8s.io/release/v$KUBECTL/bin/linux/arm64/kubectl --output assets/kubectl`,
   });
 
   const downloadIstioCharts = project.addTask('assets:istio-charts', {
     description: 'Download Istio helm charts',
-    exec: 'eval "$(node build/load-versions.js)" && for chart in base istiod gateway cni; do curl --fail --location $ISTIO_REPO/${chart}-$ISTIO.tgz --output assets/${chart}-$ISTIO.tgz; done',
+    shell: BASH,
+    exec: `${LOAD_VERSIONS} && for chart in base istiod cni; do curl --fail --location ${CURL_RETRY} $ISTIO_REPO/\${chart}-$ISTIO.tgz --output ${ECR_IMPORT_DIR}/\${chart}-$ISTIO.tgz || exit 1; done`,
   });
 
   const downloadLbControllerChart = project.addTask('assets:lb-controller-chart', {
     description: 'Download AWS LB controller helm chart',
-    exec: 'eval "$(node build/load-versions.js)" && curl --fail --location $AWS_LOAD_BALANCER_CONTROLLER_REPO/aws-load-balancer-controller-$AWS_LOAD_BALANCER_CONTROLLER.tgz --output assets/aws-load-balancer-controller-$AWS_LOAD_BALANCER_CONTROLLER.tgz',
+    shell: BASH,
+    exec: `${LOAD_VERSIONS} && curl --fail --location ${CURL_RETRY} $AWS_LOAD_BALANCER_CONTROLLER_REPO/aws-load-balancer-controller-$AWS_LOAD_BALANCER_CONTROLLER.tgz --output ${ECR_IMPORT_DIR}/aws-load-balancer-controller-$AWS_LOAD_BALANCER_CONTROLLER.tgz`,
   });
 
   const pullIstioContainers = project.addTask('assets:istio-containers', {
     description: 'Pull Istio container images',
-    // The distroless variant: no OS package set, so none of the Ubuntu base image's CVEs. Saved
+    shell: BASH,
+    // The distroless variant: no OS package set, so none of the Ubuntu base image's CVEs. Pushed
     // with its own tag (<version>-distroless), which the charts' global.variant selects.
-    exec: 'eval "$(node build/load-versions.js)" && for image in install-cni proxyv2 pilot; do build/docker-pull-with-retry.sh docker.io/istio/${image}:$ISTIO-distroless && docker save istio/${image}:$ISTIO-distroless | gzip > assets/${image}.tar.gz; done',
+    exec: `${LOAD_VERSIONS} && for image in install-cni proxyv2 pilot; do build/docker-pull-with-retry.sh docker.io/istio/\${image}:$ISTIO-distroless && docker save istio/\${image}:$ISTIO-distroless | gzip > ${ECR_IMPORT_DIR}/\${image}.tar.gz || exit 1; done`,
   });
 
   const pullLbControllerContainer = project.addTask('assets:lb-controller-container', {
     description: 'Pull AWS LB controller container image',
-    exec: 'eval "$(node build/load-versions.js)" && build/docker-pull-with-retry.sh public.ecr.aws/eks/aws-load-balancer-controller:v$AWS_LOAD_BALANCER_CONTROLLER-linux_arm64 && docker save public.ecr.aws/eks/aws-load-balancer-controller:v$AWS_LOAD_BALANCER_CONTROLLER-linux_arm64 | gzip > assets/aws-load-balancer-controller.tar.gz',
+    shell: BASH,
+    exec: `${LOAD_VERSIONS} && build/docker-pull-with-retry.sh public.ecr.aws/eks/aws-load-balancer-controller:v$AWS_LOAD_BALANCER_CONTROLLER-linux_arm64 && docker save public.ecr.aws/eks/aws-load-balancer-controller:v$AWS_LOAD_BALANCER_CONTROLLER-linux_arm64 | gzip > ${ECR_IMPORT_DIR}/aws-load-balancer-controller.tar.gz`,
   });
 
   const pullCloudwatchAgent = project.addTask('assets:cloudwatch-agent', {
     description: 'Pull CloudWatch agent container image',
+    shell: BASH,
     // The pinned tag from build/versions.json, saved as :latest, the tag the EKS app and docker-compose use.
-    exec: 'eval "$(node build/load-versions.js)" && build/docker-pull-with-retry.sh $CLOUDWATCH_AGENT_IMAGE:$CLOUDWATCH_AGENT && docker tag $CLOUDWATCH_AGENT_IMAGE:$CLOUDWATCH_AGENT cloudwatch-agent/cloudwatch-agent:latest && docker save cloudwatch-agent/cloudwatch-agent:latest | gzip > assets/cloudwatch-agent.tar.gz',
+    exec: `${LOAD_VERSIONS} && build/docker-pull-with-retry.sh $CLOUDWATCH_AGENT_IMAGE:$CLOUDWATCH_AGENT && docker tag $CLOUDWATCH_AGENT_IMAGE:$CLOUDWATCH_AGENT cloudwatch-agent/cloudwatch-agent:latest && docker save cloudwatch-agent/cloudwatch-agent:latest | gzip > ${ECR_IMPORT_DIR}/cloudwatch-agent.tar.gz`,
   });
 
   const downloadDockerCompose = project.addTask('assets:docker-compose', {
     description: 'Download docker compose binary',
-    exec: 'curl -SL https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-aarch64 -o assets/docker-compose',
+    shell: BASH,
+    exec: `curl --fail --location ${LARGE_DOWNLOAD} https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-aarch64 --output assets/docker-compose`,
   });
 
   const buildArm64Container = project.addTask('assets:arm64-container', {
-    description: 'Build arm64 container',
-    env: {
-      FILE_NAME: 'app_deploy.zip',
-    },
+    description: 'Build the arm64 app container (EKS image and the CodeDeploy bundle app_deploy.zip)',
+    shell: BASH,
     steps: [
-      {
-        exec: 'rm -rf src/app/output',
-      },
-      {
-        exec: 'mkdir -p src/app/output/src',
-      },
-      {
-        exec: 'cd src/app && dotnet publish --configuration Release --runtime linux-musl-arm64 --output output/src -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained',
-      },
-      {
-        // The base image through the retrying pull first: docker build reads it from the local store
-        // then, instead of fetching it once with no retry (a single network timeout failed a deploy).
-        exec: 'eval "$(node build/load-versions.js)" && build/docker-pull-with-retry.sh --platform linux/arm64 $ALPINE_IMAGE:$ALPINE && docker build --tag $PROJECT_NAME:latest --platform linux/arm64 --build-arg SRC=src --build-arg BASE=$ALPINE_IMAGE:$ALPINE --file build/dockerfile src/app/output',
-      },
-      {
-        exec: 'docker save $PROJECT_NAME:latest | gzip > assets/container.tar.gz',
-      },
-      {
-        exec: 'zip -j assets/$FILE_NAME assets/container.tar.gz assets/cloudwatch-agent.tar.gz',
-      },
-      {
-        exec: 'cd src/app && zip -r ../../assets/$FILE_NAME docker/',
-      },
-      {
-        exec: 'cd src/app/docker && zip ../../../assets/$FILE_NAME appspec.yml',
-      },
-      {
-        exec: 'rm -rf src/app/output',
-      },
+      ...containerBuildSteps(`${ECR_IMPORT_DIR}/container.tar.gz`, false),
+      ...bundleSteps(`${ECR_IMPORT_DIR}/container.tar.gz`, 'app_deploy.zip'),
     ],
   });
 
   const buildFailingArm64Container = project.addTask('assets:arm64-container-fail', {
-    description: 'Build failing arm64 container',
-    env: {
-      FILE_NAME: 'app_deploy_fail.zip',
-    },
+    description: 'Build the failing arm64 app container (the CodeDeploy bundle app_deploy_fail.zip)',
+    shell: BASH,
     steps: [
-      {
-        exec: 'rm -rf src/app/output',
-      },
-      {
-        exec: 'mkdir -p src/app/output/src',
-      },
-      {
-        exec: 'cd src/app && dotnet publish --configuration Release --runtime linux-musl-arm64 --output output/src -p:DefineConstants="FAIL" -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained',
-      },
-      {
-        // The base image through the retrying pull first: docker build reads it from the local store
-        // then, instead of fetching it once with no retry (a single network timeout failed a deploy).
-        exec: 'eval "$(node build/load-versions.js)" && build/docker-pull-with-retry.sh --platform linux/arm64 $ALPINE_IMAGE:$ALPINE && docker build --tag $PROJECT_NAME:latest --platform linux/arm64 --build-arg SRC=src --build-arg BASE=$ALPINE_IMAGE:$ALPINE --file build/dockerfile src/app/output',
-      },
-      {
-        exec: 'docker save $PROJECT_NAME:latest | gzip > /tmp/container.tar.gz',
-      },
-      {
-        exec: 'zip -j assets/$FILE_NAME /tmp/container.tar.gz assets/cloudwatch-agent.tar.gz',
-      },
-      {
-        exec: 'cd src/app && zip -r ../../assets/$FILE_NAME docker/',
-      },
-      {
-        exec: 'cd src/app/docker && zip ../../../assets/$FILE_NAME appspec.yml',
-      },
-      {
-        exec: 'rm -rf src/app/output',
-      },
-      {
-        exec: 'rm /tmp/container.tar.gz',
-      },
+      ...containerBuildSteps('/tmp/container.tar.gz', true),
+      ...bundleSteps('/tmp/container.tar.gz', 'app_deploy_fail.zip'),
+      { exec: 'rm /tmp/container.tar.gz' },
     ],
   });
 
-  // Combined build-assets task that runs all asset building tasks in order
   const buildAssets = project.addTask('build:assets', {
-    description: 'Build all workshop assets',
+    description: 'Build all workshop assets: assets/ (fetched by name) and the ECR images and charts (dist/ecr-import)',
   });
-
-  // Add all asset tasks as dependencies in the correct order
-  buildAssets.spawn(createDirectories);
-  buildAssets.spawn(buildHelmLayer);
-  buildAssets.spawn(copyDestinationRules);
-  buildAssets.spawn(downloadKubectl);
-  buildAssets.spawn(downloadIstioCharts);
-  buildAssets.spawn(downloadLbControllerChart);
-  buildAssets.spawn(pullIstioContainers);
-  buildAssets.spawn(pullLbControllerContainer);
-  buildAssets.spawn(pullCloudwatchAgent);
-  buildAssets.spawn(downloadDockerCompose);
-  buildAssets.spawn(buildArm64Container);
-  buildAssets.spawn(buildFailingArm64Container);
-
+  for (const t of [createDirectories, copyDestinationRules, downloadKubectl, downloadIstioCharts, downloadLbControllerChart,
+    pullIstioContainers, pullLbControllerContainer, pullCloudwatchAgent, downloadDockerCompose, buildArm64Container,
+    buildFailingArm64Container]) {
+    buildAssets.spawn(t);
+  }
   return buildAssets;
 }
 
 /**
- * Creates CDK asset processing tasks
- * @param project The AwsCdkTypeScriptApp project instance
- */
-function createCdkAssetProcessingTasks(project: AwsCdkTypeScriptApp): { cdkProcess: Task; packageAssets: Task } {
-  const processCdkAssets = project.addTask('assets:cdk-process', {
-    description: 'Processes the synthesized CDK files to make them ready for deployment and copies them to assets folder',
-    steps: [
-      {
-        exec: 'chmod +x build/package.py',
-      },
-      {
-        exec: 'build/package.py $PROJECT_NAME .',
-      },
-    ],
-  });
-
-  const packageAssets = project.addTask('assets:package', {
-    description: 'Package the assets for testing and deployment',
-    steps: [
-      {
-        exec: 'cp static/$PROJECT_NAME.json assets/$PROJECT_NAME.json',
-      },
-      {
-        exec: 'cd assets && zip -r ../dist/content.zip .',
-      },
-    ],
-  });
-
-  return { cdkProcess: processCdkAssets, packageAssets };
-}
-
-/**
- * Extends the native compile task to include .NET build and asset building
- * @param project The AwsCdkTypeScriptApp project instance
- * @param buildApp The .NET build task
- * @param buildAssets The asset building task
- */
-function extendCompileTask(project: AwsCdkTypeScriptApp, buildApp: Task, buildAssets: Task): void {
-  const compile = project.tasks.tryFind('compile');
-  if (compile) {
-    compile.spawn(buildApp);
-    compile.spawn(buildAssets);
-  }
-}
-
-/**
- * Extends the native test task to include .NET tests
- * @param project The AwsCdkTypeScriptApp project instance
- * @param testAppUnit The .NET unit test task
- * @param testAppIntegration The .NET integration test task
- */
-function extendTestTask(project: AwsCdkTypeScriptApp, testAppUnit: Task, testAppIntegration: Task): void {
-  const test = project.tasks.tryFind('test');
-  if (test) {
-    test.spawn(testAppUnit);
-    test.spawn(testAppIntegration);
-  }
-}
-
-/**
- * Overrides the native package task to create content.zip
- * @param project The AwsCdkTypeScriptApp project instance
- * @param cdkProcess The CDK asset processing task
- * @param packageAssets The asset packaging task
- */
-function overridePackageTask(project: AwsCdkTypeScriptApp, cdkProcess: Task, packageAssets: Task): void {
-  const packageTask = project.tasks.tryFind('package');
-  if (packageTask) {
-    packageTask.reset();
-    packageTask.exec('mkdir -p dist');
-    packageTask.say('Processing CDK assets...');
-    packageTask.spawn(cdkProcess);
-    packageTask.say('Packaging assets...');
-    packageTask.spawn(packageAssets);
-  }
-}
-
-/**
- * Creates all build-related tasks for the project
- * @param project The AwsCdkTypeScriptApp project instance
+ * The workshop's own build tasks, in the project type's lifecycle:
+ *  - compile: the .NET app and every asset (after pre-compile emptied assets/, before the synth
+ *    that takes the images and charts as CDK assets);
+ *  - test: the .NET tests, after jest and eslint;
+ *  - package: dist/content.zip is also put in assets/, for the guide's "on your own" download.
  */
 export function createBuildTasks(project: AwsCdkTypeScriptApp): void {
-  // Create .NET build tasks
   const buildApp = createDotnetBuildTasks(project);
-
-  // Create .NET test tasks
-  const { unit: testAppUnit, integration: testAppIntegration } = createDotnetTestTasks(project);
-
-  // Create asset building tasks
+  const { unit, integration } = createDotnetTestTasks(project);
   const buildAssets = createAssetBuildTasks(project);
 
-  // Create CDK asset processing tasks
-  const { cdkProcess, packageAssets } = createCdkAssetProcessingTasks(project);
+  project.compileTask.spawn(buildApp);
+  project.compileTask.spawn(buildAssets);
 
-  // Extend native compile task to include .NET build and asset building
-  extendCompileTask(project, buildApp, buildAssets);
+  project.testTask.spawn(unit);
+  project.testTask.spawn(integration);
 
-  // Extend native test task to include .NET tests
-  extendTestTask(project, testAppUnit, testAppIntegration);
-
-  // Override native package task to create content.zip
-  overridePackageTask(project, cdkProcess, packageAssets);
-
-  // Native build task automatically runs compile → test → package
+  // Not inside the zip it is a copy of: removed before package:content zips assets/.
+  project.packageTask.prependExec('rm -f assets/content.zip');
+  project.packageTask.exec('cp dist/content.zip assets/content.zip');
 }

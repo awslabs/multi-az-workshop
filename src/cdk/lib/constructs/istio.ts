@@ -4,8 +4,8 @@
 import * as cdk from 'aws-cdk-lib';
 import * as eks from 'aws-cdk-lib/aws-eks-v2';
 import { Construct, IDependable } from 'constructs';
-import { ContainerAndRepo, RepoAndHelmChartProps, RepoAndContainerProps } from './container-and-repo';
-import { HelmRepoAndChartConstruct } from './helm-repo-and-chart';
+import { CreEcrImport } from '@cre/constructs';
+import { builtAsset } from '../build-assets';
 
 /**
  * Properties for Istio construct
@@ -17,9 +17,9 @@ export interface IstioProps {
   readonly cluster: eks.ICluster;
 
   /**
-   * Container and repository builder for managing container images and Helm charts
+   * Loads the Istio charts and images (S3 assets the build makes) into ECR
    */
-  readonly containerAndRepoBuilder: ContainerAndRepo;
+  readonly ecrImport: CreEcrImport;
 
   /**
    * Istio version to install (build/versions.json ISTIO)
@@ -38,7 +38,7 @@ export interface IstioProps {
 /**
  * Construct that installs Istio service mesh on an EKS cluster
  */
-export class Istio extends HelmRepoAndChartConstruct {
+export class Istio extends Construct {
   /**
    * Waitable node for dependency management
    */
@@ -49,53 +49,38 @@ export class Istio extends HelmRepoAndChartConstruct {
 
     const version = props.version;
 
-    // Create Helm chart repositories
-    const istioBaseHelmChartRepo = props.containerAndRepoBuilder.createRepoAndHelmChart({
-      helmChartName: 'base',
-      version: version,
-      repositoryName: 'base',
-    } as RepoAndHelmChartProps);
+    // The charts and images, loaded into ECR from the build's tarballs (build:assets).
+    const chart = (name: string) => props.ecrImport.addHelmChart(`istio-${name}-chart`, {
+      chart: builtAsset(this, `${name}-chart-asset`, `${name}-${version}.tgz`),
+      name,
+      version,
+    });
+    const image = (name: string) => props.ecrImport.addImage(`istio-${name}-image`, {
+      tarball: builtAsset(this, `${name}-image-asset`, `${name}.tar.gz`),
+      repositoryName: `istio/${name}`,
+      // The distroless variant (global.variant below).
+      tag: `${version}-distroless`,
+    });
+    const istioBaseHelmChartRepo = chart('base');
+    const istiodHelmChartRepo = chart('istiod');
+    const istioCniHelmChartRepo = chart('cni');
 
-    const istiodHelmChartRepo = props.containerAndRepoBuilder.createRepoAndHelmChart({
-      helmChartName: 'istiod',
-      version: version,
-      repositoryName: 'istiod',
-    } as RepoAndHelmChartProps);
-
-    const istioCniHelmChartRepo = props.containerAndRepoBuilder.createRepoAndHelmChart({
-      helmChartName: 'cni',
-      version: version,
-      repositoryName: 'cni',
-    } as RepoAndHelmChartProps);
-
-    // Create container repositories
     // Used by the istiod helm chart
-    const cniContainer = props.containerAndRepoBuilder.addContainerAndRepo({
-      containerImageS3ObjectKey: 'pilot.tar.gz',
-      repositoryName: 'istio/pilot',
-    } as RepoAndContainerProps);
-
+    const cniContainer = image('pilot');
     // Used by istio as a sidecar
-    props.containerAndRepoBuilder.addContainerAndRepo({
-      containerImageS3ObjectKey: 'proxyv2.tar.gz',
-      repositoryName: 'istio/proxyv2',
-    } as RepoAndContainerProps);
-
+    const proxyContainer = image('proxyv2');
     // Used by the CNI helm chart
-    const installCniContainer = props.containerAndRepoBuilder.addContainerAndRepo({
-      containerImageS3ObjectKey: 'install-cni.tar.gz',
-      repositoryName: 'istio/install-cni',
-    } as RepoAndContainerProps);
+    const installCniContainer = image('install-cni');
 
     // Install Istio base chart (no image required)
     const baseChart = props.cluster.addHelmChart('IstioBaseHelmChart', {
       chart: 'base',
       version: version,
-      repository: 'oci://' + istioBaseHelmChartRepo.repository.repositoryUri,
+      repository: istioBaseHelmChartRepo.uri,
       namespace: 'istio-system',
       wait: true,
     });
-    baseChart.node.addDependency(istioBaseHelmChartRepo.dependable);
+    baseChart.node.addDependency(istioBaseHelmChartRepo.ready);
     (baseChart.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
       'ServiceTimeout',
       '300',
@@ -107,7 +92,7 @@ export class Istio extends HelmRepoAndChartConstruct {
     const istiod = props.cluster.addHelmChart('Istiod', {
       chart: 'istiod',
       version: version,
-      repository: 'oci://' + istiodHelmChartRepo.repository.repositoryUri,
+      repository: istiodHelmChartRepo.uri,
       namespace: 'istio-system',
       wait: true,
       values: {
@@ -120,8 +105,10 @@ export class Istio extends HelmRepoAndChartConstruct {
     });
 
     istiod.node.addDependency(baseChart);
-    istiod.node.addDependency(cniContainer.dependable);
-    istiod.node.addDependency(istiodHelmChartRepo.dependable);
+    istiod.node.addDependency(cniContainer.ready);
+    // istiod injects the proxy into the app's pods, which then pull it.
+    istiod.node.addDependency(proxyContainer.ready);
+    istiod.node.addDependency(istiodHelmChartRepo.ready);
     (istiod.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
       'ServiceTimeout',
       '300',
@@ -131,7 +118,7 @@ export class Istio extends HelmRepoAndChartConstruct {
     const cni = props.cluster.addHelmChart('IstioCNI', {
       chart: 'cni',
       version: version,
-      repository: 'oci://' + istioCniHelmChartRepo.repository.repositoryUri,
+      repository: istioCniHelmChartRepo.uri,
       namespace: 'istio-system',
       wait: true,
       values: {
@@ -144,8 +131,8 @@ export class Istio extends HelmRepoAndChartConstruct {
     });
 
     cni.node.addDependency(istiod);
-    cni.node.addDependency(installCniContainer.dependable);
-    cni.node.addDependency(istioCniHelmChartRepo.dependable);
+    cni.node.addDependency(installCniContainer.ready);
+    cni.node.addDependency(istioCniHelmChartRepo.ready);
     (cni.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride('ServiceTimeout', '300');
 
     if (props.adminsGroupName) {

@@ -7,21 +7,32 @@ on:
   merge_group: {}
 jobs:
   build:
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     outputs:
       self_mutation_happened: ${{ steps.self_mutation.outputs.self_mutation_happened }}
     env:
       CI: "true"
+      BUILD_TOOL_LOCATION_LINUX: ${{ secrets.BUILD_TOOL_LOCATION_LINUX }}
+      BUILD_TOOL_LOCATION_LINUX_ARM: ${{ secrets.BUILD_TOOL_LOCATION_LINUX_ARM }}
+      BUILD_TOOL_LOCATION_OSX: ${{ secrets.BUILD_TOOL_LOCATION_OSX }}
+      BUILD_TOOL_LOCATION_OSX_ARM: ${{ secrets.BUILD_TOOL_LOCATION_OSX_ARM }}
+      BUILD_TOOL_LOCATION_WINDOWS: ${{ secrets.BUILD_TOOL_LOCATION_WINDOWS }}
+      BUILD_TOOL_LOCATION_WINDOWS_ARM: ${{ secrets.BUILD_TOOL_LOCATION_WINDOWS_ARM }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
       - name: Enable corepack
         run: corepack enable
+      - name: Setup Node.js
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: "22"
+          package-manager-cache: false
       - name: Install dependencies
         run: yarn install --no-immutable
       - name: Install dotnet
@@ -52,14 +63,14 @@ jobs:
           exit 1
   self-mutation:
     needs: build
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     if: always() && needs.build.outputs.self_mutation_happened && !(github.event.pull_request.head.repo.full_name != github.repository)
     steps:
       - name: Generate token
         id: generate_token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
+        uses: actions/create-github-app-token@v3.2.0
         with:
           app-id: ${{ secrets.PROJEN_APP_ID }}
           private-key: ${{ secrets.PROJEN_APP_PRIVATE_KEY }}
@@ -95,6 +106,3 @@ jobs:
           git add .
           git commit -s -m "chore: self mutation"
           git push origin "HEAD:$PULL_REQUEST_REF"
-concurrency:
-  group: build-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true

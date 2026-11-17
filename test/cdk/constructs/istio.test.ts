@@ -2,19 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { KubectlV35Layer } from '@aws-cdk/lambda-layer-kubectl-v35';
+import { CreEcrImport } from '@cre/constructs';
 import * as cdk from 'aws-cdk-lib';
 import { Match } from 'aws-cdk-lib/assertions';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as eks from 'aws-cdk-lib/aws-eks-v2';
 import * as s3 from 'aws-cdk-lib/aws-s3';
-import { ContainerAndRepo } from '../../../src/cdk/lib/constructs/container-and-repo';
 import { Istio } from '../../../src/cdk/lib/constructs/istio';
 import {
   assertResourceExists,
   assertResourceProperties,
   assertResourceCount,
 } from '../../helpers/assertion-helpers';
-import { createMockVpc, createMockUploaderFunction } from '../../helpers/mock-factories';
+import { createMockVpc } from '../../helpers/mock-factories';
 import { synthesizeStack } from '../../helpers/stack-helpers';
 import { createTestApp, createTestStack } from '../../helpers/test-fixtures';
 
@@ -24,7 +24,7 @@ describe('Istio', () => {
   let sharedStack: cdk.Stack;
   let sharedVpc: ec2.Vpc;
   let sharedCluster: eks.Cluster;
-  let sharedContainerAndRepoBuilder: ContainerAndRepo;
+  let sharedEcrImport: CreEcrImport;
   let sharedTemplate: any;
 
   beforeAll(() => {
@@ -46,7 +46,7 @@ describe('Istio', () => {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // Set up parameters for ContainerAndRepo
+    // Assets bucket parameters, as the workshop stack has
     new cdk.CfnParameter(sharedStack, 'AssetsBucketName', {
       type: 'String',
       default: assetsBucket.bucketName,
@@ -56,18 +56,13 @@ describe('Istio', () => {
       default: 'assets/',
     });
 
-    // Create container and repo builder
-    const uploaderFunction = createMockUploaderFunction(sharedStack);
-    sharedContainerAndRepoBuilder = new ContainerAndRepo(
-      sharedStack,
-      'ContainerAndRepo',
-      { uploaderFunction },
-    );
+    // The ECR import the construct loads its images and charts with
+    sharedEcrImport = new CreEcrImport(sharedStack, 'EcrImport');
 
     // Create Istio with default configuration
     new Istio(sharedStack, 'Istio', {
       cluster: sharedCluster,
-      containerAndRepoBuilder: sharedContainerAndRepoBuilder,
+      ecrImport: sharedEcrImport,
       version: '1.29.0',
     });
 
@@ -236,6 +231,41 @@ describe('Istio', () => {
     });
   });
 
+  describe('ECR import (CreEcrImport)', () => {
+    test('loads the three charts and three images into ECR', () => {
+      assertResourceCount(sharedTemplate, 'Custom::CreEcrImport', 6);
+      for (const name of ['base', 'istiod', 'cni']) {
+        assertResourceProperties(sharedTemplate, 'Custom::CreEcrImport', { Kind: 'helm', ChartName: name, Tag: '1.29.0' });
+        sharedTemplate.hasResourceProperties('AWS::ECR::Repository', { RepositoryName: name });
+      }
+      for (const name of ['pilot', 'proxyv2', 'install-cni']) {
+        // The distroless images, in the repositories global.hub (<registry>/istio) names.
+        assertResourceProperties(sharedTemplate, 'Custom::CreEcrImport', { Kind: 'image', Repository: Match.anyValue(), Tag: '1.29.0-distroless' });
+        sharedTemplate.hasResourceProperties('AWS::ECR::Repository', { RepositoryName: `istio/${name}` });
+      }
+    });
+
+    test('every chart installs only after its chart and images are in ECR', () => {
+      const resources = sharedTemplate.toJSON().Resources;
+      const importIds = Object.entries(resources).filter(([, r]: [string, any]) => r.Type === 'Custom::CreEcrImport').map(([id]) => id);
+      const dependsOnImports = (chart: string) => {
+        const [, r]: any = Object.entries(resources).find(([, x]: [string, any]) => x.Type === 'Custom::AWSCDK-EKS-HelmChart' && x.Properties.Chart === chart);
+        return (r.DependsOn ?? []).filter((d: string) => importIds.includes(d)).length;
+      };
+      expect(dependsOnImports('base')).toBe(1); // its chart
+      expect(dependsOnImports('istiod')).toBe(3); // its chart, pilot, proxyv2
+      expect(dependsOnImports('cni')).toBe(2); // its chart, install-cni
+    });
+
+    test('installs each chart from its OCI repository in ECR', () => {
+      const charts = Object.values(sharedTemplate.toJSON().Resources).filter((r: any) => r.Type === 'Custom::AWSCDK-EKS-HelmChart');
+      for (const r of charts as any[]) {
+        const [, parts] = r.Properties.Repository['Fn::Join'];
+        expect(parts[0]).toMatch(/^oci:\/\//);
+      }
+    });
+  });
+
   describe('public interface', () => {
     test('exposes waitableNode property', () => {
       // Create a separate stack for this test since it needs to access the Istio instance
@@ -260,16 +290,11 @@ describe('Istio', () => {
         type: 'String',
         default: 'assets/',
       });
-      const uploaderFunction = createMockUploaderFunction(stack, 'UploaderFunction1');
-      const containerAndRepoBuilder = new ContainerAndRepo(
-        stack,
-        'ContainerAndRepo',
-        { uploaderFunction },
-      );
+      const ecrImport = new CreEcrImport(stack, 'EcrImport');
 
       const istio = new Istio(stack, 'Istio', {
         cluster,
-        containerAndRepoBuilder,
+        ecrImport,
         version: '1.29.0',
       });
 
@@ -357,16 +382,11 @@ describe('Istio', () => {
           type: 'String',
           default: 'assets/',
         });
-        const uploaderFunction = createMockUploaderFunction(customVersionStack, 'UploaderFunction2');
-        const containerAndRepoBuilder = new ContainerAndRepo(
-          customVersionStack,
-          'ContainerAndRepo',
-          { uploaderFunction },
-        );
+        const ecrImport = new CreEcrImport(customVersionStack, 'EcrImport');
 
         new Istio(customVersionStack, 'Istio', {
           cluster,
-          containerAndRepoBuilder,
+          ecrImport,
           version: '1.25.0',
         });
 

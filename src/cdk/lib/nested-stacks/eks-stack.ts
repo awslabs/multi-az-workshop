@@ -5,16 +5,15 @@ import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import { AwsLoadBalancerController } from '../constructs/aws-load-balancer-controller';
-import { ContainerAndRepo } from '../constructs/container-and-repo';
 import { EKSApplication } from '../constructs/eks-application';
 import { EKSCluster, InstanceArchitecture } from '../constructs/eks-cluster';
 import { Istio } from '../constructs/istio';
 import { NestedStackWithSource } from '../constructs/nested-stack-with-source';
 import { KubernetesVersion } from 'aws-cdk-lib/aws-eks';
 import { Versions } from '../versions';
+import { CreEcrImport } from '@cre/constructs';
 
 /**
  * Props for EKS Stack
@@ -52,11 +51,6 @@ export interface EKSStackProps extends cdk.NestedStackProps {
    */
   readonly adminRoleName: string;
 
-  /**
-   * Shared ECR uploader Lambda function
-   */
-  readonly uploaderFunction: lambda.IFunction;
-
    /**
    * The cluster version to deploy
    */
@@ -93,10 +87,8 @@ export class EKSStack extends NestedStackWithSource {
 
     const cpuArch = props.cpuArch ?? InstanceArchitecture.ARM_64;
 
-    // Create container and repository builder
-    const repoHelmContainerCreator = new ContainerAndRepo(this, 'container-and-repo-builder', {
-      uploaderFunction: props.uploaderFunction,
-    });
+    // Loads the cluster's images and Helm charts into this account's ECR (no registry of ours in a team account)
+    const ecrImport = new CreEcrImport(this, 'ecr-import');
 
     // Create EKS cluster
     const adminRole = iam.Role.fromRoleName(this, 'AdminRole', props.adminRoleName);
@@ -118,7 +110,7 @@ export class EKSStack extends NestedStackWithSource {
     // Install Istio service mesh
     const istio = new Istio(this, 'Istio', {
       cluster: cluster.cluster,
-      containerAndRepoBuilder: repoHelmContainerCreator,
+      ecrImport,
       version: props.istioVersion,
       adminsGroupName: "istio-admins",
     });
@@ -126,7 +118,7 @@ export class EKSStack extends NestedStackWithSource {
     // Install AWS Load Balancer Controller
     const lbController = new AwsLoadBalancerController(this, 'AwsLoadBalancerController', {
       cluster: cluster.cluster,
-      containerAndRepoBuilder: repoHelmContainerCreator,
+      ecrImport,
       version: props.awsLoadBalancerControllerVersion,
       workloadCapacity: cluster.workloadCapacity,
     });
@@ -135,7 +127,7 @@ export class EKSStack extends NestedStackWithSource {
     // Deploy application
     const app = new EKSApplication(this, 'EKSApp', {
       cluster: cluster.cluster,
-      containerAndRepoBuilder: repoHelmContainerCreator,
+      ecrImport,
       databaseCluster: props.database,
       namespace: 'multi-az-workshop',
       istioProxyVersion: `${props.istioVersion}-distroless`,

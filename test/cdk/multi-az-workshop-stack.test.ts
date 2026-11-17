@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { App } from 'aws-cdk-lib';
+import { CreApp as App } from '@cre/constructs';
 import { Template, Match } from 'aws-cdk-lib/assertions';
 import { MultiAZWorkshopStack } from '../../src/cdk/lib/multi-az-workshop-stack';
 import {
@@ -40,7 +40,7 @@ describe('MultiAZWorkshopStack', () => {
   beforeAll(() => {
     sharedApp = new App();
     sharedStack = new MultiAZWorkshopStack(sharedApp, 'TestStack', {
-      env: { region: 'us-east-1' },
+      region: 'us-east-1',
     });
     sharedTemplate = Template.fromStack(sharedStack);
   });
@@ -59,7 +59,7 @@ describe('MultiAZWorkshopStack', () => {
         const app = new App();
         expect(() => {
           new MultiAZWorkshopStack(app, `TestStack-${region}`, {
-            env: { region },
+            region,
           });
           app.synth();
         }).not.toThrow();
@@ -86,25 +86,15 @@ describe('MultiAZWorkshopStack', () => {
       assertParameterExists(template, 'ParticipantRoleName');
     });
 
-    test('AssetsBucketName parameter has correct type and constraints', () => {
-      template.hasParameter('AssetsBucketName', {
-        Type: 'String',
-        MinLength: 1,
-        Default: '{{.AssetsBucketName}}',
-      });
+    test('AssetsBucketName and AssetsBucketPrefix are CreStack\'s, with no default (contentspec.yaml passes them)', () => {
+      template.hasParameter('AssetsBucketName', { Type: 'String', Default: Match.absent() });
+      template.hasParameter('AssetsBucketPrefix', { Type: 'String', Default: Match.absent() });
     });
 
-    test('AssetsBucketPrefix parameter has correct type and default', () => {
-      template.hasParameter('AssetsBucketPrefix', {
-        Type: 'String',
-        Default: '{{.AssetsBucketPrefix}}',
-      });
-    });
-
-    test('ParticipantRoleName parameter has correct type and default', () => {
-      template.hasParameter('ParticipantRoleName', {
-        Type: 'String',
-        Default: '{{.ParticipantRoleName}}',
+    test('ParticipantRoleName comes from Workshop Studio (its magic value), with no default', () => {
+      template.hasParameter('ParticipantRoleName', { Type: 'String', Default: Match.absent() });
+      expect(sharedStack.parameterSources.get('ParticipantRoleName')).toEqual({
+        kind: 'env', variable: 'WS_PARTICIPANT_ROLE_NAME', optional: false, magic: 'ParticipantRoleName',
       });
     });
 
@@ -118,11 +108,8 @@ describe('MultiAZWorkshopStack', () => {
       });
     });
 
-    test('parameters have default values', () => {
-      const parameters = getParameters(template);
-      expect(parameters.AssetsBucketName.Default).toBeDefined();
-      expect(parameters.AssetsBucketPrefix.Default).toBeDefined();
-      expect(parameters.ParticipantRoleName.Default).toBeDefined();
+    test('no other parameter needs a value: the stack takes only the assets bucket, prefix and the participant role', () => {
+      expect(Object.keys(getParameters(template)).sort()).toEqual(['AssetsBucketName', 'AssetsBucketPrefix', 'ParticipantRoleName']);
     });
   });
 
@@ -366,7 +353,7 @@ describe('MultiAZWorkshopStack', () => {
         const app = new App();
         expect(() => {
           new MultiAZWorkshopStack(app, `TestStack-${region}`, {
-            env: { region },
+            region,
           });
           app.synth();
         }).not.toThrow();
@@ -470,7 +457,7 @@ describe('MultiAZWorkshopStack', () => {
         },
       });
       arcStack = new MultiAZWorkshopStack(arcApp, 'ARCStack', {
-        env: { region: 'us-east-1' },
+        region: 'us-east-1',
       });
       arcTemplate = Template.fromStack(arcStack);
     });
@@ -495,7 +482,7 @@ describe('MultiAZWorkshopStack', () => {
 
         expect(() => {
           new MultiAZWorkshopStack(app, stackName, {
-            env: { region: 'us-east-1' },
+            region: 'us-east-1',
           });
           app.synth();
         }).not.toThrow();
@@ -538,7 +525,7 @@ describe('MultiAZWorkshopStack', () => {
         },
       });
       ipv6Stack = new MultiAZWorkshopStack(ipv6App, 'IPv6Stack', {
-        env: { region: 'us-east-1' },
+        region: 'us-east-1',
       });
       ipv6Template = Template.fromStack(ipv6Stack);
     });

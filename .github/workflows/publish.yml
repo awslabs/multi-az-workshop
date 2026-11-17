@@ -2,47 +2,47 @@
 
 name: publish
 on:
-  workflow_dispatch:
-    inputs:
-      email:
-        type: string
-        description: The email used for the git commit
-        required: true
+  workflow_dispatch: {}
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
-    environment: WorkshopStudio
     env:
-      GH_TOKEN: ${{ github.token }}
-      AWS_DEFAULT_REGION: us-east-1
-      AWS_ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.SECRET_KEY }}
-      AWS_SESSION_TOKEN: ${{ secrets.SESSION_TOKEN }}
-      ASSETS_LOCATION: ${{ secrets.ASSETS_LOCATION }}
+      CI: "true"
+      WORKSHOP_ID: ${{ vars.WORKSHOP_ID }}
+      WS_ACCESS_KEY_ID: ${{ secrets.WS_ACCESS_KEY_ID }}
+      WS_SECRET_ACCESS_KEY: ${{ secrets.WS_SECRET_ACCESS_KEY }}
+      WS_SESSION_TOKEN: ${{ secrets.WS_SESSION_TOKEN }}
       REMOTE_REPO: ${{ secrets.REMOTE_REPO }}
+      ASSETS_LOCATION: ${{ secrets.ASSETS_LOCATION }}
       GIT_PLUGIN_LOCATION: ${{ secrets.GIT_PLUGIN_LOCATION }}
       GIT_PLUGIN: ${{ secrets.GIT_PLUGIN }}
-      USER_NAME: ${{ github.triggering_actor }}
-      EMAIL: ${{ inputs.email }}
+      BUILD_TOOL_LOCATION_LINUX: ${{ secrets.BUILD_TOOL_LOCATION_LINUX }}
+      BUILD_TOOL_LOCATION_LINUX_ARM: ${{ secrets.BUILD_TOOL_LOCATION_LINUX_ARM }}
+      BUILD_TOOL_LOCATION_OSX: ${{ secrets.BUILD_TOOL_LOCATION_OSX }}
+      BUILD_TOOL_LOCATION_OSX_ARM: ${{ secrets.BUILD_TOOL_LOCATION_OSX_ARM }}
+      BUILD_TOOL_LOCATION_WINDOWS: ${{ secrets.BUILD_TOOL_LOCATION_WINDOWS }}
+      BUILD_TOOL_LOCATION_WINDOWS_ARM: ${{ secrets.BUILD_TOOL_LOCATION_WINDOWS_ARM }}
+    if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
         id: checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-      - name: Download release content
-        id: download_release_content
-        run: |-
-          RELEASE_TAG=$(gh api repos/${{ github.repository }}/releases/latest --jq .tag_name)
-          echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
-          mkdir -p dist
-          gh release download "$RELEASE_TAG" --repo ${{ github.repository }} --pattern content.zip --dir dist
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: Setup Node.js
+        id: setup_node_js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
       - name: Enable Corepack
         id: enable_corepack
         run: corepack enable
       - name: Install dependencies
         id: install_dependencies
         run: yarn install --immutable
-      - name: Publish
-        id: publish
+      - name: Build and publish
+        id: build_and_publish
         run: npx projen publish

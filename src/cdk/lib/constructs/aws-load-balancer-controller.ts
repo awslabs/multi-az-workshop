@@ -6,8 +6,8 @@ import * as eks_legacy from 'aws-cdk-lib/aws-eks';
 import * as eks from 'aws-cdk-lib/aws-eks-v2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct, IDependable } from 'constructs';
-import { ContainerAndRepo, RepoAndHelmChartProps, RepoAndContainerProps } from './container-and-repo';
-import { HelmRepoAndChartConstruct } from './helm-repo-and-chart';
+import { CreEcrImport } from '@cre/constructs';
+import { builtAsset } from '../build-assets';
 
 /**
  * Properties for AWS Load Balancer Controller construct
@@ -19,9 +19,9 @@ export interface AwsLoadBalancerControllerProps {
   readonly cluster: eks.ICluster;
 
   /**
-   * Container and repository builder for managing container images and Helm charts
+   * Loads the controller's chart and image (S3 assets the build makes) into ECR
    */
-  readonly containerAndRepoBuilder: ContainerAndRepo;
+  readonly ecrImport: CreEcrImport;
 
   /**
    * Version for the AWS Load Balancer Controller
@@ -42,7 +42,7 @@ export interface AwsLoadBalancerControllerProps {
 /**
  * Construct that installs the AWS Load Balancer Controller on an EKS cluster
  */
-export class AwsLoadBalancerController extends HelmRepoAndChartConstruct {
+export class AwsLoadBalancerController extends Construct {
   /**
    * Waitable node for dependency management
    */
@@ -97,23 +97,22 @@ export class AwsLoadBalancerController extends HelmRepoAndChartConstruct {
 
     loadBalancerControllerPodIdentityAssociation.node.addDependency(loadBalancerServiceAccount);
 
-    // Create Helm chart repository
-    const loadBalancerControllerHelmChartRepo = props.containerAndRepoBuilder.createRepoAndHelmChart({
-      helmChartName: 'aws-load-balancer-controller',
-      version: version,
-      repositoryName: 'aws-load-balancer-controller',
-    } as RepoAndHelmChartProps);
-
-    // Create container repository
-    const awsLB = props.containerAndRepoBuilder.addContainerAndRepo({
-      containerImageS3ObjectKey: 'aws-load-balancer-controller.tar.gz',
+    // The chart and image, loaded into ECR from the build's tarballs (build:assets).
+    const loadBalancerControllerHelmChartRepo = props.ecrImport.addHelmChart('aws-load-balancer-controller-chart', {
+      chart: builtAsset(this, 'chart-asset', `aws-load-balancer-controller-${version}.tgz`),
+      name: 'aws-load-balancer-controller',
+      version,
+    });
+    const awsLB = props.ecrImport.addImage('aws-load-balancer-controller-image', {
+      tarball: builtAsset(this, 'image-asset', 'aws-load-balancer-controller.tar.gz'),
       repositoryName: 'eks/aws-load-balancer-controller',
-    } as RepoAndContainerProps);
+      tag: `v${version}-linux_arm64`,
+    });
 
     // Install AWS Load Balancer Controller Helm chart
     const loadBalancerController = props.cluster.addHelmChart('AwsLoadBalancerController', {
       chart: 'aws-load-balancer-controller',
-      repository: 'oci://' + loadBalancerControllerHelmChartRepo.repository.repositoryUri,
+      repository: loadBalancerControllerHelmChartRepo.uri,
       namespace: 'kube-system',
       wait: true,
       version: version,
@@ -134,9 +133,9 @@ export class AwsLoadBalancerController extends HelmRepoAndChartConstruct {
 
     loadBalancerController.node.addDependency(loadBalancerControllerPodIdentityAssociation);
     loadBalancerController.node.addDependency(props.workloadCapacity);
-    loadBalancerController.node.addDependency(awsLB.dependable);
+    loadBalancerController.node.addDependency(awsLB.ready);
     loadBalancerController.node.addDependency(loadBalancerControllerManagedPolicy);
-    loadBalancerController.node.addDependency(loadBalancerControllerHelmChartRepo.dependable);
+    loadBalancerController.node.addDependency(loadBalancerControllerHelmChartRepo.ready);
     (loadBalancerController.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
       'ServiceTimeout',
       '300',

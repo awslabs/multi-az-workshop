@@ -157,7 +157,6 @@
         "devDependencies": [
           "**/src/cdk/**",
           "**/test/**",
-          "**/build-tools/**",
           "**/.projenrc.ts/**",
           "**/projenrc/**",
           ".projenrc.ts",

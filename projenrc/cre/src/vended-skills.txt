@@ -1,0 +1,5 @@
+# Skills every CRE project links from the template's skills/ directory (one name per line).
+# attach-template.py links exactly these; a skill removed here is unlinked on the next update-template.
+pdd
+cre-git
+locust-cfs

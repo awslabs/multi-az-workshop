@@ -23,6 +23,12 @@ jobs:
       - name: Enable corepack
         id: enable_corepack
         run: corepack enable
+      - name: Setup Node.js
+        id: setup_node_js
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: "22"
+          package-manager-cache: false
       - name: Install dependencies
         id: install_dependencies
         run: yarn install --immutable
@@ -60,7 +66,7 @@ jobs:
     steps:
       - name: Generate token
         id: generate_token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
+        uses: actions/create-github-app-token@v3.2.0
         with:
           app-id: ${{ secrets.PROJEN_APP_ID }}
           private-key: ${{ secrets.PROJEN_APP_PRIVATE_KEY }}
@@ -86,9 +92,26 @@ jobs:
         run: |-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Skip while a person has commits on the upgrade branch
+        id: upgrade_guard
+        run: |-
+          set -euo pipefail
+          rc=0; git ls-remote --exit-code origin refs/heads/github-actions/upgrade-main >/dev/null || rc=$?
+          if [ "$rc" = 2 ]; then echo "human=false" >>"$GITHUB_OUTPUT"; exit 0; fi
+          if [ "$rc" != 0 ]; then echo "Could not read github-actions/upgrade-main from the repository." >&2; exit 1; fi
+          refs="+refs/heads/main:refs/remotes/origin/main +refs/heads/github-actions/upgrade-main:refs/remotes/origin/github-actions/upgrade-main"
+          if [ "$(git rev-parse --is-shallow-repository)" = true ]; then git fetch -q --unshallow origin $refs; else git fetch -q origin $refs; fi
+          who="$(git log --format='%ae%n%ce' "origin/main..origin/github-actions/upgrade-main")"
+          if printf '%s\n' "$who" | grep -v '^$' | grep -qvxF '41898282+github-actions[bot]@users.noreply.github.com'; then
+            echo "::warning::github-actions/upgrade-main has commits that aren't the upgrade workflow's; skipping so they are not overwritten. Merge its PR, or delete the branch (closing the PR leaves the branch, and this keeps skipping); then the next run upgrades again."
+            echo "human=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "human=false" >>"$GITHUB_OUTPUT"
+          fi
       - name: Create Pull Request
         id: create-pr
-        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
+        if: steps.upgrade_guard.outputs.human != 'true'
+        uses: peter-evans/create-pull-request@v8.1.1
         with:
           token: ${{ steps.generate_token.outputs.token }}
           commit-message: |-
