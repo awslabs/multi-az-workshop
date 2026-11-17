@@ -42,10 +42,14 @@ export function templateSteeringDir(outdir: string, own: string = OWN_TEMPLATE):
 
 /**
  * The project's steering: `.kiro/steering/cre-<name>.md`, each a LINK to the file in the template
- * clone (where alone it is edited), for this project's type, provider and modules. All local-only
- * (src/local-only.ts): made on a
- * laptop with a template clone, never committed, and not projen's files, so CI (no clone) makes none
- * and its generated files match. A `cre-*.md` the project no longer gets is removed; the project's
+ * clone (where alone it is edited), for this project's type, provider and modules. Claude Code gets
+ * the same files, every `.kiro/steering/*.md` (the project's own too): one Kiro loads always
+ * (`inclusion: always`, or none) is linked into `.claude/rules/`, which Claude Code loads at launch;
+ * any other into `.claude/commands/`, which it reads when the description matches.
+ *
+ * All local-only (src/local-only.ts): made on a laptop with a template clone, never committed, and
+ * not projen's files, so CI (no clone) makes none and its generated files match. A `cre-*.md` the
+ * project no longer gets is removed, and so is a Claude link to a file that is gone; the project's
  * own steering is never touched.
  */
 export class Steering extends Component {
@@ -77,10 +81,44 @@ export class Steering extends Component {
       const p = path.join(dir, name);
       if (fs.existsSync(p) || isLink(p)) fs.rmSync(p, { force: true });
       if (!fs.existsSync(path.join(sources, file))) throw new Error(`cre: the template clone has no steering/${file} (pull it).`);
-      // Relative between the real paths: a link climbs the physical directories (/var is /private/var on macOS).
-      fs.symlinkSync(path.relative(fs.realpathSync(dir), fs.realpathSync(path.join(sources, file))), p);
+      link(path.join(sources, file), p);
     }
+    linkForClaude(this.project.outdir, dir);
   }
+}
+
+/**
+ * Claude Code's copy of the steering: each `.kiro/steering/*.md` linked into `.claude/rules/` (loaded
+ * at launch) when Kiro loads it always, else into `.claude/commands/` (read when its description
+ * matches). Only links are made or removed there.
+ */
+function linkForClaude(outdir: string, steering: string): void {
+  const kiro = fs.realpathSync(steering);
+  const want = new Set<string>();
+  for (const f of fs.readdirSync(kiro).filter((n) => n.endsWith('.md'))) {
+    // Kiro's default inclusion is always.
+    const inclusion = /^inclusion:\s*(\S+)/m.exec(frontMatter(path.join(kiro, f)))?.[1] ?? 'always';
+    want.add(path.join(outdir, '.claude', inclusion === 'always' ? 'rules' : 'commands', f));
+  }
+  for (const d of ['rules', 'commands'].map((n) => path.join(outdir, '.claude', n))) {
+    fs.mkdirSync(d, { recursive: true });
+    for (const p of fs.readdirSync(d).map((n) => path.join(d, n))) if (isLink(p)) fs.rmSync(p);
+  }
+  // Each to the .kiro/steering file (itself a link, for the template's): one place says where it points.
+  for (const p of want) {
+    if (!fs.existsSync(p)) fs.symlinkSync(path.relative(fs.realpathSync(path.dirname(p)), path.join(kiro, path.basename(p))), p);
+  }
+}
+
+/** The YAML front matter of a markdown file ("" when it has none). */
+function frontMatter(file: string): string {
+  const m = /^---\n([\s\S]*?)\n---\n/.exec(fs.readFileSync(file, 'utf-8'));
+  return m ? m[1] : '';
+}
+
+/** A relative symlink at p to target, between the real paths (/var is /private/var on macOS). */
+function link(target: string, p: string): void {
+  fs.symlinkSync(path.relative(fs.realpathSync(path.dirname(p)), fs.realpathSync(target)), p);
 }
 
 function isLink(p: string): boolean {

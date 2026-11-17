@@ -50,6 +50,9 @@ export function localOnlyIgnores(): string[] {
     '/.kiro/steering/cre-*.md',
     ...vendedSkills().map((s) => `/.kiro/skills/${s}`),
     '/.claude/skills',
+    // Claude Code's links to the steering (src/components/steering.ts): its one home is .kiro/steering.
+    '/.claude/rules/',
+    '/.claude/commands/',
     // The package's local-only parts: the setup app, and every script CI doesn't run.
     '/projenrc/cre/setup-cdk/',
     '/projenrc/cre/scripts/**',
