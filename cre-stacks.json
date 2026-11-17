@@ -2,7 +2,7 @@
   "synthesized": [
     {
       "id": "multi-az-workshop",
-      "region": "us-east-1",
+      "region": "us-east-2",
       "dependsOn": [],
       "parameters": {
         "ParticipantRoleName": {
@@ -26,7 +26,7 @@
   "stacks": [
     {
       "id": "multi-az-workshop",
-      "region": "us-east-1",
+      "region": "us-east-2",
       "executionRole": {
         "variable": "CFN_EXECUTION_ROLE_ARN",
         "optional": false
@@ -55,7 +55,7 @@
       "env": {
         "STACK_NAME": "multi-az-workshop",
         "TEMPLATE_NAME": "multi-az-workshop",
-        "AWS_REGION": "us-east-1",
+        "AWS_REGION": "us-east-2",
         "OUTPUTS_PREFIX": "STACK_MULTI_AZ_WORKSHOP",
         "OUTPUTS": "",
         "ROLE_ARN": "$CFN_EXECUTION_ROLE_ARN",
@@ -81,7 +81,7 @@
           },
           "AWS_REGION": {
             "kind": "literal",
-            "value": "us-east-1"
+            "value": "us-east-2"
           },
           "OUTPUTS_PREFIX": {
             "kind": "literal",

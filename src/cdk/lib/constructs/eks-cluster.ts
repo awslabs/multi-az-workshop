@@ -101,7 +101,7 @@ export class EKSCluster extends Construct {
       ec2.Port.tcp(5000)
     );
 
-    new ec2.CfnSecurityGroupIngress(
+    const workerPeerIngress = new ec2.CfnSecurityGroupIngress(
       this,
       "WorkerPeerSecurityGroupIngress",
       {
@@ -277,7 +277,7 @@ export class EKSCluster extends Construct {
 
     // Workers need to allow ingress from the Lambda kubectl function
     // to configure AWS load balancer controller and target groups
-    new ec2.CfnSecurityGroupIngress(this,
+    const controlPlaneIngress = new ec2.CfnSecurityGroupIngress(this,
       "LambdaKubectlIngressRule",
       {
         sourceSecurityGroupId: cluster.clusterSecurityGroupId,
@@ -350,7 +350,11 @@ export class EKSCluster extends Construct {
     const coreDns = addon('CoreDnsAddOn', 'COREDNS', [kubeProxy, nodegroup]);
     const podIdentityAgent = addon('PodIdentityAgentAddOn', 'POD_IDENTITY_AGENT', []);
 
-    this.workloadCapacity = new DependencyGroup(nodegroup, vpcCni, kubeProxy, coreDns, podIdentityAgent);
+    // The rules that let the control plane and the kubectl Lambda reach the nodes too: nothing else
+    // depends on them, so CloudFormation deleted them first in a teardown, and the API server could
+    // no longer call the load balancer controller's webhook (on the nodes) to drop the
+    // TargetGroupBinding's finalizer, which held its delete until the custom resource timed out.
+    this.workloadCapacity = new DependencyGroup(nodegroup, vpcCni, kubeProxy, coreDns, podIdentityAgent, workerPeerIngress, controlPlaneIngress);
 
     cluster.grantAccess(
       "ParticipantRoleReadOnlyAccess", 

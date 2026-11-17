@@ -571,7 +571,13 @@ export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
         updateSnapshot: UpdateSnapshot.NEVER,
         // cre-constructs uses NodeNext `.js` import specifiers for its .ts files; without the
         // mapper a test that imports @cre/constructs fails to resolve them (review 10b A3).
-        jestConfig: { moduleNameMapper: { '^(\\.{1,2}/.*)\\.js$': '$1' } },
+        // The global setup/teardown give each run its own temp directory and delete it, with the
+        // `cdk.out*` directory every test app synthesizes into (gigabytes a day otherwise).
+        jestConfig: {
+          moduleNameMapper: { '^(\\.{1,2}/.*)\\.js$': '$1' },
+          globalSetup: `<rootDir>/${CRE_SCRIPTS}/jest/global-setup.js`,
+          globalTeardown: `<rootDir>/${CRE_SCRIPTS}/jest/global-teardown.js`,
+        },
       },
       featureFlags: awscdk.CdkFeatureFlags.V2.ALL,
       packageManager: NodePackageManager.YARN_BERRY,

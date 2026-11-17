@@ -156,7 +156,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd
         with:
           role-to-assume: ${{ vars.RUNNER_ROLE_ARN || secrets.RUNNER_ROLE_ARN }}
-          aws-region: us-east-1
+          aws-region: us-east-2
           mask-aws-account-id: true
           role-duration-seconds: 7200
       - name: Deploy multi-az-workshop
@@ -166,7 +166,7 @@ jobs:
           CFN_EXECUTION_ROLE_ARN: ${{ vars.CFN_EXECUTION_ROLE_ARN || secrets.CFN_EXECUTION_ROLE_ARN }}
           STACK_NAME: multi-az-workshop
           TEMPLATE_NAME: multi-az-workshop
-          AWS_REGION: us-east-1
+          AWS_REGION: us-east-2
           OUTPUTS_PREFIX: STACK_MULTI_AZ_WORKSHOP
           OUTPUTS: ""
           ROLE_ARN: ${{ vars.CFN_EXECUTION_ROLE_ARN || secrets.CFN_EXECUTION_ROLE_ARN }}

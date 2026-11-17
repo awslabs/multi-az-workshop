@@ -113,6 +113,8 @@ venv/
 !/projenrc/cre/scripts/cresetup/stack_plan.py
 !/projenrc/cre/scripts/failure-scenario/clean-purity-scan.py
 !/projenrc/cre/scripts/failure-scenario/ground-truth-check.py
+!/projenrc/cre/scripts/jest/global-setup.js
+!/projenrc/cre/scripts/jest/global-teardown.js
 !/projenrc/cre/scripts/lib/crelib.py
 !/projenrc/cre/scripts/template/verify-constructs.py
 !/projenrc/cre/scripts/lib/template.py

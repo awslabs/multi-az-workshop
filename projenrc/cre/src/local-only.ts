@@ -25,6 +25,7 @@ export const CI_SCRIPTS: readonly string[] = [
   'cresetup/aws.py', 'cresetup/cfn.py', 'cresetup/constants.py', 'cresetup/git_state.py', 'cresetup/parallel.py',
   'cresetup/proc.py', 'cresetup/result.py', 'cresetup/stack_plan.py',
   'failure-scenario/clean-purity-scan.py', 'failure-scenario/ground-truth-check.py',
+  'jest/global-setup.js', 'jest/global-teardown.js',
   'lib/crelib.py',
   'template/verify-constructs.py',
 ];
