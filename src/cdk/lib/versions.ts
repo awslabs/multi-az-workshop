@@ -6,7 +6,7 @@ import * as path from 'path';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 
 /**
- * The kinds of entry build/versions.json holds: each has a lookup in build/versions.py, which the
+ * The kinds of entry build/versions.json holds: each has a lookup in projenrc/cre/scripts/build/versions.py, which the
  * weekly upgrade (post-upgrade: versions:update) uses to move it to the newest version its
  * `update` range allows.
  */

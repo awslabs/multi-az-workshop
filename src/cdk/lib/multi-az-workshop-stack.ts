@@ -10,10 +10,10 @@ import {
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
+import { CreCfnParameter, CreStack, CreStackProps, WorkshopStudioMagic } from '@cre/constructs';
 import { InstanceArchitecture } from './constructs/eks-cluster';
 import { EnhancedApplicationLoadBalancer } from './constructs/enhanced-load-balancer';
 import { NestedStackWithSource } from './constructs/nested-stack-with-source';
@@ -23,7 +23,6 @@ import { AZTaggerStack } from './nested-stacks/az-tagger-stack';
 import { CodeDeployApplicationStack } from './nested-stacks/code-deploy-application-stack';
 import { DatabaseStack } from './nested-stacks/database-stack';
 import { EC2FleetStack } from './nested-stacks/ec2-fleet-stack';
-import { EcrUploaderStack } from './nested-stacks/ecr-uploader-stack';
 import { EKSStack } from './nested-stacks/eks-stack';
 import { FaultInjectionStack } from './nested-stacks/fault-injection-stack';
 import { IpV6NetworkStack } from './nested-stacks/ipv6-network-stack';
@@ -41,14 +40,14 @@ import { KubernetesVersion } from 'aws-cdk-lib/aws-eks';
 /**
  * Properties for the MultiAZWorkshopStack
  */
-export interface MultiAZWorkshopStackProps extends cdk.StackProps {
+export interface MultiAZWorkshopStackProps extends CreStackProps {
   // Additional props can be added here if needed
 }
 
 /**
- * Main stack for the Multi-AZ Workshop
+ * The Multi-AZ Workshop's stack: the one template Workshop Studio deploys into each team's account
  */
-export class MultiAZWorkshopStack extends cdk.Stack {
+export class MultiAZWorkshopStack extends CreStack {
   
   // Configuration constants
   private readonly evacuationMethod: EvacuationMethod;
@@ -57,14 +56,10 @@ export class MultiAZWorkshopStack extends cdk.Stack {
   private readonly arch: InstanceArchitecture = InstanceArchitecture.ARM_64;
   private readonly ec2Arch: ec2.InstanceArchitecture = ec2.InstanceArchitecture.ARM_64;
 
-  // Python runtime for Lambda functions
-  public static readonly pythonRuntime: lambda.Runtime = lambda.Runtime.PYTHON_3_13;
-
   // Nested stacks and resources
   private networkStack: IpV6NetworkStack;
   private databaseStack: DatabaseStack;
   private ec2Stack: EC2FleetStack;
-  private ecrUploaderStack: EcrUploaderStack;
   private eksStack: EKSStack;
   private codeDeployStack: CodeDeployApplicationStack;
   private azTaggerStack: AZTaggerStack;
@@ -77,21 +72,10 @@ export class MultiAZWorkshopStack extends cdk.Stack {
     // Read evacuation method from context, default to ZonalShift
     this.evacuationMethod = this.node.tryGetContext('evacuationMethod') || EvacuationMethod.ZonalShift;
 
-    // CloudFormation Parameters
-    const assetsBucketName = new cdk.CfnParameter(this, 'AssetsBucketName', {
-      type: 'String',
-      minLength: 1,
-      default: '{{.AssetsBucketName}}',
-    });
-
-    const assetsBucketPrefix = new cdk.CfnParameter(this, 'AssetsBucketPrefix', {
-      type: 'String',
-      default: '{{.AssetsBucketPrefix}}',
-    });
-
-    const participantRoleName = new cdk.CfnParameter(this, 'ParticipantRoleName', {
-      type: 'String',
-      default: '{{.ParticipantRoleName}}',
+    // AssetsBucketName and AssetsBucketPrefix are CreStack's (this.assetsBucketName, this.assetsBucketPrefix).
+    // The participant role's name comes from Workshop Studio (our test deploy: WS_PARTICIPANT_ROLE_NAME).
+    const participantRoleName = new CreCfnParameter(this, 'ParticipantRoleName', {
+      fromMagic: WorkshopStudioMagic.PARTICIPANT_ROLE_NAME,
     });
 
     // Constants
@@ -150,11 +134,6 @@ export class MultiAZWorkshopStack extends cdk.Stack {
         versions.version('POSTGRES', 'rds-engine').split('.')[0]),
     });
 
-    // Create ECR Uploader Stack (shared Lambda function)
-    this.ecrUploaderStack = new EcrUploaderStack(this, 'ecr-uploader', {
-      pythonRuntime: MultiAZWorkshopStack.pythonRuntime,
-    });
-
     // Create log group for front-end
     const frontEndLogGroup = new logs.LogGroup(this, 'front-end-log-group', {
       logGroupName: this.frontEndLogGroupName,
@@ -194,8 +173,8 @@ export class MultiAZWorkshopStack extends cdk.Stack {
       database: this.databaseStack.database,
       loadBalancerSecurityGroup: albSecurityGroup,
       subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
-      assetsBucketName: assetsBucketName.valueAsString,
-      assetsBucketPrefix: assetsBucketPrefix.valueAsString,
+      assetsBucketName: this.assetsBucketName.valueAsString,
+      assetsBucketPrefix: this.assetsBucketPrefix.valueAsString,
     });
 
     this.ec2Stack.node.addDependency(this.azTaggerStack);
@@ -208,7 +187,6 @@ export class MultiAZWorkshopStack extends cdk.Stack {
       loadBalancerSecurityGroup: albSecurityGroup,
       adminRoleName: participantRoleName.valueAsString,
       iamResourcePath: '/front-end/eks-fleet/',
-      uploaderFunction: this.ecrUploaderStack.uploaderFunction,
       eksVersion: KubernetesVersion.of(versions.version('EKS', 'eks-kubernetes')),
       istioVersion: versions.version('ISTIO', 'helm-chart'),
       awsLoadBalancerControllerVersion: versions.version('AWS_LOAD_BALANCER_CONTROLLER', 'helm-chart'),
@@ -397,7 +375,7 @@ export class MultiAZWorkshopStack extends cdk.Stack {
     // Create CodeDeploy Application Stack
     this.codeDeployStack = new CodeDeployApplicationStack(this, 'codedeploy', {
       ec2Fleet: this.ec2Stack,
-      applicationKey: assetsBucketPrefix.valueAsString + 'app_deploy.zip',
+      applicationKey: this.assetsBucketPrefix.valueAsString + 'app_deploy.zip',
       availabilityZoneCount: availabilityZoneIds.length,
       totalEC2InstancesInFleet: fleetSize,
       applicationName: 'multi-az-workshop',

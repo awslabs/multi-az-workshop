@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { KubectlV35Layer } from '@aws-cdk/lambda-layer-kubectl-v35';
+import { CreEcrImport } from '@cre/constructs';
 import * as cdk from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
@@ -9,8 +10,6 @@ import * as eks from 'aws-cdk-lib/aws-eks-v2';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { DependencyGroup } from 'constructs';
 import { AwsLoadBalancerController } from '../../../src/cdk/lib/constructs/aws-load-balancer-controller';
-import { ContainerAndRepo } from '../../../src/cdk/lib/constructs/container-and-repo';
-import { createMockUploaderFunction } from '../../helpers';
 import {
   assertResourceExists,
   assertResourceProperties,
@@ -24,7 +23,7 @@ describe('AwsLoadBalancerController', () => {
   let sharedStack: cdk.Stack;
   let sharedVpc: ec2.Vpc;
   let sharedCluster: eks.Cluster;
-  let sharedContainerAndRepoBuilder: ContainerAndRepo;
+  let sharedEcrImport: CreEcrImport;
   let sharedTemplate: any;
 
   beforeAll(() => {
@@ -46,7 +45,7 @@ describe('AwsLoadBalancerController', () => {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // Set up parameters for ContainerAndRepo
+    // Assets bucket parameters, as the workshop stack has
     new cdk.CfnParameter(sharedStack, 'AssetsBucketName', {
       type: 'String',
       default: assetsBucket.bucketName,
@@ -56,13 +55,8 @@ describe('AwsLoadBalancerController', () => {
       default: 'assets/',
     });
 
-    // Create container and repo builder
-    const uploaderFunction = createMockUploaderFunction(sharedStack);
-    sharedContainerAndRepoBuilder = new ContainerAndRepo(
-      sharedStack,
-      'ContainerAndRepo',
-      { uploaderFunction },
-    );
+    // The ECR import the construct loads its images and charts with
+    sharedEcrImport = new CreEcrImport(sharedStack, 'EcrImport');
 
     // What the controller needs to run: nodes and the Pod Identity agent
     const nodegroup = sharedCluster.addNodegroupCapacity('Nodes', { minSize: 1 });
@@ -74,7 +68,7 @@ describe('AwsLoadBalancerController', () => {
     // Create the load balancer controller with default configuration
     new AwsLoadBalancerController(sharedStack, 'LoadBalancerController', {
       cluster: sharedCluster,
-      containerAndRepoBuilder: sharedContainerAndRepoBuilder,
+      ecrImport: sharedEcrImport,
       workloadCapacity: new DependencyGroup(nodegroup, podIdentityAgent),
     });
 
@@ -237,6 +231,13 @@ describe('AwsLoadBalancerController', () => {
     test('creates ECR repository for controller image', () => {
       assertResourceExists(sharedTemplate, 'AWS::ECR::Repository');
     });
+
+    test('loads the controller image and chart into ECR, as the chart values name them', () => {
+      sharedTemplate.hasResourceProperties('AWS::ECR::Repository', { RepositoryName: 'eks/aws-load-balancer-controller' });
+      sharedTemplate.hasResourceProperties('AWS::ECR::Repository', { RepositoryName: 'aws-load-balancer-controller' });
+      sharedTemplate.hasResourceProperties('Custom::CreEcrImport', { Kind: 'image', Tag: 'v3.0.0-linux_arm64' });
+      sharedTemplate.hasResourceProperties('Custom::CreEcrImport', { Kind: 'helm', ChartName: 'aws-load-balancer-controller', Tag: '3.0.0' });
+    });
   });
 
   describe('Helm chart repository', () => {
@@ -298,17 +299,11 @@ describe('AwsLoadBalancerController', () => {
         type: 'String',
         default: 'assets/',
       });
-
-      const uploaderFunction = createMockUploaderFunction(stack, 'TestUploaderFunction');
-      const containerAndRepoBuilder = new ContainerAndRepo(
-        stack,
-        'TestContainerAndRepo',
-        { uploaderFunction },
-      );
+      const ecrImport = new CreEcrImport(stack, 'TestEcrImport');
 
       controller = new AwsLoadBalancerController(stack, 'TestLoadBalancerController', {
         cluster,
-        containerAndRepoBuilder,
+        ecrImport,
         workloadCapacity: new DependencyGroup(),
       });
     });
@@ -360,15 +355,11 @@ describe('AwsLoadBalancerController', () => {
         default: 'assets/',
       });
 
-      const containerAndRepoBuilder = new ContainerAndRepo(
-        stack,
-        'ContainerAndRepo',
-        { uploaderFunction: createMockUploaderFunction(stack, 'Uploader' + Math.random()) },
-      );
+      const ecrImport = new CreEcrImport(stack, 'EcrImport');
 
       new AwsLoadBalancerController(stack, 'LoadBalancerController', {
         cluster,
-        containerAndRepoBuilder,
+        ecrImport,
         workloadCapacity: new DependencyGroup(),
         version: 'v2.9.0',
       });
@@ -411,15 +402,11 @@ describe('AwsLoadBalancerController', () => {
         default: 'assets/',
       });
 
-      const containerAndRepoBuilder = new ContainerAndRepo(
-        stack,
-        'ContainerAndRepo',
-        { uploaderFunction: createMockUploaderFunction(stack, 'Uploader' + Math.random()) },
-      );
+      const ecrImport = new CreEcrImport(stack, 'EcrImport');
 
       new AwsLoadBalancerController(stack, 'LoadBalancerController', {
         cluster,
-        containerAndRepoBuilder,
+        ecrImport,
         workloadCapacity: new DependencyGroup(),
         version: '1.11.0',
       });

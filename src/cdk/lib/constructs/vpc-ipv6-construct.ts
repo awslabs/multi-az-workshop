@@ -162,10 +162,9 @@ export class VpcIpV6 extends ec2.Vpc implements IVpcIpV6 {
       }
     }
 
-    // Output availability zones
+    // Output availability zones (no export: nothing imports it, and stacks never pass values through exports)
     new cdk.CfnOutput(this, 'AvailabilityZones', {
       value: cdk.Fn.join(',', props.availabilityZones ?? []),
-      exportName: cdk.Fn.sub('${AWS::StackName}-AvailabilityZones'),
     });
 
     // Output IPv6 CIDR blocks if enabled

@@ -1,0 +1,225 @@
+{
+  "synthesized": [
+    {
+      "id": "multi-az-workshop-workshop-account",
+      "region": "us-east-1",
+      "kind": "workshop-account",
+      "dependsOn": [],
+      "parameters": {},
+      "outputs": []
+    },
+    {
+      "id": "multi-az-workshop",
+      "region": "us-east-1",
+      "dependsOn": [
+        "multi-az-workshop-workshop-account"
+      ],
+      "parameters": {
+        "ParticipantRoleName": {
+          "kind": "env",
+          "variable": "WS_PARTICIPANT_ROLE_NAME",
+          "optional": false,
+          "magic": "ParticipantRoleName"
+        }
+      },
+      "outputs": []
+    }
+  ],
+  "environment": {
+    "required": [
+      "CFN_EXECUTION_ROLE_ARN",
+      "WS_PARTICIPANT_ROLE_NAME"
+    ],
+    "optional": [],
+    "defaulted": []
+  },
+  "stacks": [
+    {
+      "id": "multi-az-workshop-workshop-account",
+      "region": "us-east-1",
+      "kind": "workshop-account",
+      "executionRole": {
+        "variable": "CFN_EXECUTION_ROLE_ARN",
+        "optional": false
+      },
+      "parameters": {},
+      "outputs": [],
+      "needs": []
+    },
+    {
+      "id": "multi-az-workshop",
+      "region": "us-east-1",
+      "executionRole": {
+        "variable": "CFN_EXECUTION_ROLE_ARN",
+        "optional": false
+      },
+      "parameters": {
+        "ParticipantRoleName": {
+          "kind": "env",
+          "variable": "WS_PARTICIPANT_ROLE_NAME",
+          "optional": false,
+          "magic": "ParticipantRoleName"
+        }
+      },
+      "outputs": [],
+      "needs": [
+        "multi-az-workshop-workshop-account"
+      ]
+    }
+  ],
+  "jobs": {
+    "multi-az-workshop-workshop-account": {
+      "gitlab": "deploy:multi-az-workshop-workshop-account",
+      "github": "deploy-multi-az-workshop-workshop-account",
+      "needs": [],
+      "variables": [
+        "CFN_EXECUTION_ROLE_ARN"
+      ],
+      "env": {
+        "STACK_NAME": "multi-az-workshop-workshop-account",
+        "TEMPLATE_NAME": "multi-az-workshop-workshop-account",
+        "AWS_REGION": "us-east-1",
+        "OUTPUTS_PREFIX": "STACK_MULTI_AZ_WORKSHOP_WORKSHOP_ACCOUNT",
+        "OUTPUTS": "",
+        "ROLE_ARN": "$CFN_EXECUTION_ROLE_ARN",
+        "ASSUME_ROLE": "",
+        "STACK_PARAMETERS": "",
+        "REQUIRED_VARS": "CFN_EXECUTION_ROLE_ARN",
+        "REQUIRED_OUTPUTS": ""
+      },
+      "spec": {
+        "needs": [],
+        "variables": [
+          "CFN_EXECUTION_ROLE_ARN"
+        ],
+        "env": {
+          "STACK_NAME": {
+            "kind": "literal",
+            "value": "multi-az-workshop-workshop-account"
+          },
+          "TEMPLATE_NAME": {
+            "kind": "literal",
+            "value": "multi-az-workshop-workshop-account"
+          },
+          "AWS_REGION": {
+            "kind": "literal",
+            "value": "us-east-1"
+          },
+          "OUTPUTS_PREFIX": {
+            "kind": "literal",
+            "value": "STACK_MULTI_AZ_WORKSHOP_WORKSHOP_ACCOUNT"
+          },
+          "OUTPUTS": {
+            "kind": "literal",
+            "value": ""
+          },
+          "ROLE_ARN": {
+            "kind": "var",
+            "name": "CFN_EXECUTION_ROLE_ARN",
+            "optional": false
+          },
+          "ASSUME_ROLE": {
+            "kind": "literal",
+            "value": ""
+          },
+          "STACK_PARAMETERS": {
+            "kind": "lines",
+            "lines": []
+          },
+          "REQUIRED_VARS": {
+            "kind": "literal",
+            "value": "CFN_EXECUTION_ROLE_ARN"
+          },
+          "REQUIRED_OUTPUTS": {
+            "kind": "literal",
+            "value": ""
+          }
+        }
+      }
+    },
+    "multi-az-workshop": {
+      "gitlab": "deploy:multi-az-workshop",
+      "github": "deploy-multi-az-workshop",
+      "needs": [
+        "multi-az-workshop-workshop-account"
+      ],
+      "variables": [
+        "WS_PARTICIPANT_ROLE_NAME",
+        "CFN_EXECUTION_ROLE_ARN"
+      ],
+      "env": {
+        "STACK_NAME": "multi-az-workshop",
+        "TEMPLATE_NAME": "multi-az-workshop",
+        "AWS_REGION": "us-east-1",
+        "OUTPUTS_PREFIX": "STACK_MULTI_AZ_WORKSHOP",
+        "OUTPUTS": "",
+        "ROLE_ARN": "$CFN_EXECUTION_ROLE_ARN",
+        "ASSUME_ROLE": "",
+        "STACK_PARAMETERS": "ParticipantRoleName=$WS_PARTICIPANT_ROLE_NAME",
+        "REQUIRED_VARS": "WS_PARTICIPANT_ROLE_NAME CFN_EXECUTION_ROLE_ARN",
+        "REQUIRED_OUTPUTS": ""
+      },
+      "spec": {
+        "needs": [
+          "multi-az-workshop-workshop-account"
+        ],
+        "variables": [
+          "WS_PARTICIPANT_ROLE_NAME",
+          "CFN_EXECUTION_ROLE_ARN"
+        ],
+        "env": {
+          "STACK_NAME": {
+            "kind": "literal",
+            "value": "multi-az-workshop"
+          },
+          "TEMPLATE_NAME": {
+            "kind": "literal",
+            "value": "multi-az-workshop"
+          },
+          "AWS_REGION": {
+            "kind": "literal",
+            "value": "us-east-1"
+          },
+          "OUTPUTS_PREFIX": {
+            "kind": "literal",
+            "value": "STACK_MULTI_AZ_WORKSHOP"
+          },
+          "OUTPUTS": {
+            "kind": "literal",
+            "value": ""
+          },
+          "ROLE_ARN": {
+            "kind": "var",
+            "name": "CFN_EXECUTION_ROLE_ARN",
+            "optional": false
+          },
+          "ASSUME_ROLE": {
+            "kind": "literal",
+            "value": ""
+          },
+          "STACK_PARAMETERS": {
+            "kind": "lines",
+            "lines": [
+              [
+                "ParticipantRoleName",
+                {
+                  "kind": "var",
+                  "name": "WS_PARTICIPANT_ROLE_NAME",
+                  "optional": false
+                }
+              ]
+            ]
+          },
+          "REQUIRED_VARS": {
+            "kind": "literal",
+            "value": "WS_PARTICIPANT_ROLE_NAME CFN_EXECUTION_ROLE_ARN"
+          },
+          "REQUIRED_OUTPUTS": {
+            "kind": "literal",
+            "value": ""
+          }
+        }
+      }
+    }
+  }
+}

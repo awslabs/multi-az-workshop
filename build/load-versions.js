@@ -18,7 +18,7 @@ try {
   
   // Output as environment variables for shell consumption: each entry's version, a container
   // image's name without its tag as <KEY>_IMAGE, and a chart's repository as <KEY>_REPO
-  // (build/versions.py documents the entry kinds).
+  // (projenrc/cre/scripts/build/versions.py documents the entry kinds).
   Object.entries(versions).forEach(([key, entry]) => {
     console.log(`export ${key}="${entry.version}"`);
     if (entry.image) console.log(`export ${key}_IMAGE="${entry.image}"`);

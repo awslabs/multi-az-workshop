@@ -8,60 +8,69 @@
   "scripts": {
     "assets:arm64-container": "projen assets:arm64-container",
     "assets:arm64-container-fail": "projen assets:arm64-container-fail",
-    "assets:cdk-process": "projen assets:cdk-process",
     "assets:cloudwatch-agent": "projen assets:cloudwatch-agent",
     "assets:create-directories": "projen assets:create-directories",
     "assets:destination-rules": "projen assets:destination-rules",
     "assets:docker-compose": "projen assets:docker-compose",
-    "assets:helm-layer": "projen assets:helm-layer",
     "assets:istio-charts": "projen assets:istio-charts",
     "assets:istio-containers": "projen assets:istio-containers",
     "assets:kubectl": "projen assets:kubectl",
     "assets:lb-controller-chart": "projen assets:lb-controller-chart",
     "assets:lb-controller-container": "projen assets:lb-controller-container",
-    "assets:package": "projen assets:package",
+    "branch": "projen branch",
     "build": "projen build",
-    "build-and-deploy": "projen build-and-deploy",
     "build:app": "projen build:app",
     "build:assets": "projen build:assets",
-    "bump": "projen bump",
-    "bump:releasable-commits": "projen bump:releasable-commits",
     "bundle": "projen bundle",
-    "clobber": "projen clobber",
+    "check:generated": "projen check:generated",
+    "check:stack-plan": "projen check:stack-plan",
+    "check:stack-wiring": "projen check:stack-wiring",
+    "check:workshop": "projen check:workshop",
+    "ci:rerun": "projen ci:rerun",
+    "commit": "projen commit",
     "compile": "projen compile",
     "default": "projen default",
     "deploy": "projen deploy",
-    "deploy:workshop": "projen deploy:workshop",
-    "destroy": "projen destroy",
-    "destroy:workshop": "projen destroy:workshop",
-    "diff": "projen diff",
+    "deploy:prune": "projen deploy:prune",
+    "deploy:s3": "projen deploy:s3",
+    "deploy:stack": "projen deploy:stack",
+    "deploy:upload": "projen deploy:upload",
     "eject": "projen eject",
     "eslint": "projen eslint",
+    "git:status": "projen git:status",
     "package": "projen package",
+    "package:assets": "projen package:assets",
+    "package:content": "projen package:content",
     "post-compile": "projen post-compile",
     "post-upgrade": "projen post-upgrade",
     "pre-compile": "projen pre-compile",
+    "preview": "projen preview",
     "publish": "projen publish",
-    "publish:push-workshop": "projen publish:push-workshop",
-    "publish:upload-assets": "projen publish:upload-assets",
-    "release": "projen release",
+    "push": "projen push",
+    "setup:aws": "projen setup:aws",
+    "setup:github-app": "projen setup:github-app",
+    "setup:github-public": "projen setup:github-public",
+    "setup:repo": "projen setup:repo",
+    "skills:doctor": "projen skills:doctor",
+    "stacks": "projen stacks",
+    "stacks:outputs": "projen stacks:outputs",
     "synth": "projen synth",
     "synth:silent": "projen synth:silent",
+    "teardown": "projen teardown",
     "test": "projen test",
     "test:app:integration": "projen test:app:integration",
     "test:app:unit": "projen test:app:unit",
+    "test:update": "projen test:update",
     "test:watch": "projen test:watch",
-    "unbump": "projen unbump",
+    "unbootstrap": "projen unbootstrap",
+    "update-template": "projen update-template",
     "upgrade": "projen upgrade",
     "versions:check": "projen versions:check",
     "versions:update": "projen versions:update",
     "watch": "projen watch",
+    "workshop:stage": "projen workshop:stage",
+    "workshop:tool-location": "projen workshop:tool-location",
     "projen": "projen"
-  },
-  "author": {
-    "name": "Michael Haken",
-    "email": "mhaken@amazon.com",
-    "organization": false
   },
   "devDependencies": {
     "@aws-cdk/lambda-layer-kubectl-v35": "^2.0.0",
@@ -72,7 +81,6 @@
     "@typescript-eslint/eslint-plugin": "^8",
     "@typescript-eslint/parser": "^8",
     "aws-cdk": "^2",
-    "commit-and-tag-version": "^13",
     "esbuild": "^0.28.2",
     "eslint": "^9",
     "eslint-import-resolver-typescript": "^4.4.5",
@@ -80,13 +88,14 @@
     "fast-check": "^3.15.0",
     "jest": "^30.5.2",
     "jest-junit": "^17",
-    "projen": "0.104.27",
+    "projen": "0.104.8",
     "ts-jest": "^29.4.15",
     "ts-node": "^10.9.2",
-    "typescript": "^6.0.3"
+    "typescript": "~5.6.3"
   },
   "dependencies": {
-    "aws-cdk-lib": "2.260.0",
+    "@cre/constructs": "link:./cre-constructs",
+    "aws-cdk-lib": "2.248.0",
     "constructs": "^10.5.0"
   },
   "resolutions": {
@@ -98,6 +107,9 @@
     "picomatch": ">=2.3.2",
     "uuid": ">=14.0.0"
   },
+  "engines": {
+    "node": ">= 22.0.0"
+  },
   "devEngines": {
     "packageManager": {
       "name": "yarn",
@@ -106,7 +118,6 @@
     }
   },
   "license": "Apache-2.0",
-  "homepage": "https://github.com/awslabs/multi-az-workshop",
   "publishConfig": {
     "access": "public"
   },
@@ -114,6 +125,9 @@
   "packageManager": "yarn@4.13.0",
   "jest": {
     "coverageProvider": "v8",
+    "moduleNameMapper": {
+      "^(\\.{1,2}/.*)\\.js$": "$1"
+    },
     "testMatch": [
       "<rootDir>/@(src|test)/**/*(*.)@(spec|test).ts?(x)",
       "<rootDir>/@(src|test)/**/__tests__/**/*.ts?(x)",

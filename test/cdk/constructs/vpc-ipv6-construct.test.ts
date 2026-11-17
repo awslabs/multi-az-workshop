@@ -689,6 +689,8 @@ describe('VpcIpV6', () => {
       const outputs = template.toJSON().Outputs;
       const azOutput = Object.keys(outputs).find((key) => key.includes('AvailabilityZones'));
       expect(azOutput).toBeDefined();
+      // An output only: the workshop passes nothing between stacks through exports.
+      expect(outputs[azOutput!].Export).toBeUndefined();
     });
 
     test('creates IPv6 CIDR blocks output when IPv6 enabled', () => {

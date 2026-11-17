@@ -11,11 +11,9 @@
 /.github/workflows/deploy.yml linguist-generated
 /.github/workflows/publish.yml linguist-generated
 /.github/workflows/pull-request-lint.yml linguist-generated
-/.github/workflows/release.yml linguist-generated
 /.github/workflows/teardown.yml linguist-generated
 /.github/workflows/upgrade-main.yml linguist-generated
 /.gitignore linguist-generated
-/.npmignore linguist-generated
 /.pnp.* binary linguist-vendored
 /.projen/** linguist-generated
 /.projen/deps.json linguist-generated
@@ -26,6 +24,9 @@
 /.yarn/releases/* binary
 /.yarnrc.yml linguist-generated
 /cdk.json linguist-generated
+/contentspec.yaml linguist-generated
+/cre-constructs/** linguist-vendored
+/cre-stacks.json linguist-generated
 /LICENSE linguist-generated
 /package.json linguist-generated
 /projenrc/tsconfig.json linguist-generated linguist-language=JSON-with-Comments

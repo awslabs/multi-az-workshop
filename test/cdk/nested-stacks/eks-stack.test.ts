@@ -11,7 +11,6 @@ import * as rds from 'aws-cdk-lib/aws-rds';
 import { IPAddressType } from '../../../src/cdk/lib/constructs/ip-address-type';
 import { VpcIpV6, IVpcIpV6 } from '../../../src/cdk/lib/constructs/vpc-ipv6-construct';
 import { EKSStack } from '../../../src/cdk/lib/nested-stacks/eks-stack';
-import { createMockUploaderFunction } from '../../helpers';
 import { synthesizeStack, findResourcesByType } from '../../helpers/stack-helpers';
 
 
@@ -91,13 +90,11 @@ describe('EKSStack', () => {
     adminRoleName = adminRole.roleName;
 
     // Create shared EKS stack and template
-    const uploaderFunction = createMockUploaderFunction(parentStack);
     sharedEksStack = new EKSStack(parentStack, 'EKSStack', {
       vpc,
       database,
       loadBalancerSecurityGroup,
       adminRoleName,
-      uploaderFunction,
       eksVersion: eks.KubernetesVersion.of('1.35'),
       istioVersion: '1.29.0',
       awsLoadBalancerControllerVersion: '3.0.0',

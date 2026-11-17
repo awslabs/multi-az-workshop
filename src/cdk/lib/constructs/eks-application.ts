@@ -8,7 +8,8 @@ import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import { Construct } from 'constructs';
-import { ContainerAndRepo, RepoAndContainerProps } from './container-and-repo';
+import { CreEcrImport } from '@cre/constructs';
+import { builtAsset } from '../build-assets';
 
 /**
  * Properties for EKS Application construct
@@ -20,9 +21,9 @@ export interface EKSApplicationProps {
   readonly cluster: eks.ICluster;
 
   /**
-   * Container and repository builder for managing container images
+   * Loads the app's images (S3 assets the build makes) into ECR
    */
-  readonly containerAndRepoBuilder: ContainerAndRepo;
+  readonly ecrImport: CreEcrImport;
 
   /**
    * Database cluster for the application
@@ -59,16 +60,17 @@ export class EKSApplication extends Construct {
     const sa = `${props.namespace}-sa`;
     const shutdownDelay = cdk.Duration.seconds(30);
 
-    // Create container repositories
-    const appContainer = props.containerAndRepoBuilder.addContainerAndRepo({
-      containerImageS3ObjectKey: 'container.tar.gz',
+    // The app's and the CloudWatch agent's images, loaded into ECR from the build's tarballs (build:assets).
+    const appContainer = props.ecrImport.addImage('app-image', {
+      tarball: builtAsset(this, 'app-image-asset', 'container.tar.gz'),
       repositoryName: props.namespace,
-    } as RepoAndContainerProps);
-
-    const cwAgentContainer = props.containerAndRepoBuilder.addContainerAndRepo({
-      containerImageS3ObjectKey: 'cloudwatch-agent.tar.gz',
+      tag: 'latest',
+    });
+    const cwAgentContainer = props.ecrImport.addImage('cloudwatch-agent-image', {
+      tarball: builtAsset(this, 'cloudwatch-agent-image-asset', 'cloudwatch-agent.tar.gz'),
       repositoryName: 'cloudwatch-agent/cloudwatch-agent',
-    } as RepoAndContainerProps);
+      tag: 'latest',
+    });
 
     // Create IAM role for pods
     const podRole = new iam.Role(this, 'PodRole', {
@@ -368,7 +370,7 @@ export class EKSApplication extends Construct {
                 ],
                 containers: [
                   {
-                    image: `${appContainer.repository.repositoryUri}:latest`,
+                    image: appContainer.uri,
                     imagePullPolicy: 'Always',
                     name: app,
                     ports: [
@@ -384,7 +386,7 @@ export class EKSApplication extends Construct {
                     ],
                   },
                   {
-                    image: `${cwAgentContainer.repository.repositoryUri}:latest`,
+                    image: cwAgentContainer.uri,
                     imagePullPolicy: 'IfNotPresent',
                     name: 'cloudwatch-agent',
                     env: [
@@ -440,8 +442,8 @@ export class EKSApplication extends Construct {
     appDeployment.node.addDependency(istioVirtualService);
     appDeployment.node.addDependency(podIdentity);
     appDeployment.node.addDependency(agentConfigMap);
-    appDeployment.node.addDependency(appContainer.dependable);
-    appDeployment.node.addDependency(cwAgentContainer.dependable);
+    appDeployment.node.addDependency(appContainer.ready);
+    appDeployment.node.addDependency(cwAgentContainer.ready);
     (appDeployment.node.findChild('Resource').node.defaultChild as cdk.CfnResource).addPropertyOverride(
       'ServiceTimeout',
       '300',
