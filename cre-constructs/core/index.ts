@@ -14,5 +14,4 @@ export * from './iam-stack.js';
 export * from './names.js';
 export * from './versions.js';
 export * from './workshop-studio.js';
-export * from './workshop-account.js';
 export * from './build-output-asset.js';

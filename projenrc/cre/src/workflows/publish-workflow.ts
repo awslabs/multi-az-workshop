@@ -4,6 +4,7 @@ import { GithubWorkflow } from 'projen/lib/github';
 import type { GitHub } from 'projen/lib/github';
 import { JobPermission } from 'projen/lib/github/workflows-model';
 import { ACTIONS, NODE_MAJOR } from './actions';
+import { addGithubApproval } from './approval';
 
 /**
  * A Workshop Studio workshop's publish from CI, by hand: the user pastes the workshop's 1-hour
@@ -16,11 +17,13 @@ import { ACTIONS, NODE_MAJOR } from './actions';
 export const PUBLISH_SECRETS = ['WS_ACCESS_KEY_ID', 'WS_SECRET_ACCESS_KEY', 'WS_SESSION_TOKEN', 'REMOTE_REPO', 'ASSETS_LOCATION',
   'GIT_PLUGIN_LOCATION', 'GIT_PLUGIN'];
 
-export function createGithubPublishWorkflow(github: GitHub, buildToolSecrets: readonly string[]): void {
+export function createGithubPublishWorkflow(github: GitHub, buildToolSecrets: readonly string[], approval = false): void {
   const wf = new GithubWorkflow(github, 'publish');
   wf.on({ workflowDispatch: {} });
   const secret = (k: string) => [k, `\${{ secrets.${k} }}`];
+  const approved = approval ? [addGithubApproval(wf)] : [];
   wf.addJob('publish', {
+    ...(approved.length ? { needs: approved } : {}),
     if: "github.ref == 'refs/heads/main'",
     runsOn: ['ubuntu-24.04-arm'],
     permissions: { contents: JobPermission.READ },

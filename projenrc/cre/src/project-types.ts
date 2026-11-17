@@ -1,6 +1,6 @@
 import { SampleFile } from 'projen';
 import { createFailureScenarioChecks } from './components/tooling-tasks';
-import { createContentspec, WORKSHOP_ACCOUNT_KIND, workshopAccountSettings } from './components/workshop-studio';
+import { createContentspec } from './components/workshop-studio';
 import type { WorkshopStudioOptions } from './components/workshop-studio';
 import { CreDemoTemplateApp } from './cre-demo-template-app';
 import type { CreDemoTemplateAppOptions } from './cre-demo-template-app';
@@ -112,8 +112,8 @@ export class CreWorkshopStudio extends CreDemoTemplateApp {
     super(options, STANDARD_LAYOUT, 'workshop-studio.md', ['workshop-content.md']);
     // The build stages each top-level template into static/ (built, never committed), and checks the
     // whole workshop with Workshop Studio's own build before anything is zipped or deployed.
-    // The templates: every stack but the test account's stand-in for Workshop Studio's setup.
-    const ids = this.plannedStacks.filter((s) => s.kind !== WORKSHOP_ACCOUNT_KIND).map((s) => s.id);
+    // The templates: every top-level stack.
+    const ids = this.plannedStacks.map((s) => s.id);
     for (const id of ids) this.gitignore.exclude(`/static/${id}.json`);
     const stage = this.addTask('workshop:stage', {
       description: 'Copy each top-level template the build staged to static/<stack>.json (contentspec.yaml points there)',
@@ -151,7 +151,7 @@ export class CreWorkshopStudio extends CreDemoTemplateApp {
     publish.spawn(this.tasks.tryFind('build')!);
     publish.exec(`python3 ${CRE_SCRIPTS}/build/publish.py "$@"`, { receiveArgs: true });
     const toolSecrets = BUILD_TOOL_PLATFORMS.map((p) => `${BUILD_TOOL_LOCATION}_${p}`);
-    if (this.github) createGithubPublishWorkflow(this.github, toolSecrets);
+    if (this.github) createGithubPublishWorkflow(this.github, toolSecrets, this.deployApproval);
     else createGitlabPublishJob(this);
     // CI: the job's environment holds every platform's secret (setup sets them), and `location` takes
     // the one for the runner it is on. GitLab passes its CI/CD variables to every job itself.
@@ -168,8 +168,6 @@ export class CreWorkshopStudio extends CreDemoTemplateApp {
     if (!workshopStudio.participantPolicies) {
       new SampleFile(this, 'static/iam_policy.json', { contents: JSON.stringify(WORKSHOP_START_POLICY, null, 2) + '\n' });
     }
-    // CreWorkshopAccountStack's settings: the same as contentspec.yaml's, in one place.
-    this.cdkConfig.json.addOverride('context.cre:workshopStudio', workshopAccountSettings(workshopStudio));
     try {
       createContentspec(this, workshopStudio, this.plannedStacks);
     } catch (e) {

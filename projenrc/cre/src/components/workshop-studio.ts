@@ -85,13 +85,8 @@ export const templateLocation = (stackId: string) => `static/${stackId}.json`;
  * (every CreStack's) and its magic ones. A stack parameter with any other source has no value in
  * Workshop Studio, which passes nothing between templates: refused.
  */
-/** The test account's stand-in for what Workshop Studio sets up (CreWorkshopAccountStack): never a template. */
-export const WORKSHOP_ACCOUNT_KIND = 'workshop-account';
-
-export function contentspec(opts: WorkshopStudioOptions, allStacks: readonly PlannedStack[]): Record<string, unknown> {
+export function contentspec(opts: WorkshopStudioOptions, stacks: readonly PlannedStack[]): Record<string, unknown> {
   const problems: string[] = [];
-  const stacks = allStacks.filter((s) => s.kind !== WORKSHOP_ACCOUNT_KIND);
-  if (allStacks.filter((s) => s.kind === WORKSHOP_ACCOUNT_KIND).length > 1) problems.push('more than one CreWorkshopAccountStack: the test account needs one.');
   if (stacks.length > MAX_TEMPLATES) problems.push(`${stacks.length} stacks: Workshop Studio deploys at most ${MAX_TEMPLATES} templates; nest the rest (NestedStack).`);
   const regions = new Set(stacks.map((s) => s.region));
   if (regions.size > 1) problems.push(`stacks in ${[...regions].join(', ')}: Workshop Studio deploys every template to the one region an event picks; give every stack the same region.`);
@@ -169,15 +164,4 @@ export function contentspec(opts: WorkshopStudioOptions, allStacks: readonly Pla
 /** Write contentspec.yaml at the repository root, where Workshop Studio and its build tool read it. */
 export function createContentspec(project: Project, opts: WorkshopStudioOptions, stacks: readonly PlannedStack[]): void {
   new YamlFile(project, 'contentspec.yaml', { obj: contentspec(opts, stacks), readonly: true });
-}
-
-/** What CreWorkshopAccountStack reads (cdk.json context `cre:workshopStudio`): the same settings contentspec.yaml has. */
-export function workshopAccountSettings(opts: WorkshopStudioOptions): Record<string, unknown> {
-  return {
-    participantPolicies: opts.participantPolicies ?? ['static/iam_policy.json'],
-    managedPolicies: opts.managedPolicies ?? [],
-    trustedServices: opts.trustedServices ?? [],
-    serviceLinkedRoles: opts.serviceLinkedRoles ?? [],
-    ec2KeyPair: opts.ec2KeyPair ?? false,
-  };
 }
