@@ -43,7 +43,7 @@ jobs:
         run: yarn install --immutable
       - name: Install dotnet
         id: install_dotnet
-        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73
         with:
           dotnet-version: "9.0"
       - name: Generated files are current

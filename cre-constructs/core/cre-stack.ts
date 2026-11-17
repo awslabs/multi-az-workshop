@@ -2,8 +2,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import { Aws } from 'aws-cdk-lib';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as logs from 'aws-cdk-lib/aws-logs';
 import * as cxapi from 'aws-cdk-lib/cx-api';
 import { Construct } from 'constructs';
 import { REGION_NAME, unknownRegion } from './names.js';
@@ -239,19 +237,6 @@ export interface CrePlannedStack {
 export type CreAppProps = Omit<cdk.AppProps, 'analyticsReporting'>;
 
 /**
- * Sets DESTROY on each Lambda function's CDK-managed log group: the child `LogGroup` CDK adds to a
- * function (`useCdkManagedLogGroup`), retained by default. Turning the flag off instead would let
- * Lambda create the group itself, outside CloudFormation, so nothing would delete it.
- */
-class DeleteFunctionLogGroups implements cdk.IAspect {
-  public visit(node: Construct): void {
-    if (!(node instanceof lambda.Function)) return;
-    const group = node.node.tryFindChild('LogGroup');
-    if (group instanceof logs.LogGroup) group.applyRemovalPolicy(cdk.RemovalPolicy.DESTROY);
-  }
-}
-
-/**
  * The app every CRE project's `app.ts` creates.
  *
  *   - No CDK metadata in any template: no `CDKMetadata` resource, no `aws:cdk:path` or
@@ -259,10 +244,6 @@ class DeleteFunctionLogGroups implements cdk.IAspect {
  *   - Every top-level stack must be a {@link CreStack}, named `projectName` or
  *     `projectName-<suffix>` (`stackId()`), and every parameter it declares without a default must
  *     be a {@link CreCfnParameter}; anything else fails the synth.
- *   - Every Lambda function's own log group (the one CDK makes under the feature flag
- *     `@aws-cdk/aws-lambda:useCdkManagedLogGroup`, retained by default) is deleted with its stack,
- *     so a teardown leaves no log groups behind (and a Workshop Studio template has no Retain).
- *     A log group you create and pass as `logGroup` keeps the removal policy you gave it.
  *   - Writes {@link CRE_PLAN_FILE} next to the templates: the stacks the pipeline deploys, their
  *     regions, roles, parameter sources, the outputs later stacks take, and the order. projen
  *     generates the pipeline from it.
@@ -283,7 +264,6 @@ export class CreApp extends cdk.App {
     });
     this.projectName = this.node.tryGetContext('cre:projectName');
     this.node.addValidation({ validate: () => this.problems() });
-    cdk.Aspects.of(this).add(new DeleteFunctionLogGroups());
   }
 
   /** `stackId()` → the project name; `stackId('edge')` → `<project>-edge`. */
