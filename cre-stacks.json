@@ -1,19 +1,9 @@
 {
   "synthesized": [
     {
-      "id": "multi-az-workshop-workshop-account",
-      "region": "us-east-1",
-      "kind": "workshop-account",
-      "dependsOn": [],
-      "parameters": {},
-      "outputs": []
-    },
-    {
       "id": "multi-az-workshop",
       "region": "us-east-1",
-      "dependsOn": [
-        "multi-az-workshop-workshop-account"
-      ],
+      "dependsOn": [],
       "parameters": {
         "ParticipantRoleName": {
           "kind": "env",
@@ -35,18 +25,6 @@
   },
   "stacks": [
     {
-      "id": "multi-az-workshop-workshop-account",
-      "region": "us-east-1",
-      "kind": "workshop-account",
-      "executionRole": {
-        "variable": "CFN_EXECUTION_ROLE_ARN",
-        "optional": false
-      },
-      "parameters": {},
-      "outputs": [],
-      "needs": []
-    },
-    {
       "id": "multi-az-workshop",
       "region": "us-east-1",
       "executionRole": {
@@ -62,87 +40,14 @@
         }
       },
       "outputs": [],
-      "needs": [
-        "multi-az-workshop-workshop-account"
-      ]
+      "needs": []
     }
   ],
   "jobs": {
-    "multi-az-workshop-workshop-account": {
-      "gitlab": "deploy:multi-az-workshop-workshop-account",
-      "github": "deploy-multi-az-workshop-workshop-account",
-      "needs": [],
-      "variables": [
-        "CFN_EXECUTION_ROLE_ARN"
-      ],
-      "env": {
-        "STACK_NAME": "multi-az-workshop-workshop-account",
-        "TEMPLATE_NAME": "multi-az-workshop-workshop-account",
-        "AWS_REGION": "us-east-1",
-        "OUTPUTS_PREFIX": "STACK_MULTI_AZ_WORKSHOP_WORKSHOP_ACCOUNT",
-        "OUTPUTS": "",
-        "ROLE_ARN": "$CFN_EXECUTION_ROLE_ARN",
-        "ASSUME_ROLE": "",
-        "STACK_PARAMETERS": "",
-        "REQUIRED_VARS": "CFN_EXECUTION_ROLE_ARN",
-        "REQUIRED_OUTPUTS": ""
-      },
-      "spec": {
-        "needs": [],
-        "variables": [
-          "CFN_EXECUTION_ROLE_ARN"
-        ],
-        "env": {
-          "STACK_NAME": {
-            "kind": "literal",
-            "value": "multi-az-workshop-workshop-account"
-          },
-          "TEMPLATE_NAME": {
-            "kind": "literal",
-            "value": "multi-az-workshop-workshop-account"
-          },
-          "AWS_REGION": {
-            "kind": "literal",
-            "value": "us-east-1"
-          },
-          "OUTPUTS_PREFIX": {
-            "kind": "literal",
-            "value": "STACK_MULTI_AZ_WORKSHOP_WORKSHOP_ACCOUNT"
-          },
-          "OUTPUTS": {
-            "kind": "literal",
-            "value": ""
-          },
-          "ROLE_ARN": {
-            "kind": "var",
-            "name": "CFN_EXECUTION_ROLE_ARN",
-            "optional": false
-          },
-          "ASSUME_ROLE": {
-            "kind": "literal",
-            "value": ""
-          },
-          "STACK_PARAMETERS": {
-            "kind": "lines",
-            "lines": []
-          },
-          "REQUIRED_VARS": {
-            "kind": "literal",
-            "value": "CFN_EXECUTION_ROLE_ARN"
-          },
-          "REQUIRED_OUTPUTS": {
-            "kind": "literal",
-            "value": ""
-          }
-        }
-      }
-    },
     "multi-az-workshop": {
       "gitlab": "deploy:multi-az-workshop",
       "github": "deploy-multi-az-workshop",
-      "needs": [
-        "multi-az-workshop-workshop-account"
-      ],
+      "needs": [],
       "variables": [
         "WS_PARTICIPANT_ROLE_NAME",
         "CFN_EXECUTION_ROLE_ARN"
@@ -160,9 +65,7 @@
         "REQUIRED_OUTPUTS": ""
       },
       "spec": {
-        "needs": [
-          "multi-az-workshop-workshop-account"
-        ],
+        "needs": [],
         "variables": [
           "WS_PARTICIPANT_ROLE_NAME",
           "CFN_EXECUTION_ROLE_ARN"

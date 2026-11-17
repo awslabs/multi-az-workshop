@@ -547,9 +547,6 @@
       "description": "Stage every stack's assets into assets/ and rewrite nested templates",
       "steps": [
         {
-          "exec": "python3 projenrc/cre/scripts/build/package.py multi-az-workshop-workshop-account ."
-        },
-        {
           "exec": "python3 projenrc/cre/scripts/build/package.py multi-az-workshop ."
         },
         {
@@ -687,7 +684,7 @@
       "description": "Re-apply the GitHub repo's settings and set the CI/CD variables given (idempotent: only what differs changes). A variable that feeds a noEcho parameter is stored hidden.",
       "steps": [
         {
-          "exec": "python3 projenrc/cre/scripts/cresetup/repo.py github '--repo' 'awslabs/multi-az-workshop' '--app-slug' 'aws-cre-automation-mhaken' '--environment' 'AWS' \"$@\"",
+          "exec": "python3 projenrc/cre/scripts/cresetup/repo.py github '--repo' 'awslabs/multi-az-workshop' '--app-slug' 'aws-cre-automation-mhaken' '--environment' 'AWS' '--approval-environment' 'AWS-approval' \"$@\"",
           "receiveArgs": true
         }
       ]

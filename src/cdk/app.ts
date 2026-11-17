@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { CreApp, CreWorkshopAccountStack } from '@cre/constructs';
+import { CreApp } from '@cre/constructs';
 import { MultiAZWorkshopStack } from './lib/multi-az-workshop-stack';
 import { EvacuationMethod } from './lib/types';
 
@@ -13,11 +13,7 @@ const app = new CreApp({
   },
 });
 
-// Our test account set up as Workshop Studio sets up a team account (the participant role and the
-// service-linked roles). Not part of the workshop: contentspec.yaml leaves it out.
-const account = new CreWorkshopAccountStack(app, app.stackId('workshop-account'), { region: REGION });
-
-// The workshop's template. It takes the participant role's name, so it deploys after the account stack.
-new MultiAZWorkshopStack(app, app.stackId(), { region: REGION, dependsOn: [account] });
+// The workshop's one template.
+new MultiAZWorkshopStack(app, app.stackId(), { region: REGION });
 
 app.synth();

@@ -37,6 +37,7 @@ import { JobPermission } from 'projen/lib/github/workflows-model';
 import type { JobStep } from 'projen/lib/github/workflows-model';
 import { UpgradeDependenciesSchedule } from 'projen/lib/javascript';
 import { ACTIONS, NODE_MAJOR } from './actions';
+import { addGithubApproval } from './approval';
 import { craneInstall } from './container-tools';
 import { GITHUB, PRUNE_JOB, render, RUNNER_ROLE_VARIABLE, UPLOAD_JOB } from '../components/stack-jobs';
 import type { JobValue, StackJob } from '../components/stack-jobs';
@@ -86,6 +87,8 @@ export interface DeployWorkflowOptions {
    * have no environments. @default none
    */
   readonly environment?: string;
+  /** One approval before the deploy, and before a teardown (src/workflows/approval.ts). @default false */
+  readonly approval?: boolean;
   /**
    * Delete the stacks after every deploy that succeeded (the weekly image patch's too). The
    * `teardown` workflow, run by hand, deletes them either way. @default false
@@ -211,7 +214,8 @@ function addDeployJobs(workflow: GithubWorkflow, opts: DeployWorkflowOptions, se
       run: `${craneInstall('$HOME/.local/bin')} && echo "$HOME/.local/bin" >> "$GITHUB_PATH"`,
     }]
     : [];
-  job(UPLOAD_JOB.github, [BUILD_JOB], [
+  const approved = opts.approval ? [addGithubApproval(workflow, [BUILD_JOB])] : [];
+  job(UPLOAD_JOB.github, [BUILD_JOB, ...approved], [
     ...setup,
     { name: 'Download content artifact', uses: ACTIONS.downloadArtifact, with: { name: CONTENT_ARTIFACT, path: 'dist' } },
     credentials(opts.credentialsRegion),
@@ -292,7 +296,9 @@ function addTeardownWorkflow(github: GitHub, opts: DeployWorkflowOptions, setup:
     concurrencyOptions: { group: 'deploy-${{ github.repository }}', cancelInProgress: false },
   });
   wf.on({ workflowDispatch: {} });
+  const approved = opts.approval ? [addGithubApproval(wf)] : [];
   wf.addJob(TEARDOWN_JOB, {
+    ...(approved.length ? { needs: approved } : {}),
     if: "github.ref == 'refs/heads/main'",
     runsOn: ['ubuntu-latest'],
     ...(opts.environment ? { environment: { name: opts.environment } } : {}),

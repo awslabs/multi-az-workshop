@@ -60,8 +60,21 @@ jobs:
           path: dist/content.zip
           retention-days: 1
           if-no-files-found: error
-  deploy-upload:
+  approve:
     needs: build
+    runs-on: ubuntu-latest
+    permissions: {}
+    environment:
+      name: AWS-approval
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Approved
+        id: approved
+        run: echo "Approved."
+  deploy-upload:
+    needs:
+      - build
+      - approve
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -109,7 +122,7 @@ jobs:
           CFN_EXECUTION_ROLE_ARN: ${{ vars.CFN_EXECUTION_ROLE_ARN || secrets.CFN_EXECUTION_ROLE_ARN }}
           DNS_ROLE_ARN: ${{ vars.DNS_ROLE_ARN || secrets.DNS_ROLE_ARN }}
         run: npx projen deploy:upload
-  deploy-multi-az-workshop-workshop-account:
+  deploy-multi-az-workshop:
     needs: deploy-upload
     runs-on: ubuntu-latest
     permissions:
@@ -146,77 +159,6 @@ jobs:
           aws-region: us-east-1
           mask-aws-account-id: true
           role-duration-seconds: 7200
-      - name: Deploy multi-az-workshop-workshop-account
-        id: deploy_multi-az-workshop-workshop-account
-        env:
-          CFN_EXECUTION_ROLE_ARN: ${{ vars.CFN_EXECUTION_ROLE_ARN || secrets.CFN_EXECUTION_ROLE_ARN }}
-          STACK_NAME: multi-az-workshop-workshop-account
-          TEMPLATE_NAME: multi-az-workshop-workshop-account
-          AWS_REGION: us-east-1
-          OUTPUTS_PREFIX: STACK_MULTI_AZ_WORKSHOP_WORKSHOP_ACCOUNT
-          OUTPUTS: ""
-          ROLE_ARN: ${{ vars.CFN_EXECUTION_ROLE_ARN || secrets.CFN_EXECUTION_ROLE_ARN }}
-          ASSUME_ROLE: ""
-          STACK_PARAMETERS: ""
-          REQUIRED_VARS: CFN_EXECUTION_ROLE_ARN
-          REQUIRED_OUTPUTS: ""
-        run: npx projen deploy:stack
-      - name: Upload its outputs
-        id: upload_its_outputs
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: stack-outputs-deploy-multi-az-workshop-workshop-account
-          path: dist/multi-az-workshop-workshop-account.env
-          retention-days: 1
-          if-no-files-found: error
-  deploy-multi-az-workshop:
-    needs:
-      - deploy-upload
-      - deploy-multi-az-workshop-workshop-account
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    environment:
-      name: AWS
-    env:
-      CI: "true"
-      PROJECT_NAME: multi-az-workshop
-      ASSETS_PREFIX: multi-az-workshop/${{ github.run_id }}/
-    steps:
-      - name: Checkout
-        id: checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-      - name: Setup Node.js
-        id: setup_node_js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
-        with:
-          node-version: "22"
-      - name: Enable Corepack
-        id: enable_corepack
-        run: corepack enable
-      - name: Install dependencies
-        id: install_dependencies
-        run: yarn install --immutable
-      - name: Download multi-az-workshop-workshop-account outputs
-        id: download_multi-az-workshop-workshop-account_outputs
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with:
-          name: stack-outputs-deploy-multi-az-workshop-workshop-account
-          path: dist
-      - name: Load the outputs it takes
-        id: load_the_outputs_it_takes
-        run: cat "dist/multi-az-workshop-workshop-account.env" >> "$GITHUB_ENV"
-      - name: Configure AWS credentials
-        id: configure_aws_credentials
-        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd
-        with:
-          role-to-assume: ${{ vars.RUNNER_ROLE_ARN || secrets.RUNNER_ROLE_ARN }}
-          aws-region: us-east-1
-          mask-aws-account-id: true
-          role-duration-seconds: 7200
       - name: Deploy multi-az-workshop
         id: deploy_multi-az-workshop
         env:
@@ -244,7 +186,6 @@ jobs:
   deploy-prune:
     needs:
       - deploy-upload
-      - deploy-multi-az-workshop-workshop-account
       - deploy-multi-az-workshop
     runs-on: ubuntu-latest
     permissions:
@@ -287,7 +228,6 @@ jobs:
   teardown:
     needs:
       - deploy-upload
-      - deploy-multi-az-workshop-workshop-account
       - deploy-multi-az-workshop
       - deploy-prune
     runs-on: ubuntu-latest

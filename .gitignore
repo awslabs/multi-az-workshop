@@ -81,6 +81,8 @@ venv/
 /.kiro/skills/cre-git
 /.kiro/skills/locust-cfs
 /.claude/skills
+/.claude/rules/
+/.claude/commands/
 /projenrc/cre/setup-cdk/
 /projenrc/cre/scripts/**
 !/projenrc/cre/scripts/**/

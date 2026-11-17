@@ -402,6 +402,14 @@ export interface CreDemoTemplateAppBaseOptions {
    * project's provider's list is used.
    */
   readonly buildSetup?: CreBuildSetup;
+  /**
+   * One approval per run before CI reaches AWS or Workshop Studio: the deploy, and on GitHub the
+   * teardown and publish workflows too (src/workflows/approval.ts). GitHub: an `approve` job in the
+   * `AWS-approval` environment, whose reviewer setup:repo sets (the person who runs it). GitLab: a
+   * play-button job the deploy waits for. A scheduled deploy (the weekly image patch) waits too.
+   * @default true for a public GitHub repo, else false
+   */
+  readonly deployApproval?: boolean;
 }
 
 /** {@link CreDemoTemplateAppBaseOptions.buildSetup}: what each provider runs before the build. */
@@ -498,6 +506,8 @@ const RESOLUTIONS = [
  */
 export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
   public readonly gitProvider: GitProvider;
+  /** One approval before CI deploys (deployApproval, resolved). */
+  public readonly deployApproval: boolean;
   public readonly layout: ProjectLayout;
   /** The stacks the pipeline deploys, in deploy order (from the CDK app). */
   public readonly plannedStacks: readonly PlannedStack[];
@@ -633,6 +643,7 @@ export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
     });
 
     this.gitProvider = isGithub ? 'github' : 'gitlab';
+    this.deployApproval = options.deployApproval ?? (isGithub && options.github!.visibility === 'public');
     this.layout = layout;
     const containerImages = options.containerImages ?? false;
     // The stacks come from the CDK app: a plan-only synth (no bundling, no asset staging) records
@@ -717,6 +728,7 @@ export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
           roleDurationSeconds: GITHUB_ROLE_SECONDS,
           publicRepo: mergeMode === 'auto-merge',
           environment: options.github!.visibility === 'public' ? DEPLOY_ENVIRONMENT : undefined,
+          approval: this.deployApproval,
         });
       }
     } else {
@@ -730,6 +742,7 @@ export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
         teardownAfterDeploy: options.teardownAfterDeploy,
         pythonTests: options.pythonTests,
         buildSetup: options.buildSetup?.gitlab,
+        approval: this.deployApproval,
       });
     }
 
@@ -742,6 +755,7 @@ export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
       partition: options.partition,
       githubEnvironment: isGithub && options.github!.visibility === 'public' ? DEPLOY_ENVIRONMENT : undefined,
       githubAppSlug: options.github?.appSlug,
+      githubApproval: isGithub && this.deployApproval,
     }, modules.includes(CreModule.CLOUDFRONT_SIGNER));
     this.constructModules = modules;
     // The modules come over from the template clone on `npx projen` (a laptop); CI checks they did.

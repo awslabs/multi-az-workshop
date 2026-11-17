@@ -4,7 +4,18 @@ name: publish
 on:
   workflow_dispatch: {}
 jobs:
+  approve:
+    runs-on: ubuntu-latest
+    permissions: {}
+    environment:
+      name: AWS-approval
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Approved
+        id: approved
+        run: echo "Approved."
   publish:
+    needs: approve
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: read

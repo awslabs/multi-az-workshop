@@ -92,20 +92,7 @@
     "@aws-cdk/core:validateAgainstDefaultRules": true,
     "@aws-cdk/aws-ecs:removeEmptyLoadBalancers": true,
     "@aws-cdk/aws-cloudfront:defaultViewerProtocolPolicyRedirectToHttps": true,
-    "cre:projectName": "multi-az-workshop",
-    "cre:workshopStudio": {
-      "participantPolicies": [
-        "static/iam_policy.json"
-      ],
-      "managedPolicies": [],
-      "trustedServices": [],
-      "serviceLinkedRoles": [
-        "fis.amazonaws.com",
-        "eks.amazonaws.com",
-        "autoscaling.amazonaws.com"
-      ],
-      "ec2KeyPair": false
-    }
+    "cre:projectName": "multi-az-workshop"
   },
   "output": "cdk.out",
   "build": "yarn projen bundle",

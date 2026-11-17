@@ -1,6 +1,7 @@
 import type { awscdk } from 'projen';
 import type { GitProvider } from './git-tasks';
 import { CRE_SCRIPTS } from '../paths';
+import { APPROVAL_ENVIRONMENT } from '../workflows/approval';
 
 /** What the setup tasks pass to the cresetup scripts: the project's own values, from .projenrc.ts. */
 export interface SetupInput {
@@ -13,6 +14,8 @@ export interface SetupInput {
   readonly githubEnvironment?: string;
   /** GitHub: the builder's automation App. */
   readonly githubAppSlug?: string;
+  /** GitHub: deployApproval is on, so setup:repo makes the approval environment. */
+  readonly githubApproval?: boolean;
 }
 
 // No quote, space or $, and never a leading - (it would read as a switch).
@@ -82,7 +85,8 @@ export function setupRepoSteps(input: SetupInput): { exec: string; receiveArgs?:
     : (() => {
       if (!input.githubAppSlug) throw new Error('setup:repo: github.appSlug is required');
       return ['--repo', parts.join('/'), '--app-slug', input.githubAppSlug,
-        ...(input.githubEnvironment ? ['--environment', input.githubEnvironment] : [])];
+        ...(input.githubEnvironment ? ['--environment', input.githubEnvironment] : []),
+        ...(input.githubApproval ? ['--approval-environment', APPROVAL_ENVIRONMENT] : [])];
     })();
   return [{ exec: `python3 ${CRE_SCRIPTS}/cresetup/repo.py ${input.provider} ${quoted('setup:repo', args)} "$@"`, receiveArgs: true }];
 }

@@ -1,6 +1,7 @@
 import { gitlab } from 'projen';
 import type { awscdk } from 'projen';
 import { NODE_MAJOR } from './actions';
+import { GITLAB_APPROVE_JOB, gitlabApprovalJob } from './approval';
 import { craneInstall } from './container-tools';
 import { CREDENTIALS_VARIABLE, GITLAB, PRUNE_JOB, render, RUNNER_ROLE_VARIABLE, UPLOAD_JOB, VERSIONS_ROLE_VARIABLE } from '../components/stack-jobs';
 import type { JobDefaults, StackJob } from '../components/stack-jobs';
@@ -211,6 +212,8 @@ export function createGitlabWorkflow(
     disableDeploy?: boolean;
     teardownAfterDeploy?: boolean;
     pythonTests?: boolean;
+    /** A play-button approval before the deploy (src/workflows/approval.ts). */
+    approval?: boolean;
     /** The project's own build setup (buildSetup.gitlab): build:cdk runs it after the toolchain install. */
     buildSetup?: string[];
   },
@@ -378,8 +381,9 @@ export function createGitlabWorkflow(
   });
 
   const deployJobs: Record<string, gitlab.Job> = {
+    ...(opts.approval ? { [GITLAB_APPROVE_JOB]: gitlabApprovalJob(onMain) } : {}),
     [UPLOAD_JOB.gitlab]: deployJob(UPLOAD_JOB.gitlab, {
-      needs: ['build:package'],
+      needs: ['build:package', ...(opts.approval ? [GITLAB_APPROVE_JOB] : [])],
       // crane only with container images (it pushes the pre-built tarballs).
       ...(opts.containerImages ? { beforeScript: [...TOOLCHAIN_INSTALL, ...CRANE_INSTALL, ...YARN_SETUP] } : {}),
       script: ['npx projen deploy:upload'],

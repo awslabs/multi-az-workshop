@@ -7,7 +7,18 @@ concurrency:
   group: deploy-${{ github.repository }}
   cancel-in-progress: false
 jobs:
+  approve:
+    runs-on: ubuntu-latest
+    permissions: {}
+    environment:
+      name: AWS-approval
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Approved
+        id: approved
+        run: echo "Approved."
   teardown:
+    needs: approve
     runs-on: ubuntu-latest
     permissions:
       contents: read
