@@ -6,6 +6,7 @@ import { Match } from 'aws-cdk-lib/assertions';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as eks from 'aws-cdk-lib/aws-eks-v2';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { EKSCluster, InstanceArchitecture } from '../../../src/cdk/lib/constructs/eks-cluster';
 import {
   assertResourceExists,
@@ -204,6 +205,32 @@ describe('EKSCluster', () => {
 
     test('creates custom managed policies', () => {
       assertResourceExists(sharedTemplate, 'AWS::IAM::ManagedPolicy');
+    });
+  });
+
+  describe('teardown order', () => {
+    test('what waits on the workload capacity also waits on the rules that let the control plane reach the nodes', () => {
+      // Without them, CloudFormation deleted these rules first and the API server could no longer
+      // call the load balancer controller's webhook to drop a TargetGroupBinding's finalizer.
+      const app = createTestApp();
+      const stack = createTestStack(app);
+      const vpc = createMockVpc(stack);
+      const cluster = new EKSCluster(stack, 'EKSCluster', {
+        vpc,
+        cpuArch: InstanceArchitecture.X86_64,
+        adminRole: new iam.Role(stack, 'AdminRole', { assumedBy: new iam.ServicePrincipal('eks.amazonaws.com') }),
+        loadBalancerSecurityGroup: createMockSecurityGroup(stack, vpc, 'LoadBalancerSG'),
+        clusterName: 'test-cluster',
+        version: eks.KubernetesVersion.of('1.35'),
+      });
+      const waiter = new ssm.StringParameter(stack, 'Waiter', { stringValue: 'x' });
+      waiter.node.addDependency(cluster.workloadCapacity);
+      const t = synthesizeStack(stack);
+      const ingress = Object.keys(t.findResources('AWS::EC2::SecurityGroupIngress'))
+        .filter((id) => /WorkerPeerSecurityGroupIngress|LambdaKubectlIngressRule/.test(id));
+      expect(ingress).toHaveLength(2);
+      const dependsOn: string[] = Object.values<any>(t.findResources('AWS::SSM::Parameter')).find((r) => r.Properties.Value === 'x').DependsOn;
+      for (const id of ingress) expect(dependsOn).toContain(id);
     });
   });
 
