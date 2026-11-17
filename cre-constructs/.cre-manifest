@@ -1,7 +1,7 @@
 7262862bbaec1caf88f3a57744526e7b95de8b07ebec9cd3f9c0396713a4a3b6  ./core/README.md
 f3dd12b778dcadff3cfc1745d19aecd4ed87380b22c7e0933fa804989caa7605  ./core/build-output-asset.ts
 1f9f3815f19613b8bcc0a4a6a7c1c2f51385ebb06111d4f8658e9b8426b68a1a  ./core/cre-cfn-parameter.ts
-0575aa8b1ac98d96e8d83fc321bcf93c291c31f7303b9c24e5ad78385e508426  ./core/cre-stack.ts
+9ca4befb1ec79e4d373a894d4adbd813a5a4960c37970922e2c9e2b7fedeb07a  ./core/cre-stack.ts
 59383303afddbf132e8ea26977aeb1b7df60fc3c71693c902f7c0cf21904fa61  ./core/iam-stack.ts
 0231efbbc5ec430c10b7203ed87777f48b8741e90c9625fe266808236b6b3a12  ./core/index.ts
 d24ebdd1cee1a4df37e981fcbb832fbf74ed75beaa60661050fad369c7dbefb3  ./core/names.ts
@@ -12,4 +12,4 @@ a46e467c8d80802587f0da360fb7c81d32641df2ec342dbdb78f80c651f805bb  ./ecr-import/R
 e0caf0594a3b9b86f479abbadc01b4a5519bc42662b5b03e98ed7baf9e0ebc04  ./ecr-import/ecr-import.ts
 7c8b5c8755c16cb8808bf893cf52ed4f2f5b33c4301e87fdcf50aefa7b2c606c  ./ecr-import/index.ts
 eb2e18a45f8b1846f02428d4a2213aeaeea4795e52274a57929a87fe86d77560  ./index.ts
-e805c45a9b770cf657ed418584f987a3aae3765992e5308560d117ebcce9fb96  ./package.json
+0fe5777084f05f8e47a53890c453d54a6bdf1243cdcdbc1f1e055fbd214341bc  ./package.json

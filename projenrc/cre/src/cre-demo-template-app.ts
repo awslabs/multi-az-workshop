@@ -651,6 +651,11 @@ export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
     // (fresh clone, no node_modules, a compile error), the committed cre-stacks.json is used.
     // The project name reaches the app as cdk.json context (CreApp.stackId()).
     this.cdkConfig.json.addOverride('context.cre:projectName', this.name);
+    // Every CDK v2 feature flag is on but this one. It gives each Lambda function a log group CDK names
+    // `/aws/lambda/<function>`, so a construct that makes that log group itself (the older pattern,
+    // e.g. @cdklabs/multi-az-observability's) fails the deploy with "already exists" (multi-az-workshop,
+    // 2026-11-17). Off: Lambda makes the group, as before the flag.
+    this.cdkConfig.json.addOverride('context.@aws-cdk/aws-lambda:useCdkManagedLogGroup', false);
     // The construct modules first: the app may use one this run brings in (a new module, a template update).
     installConstructModules(this.outdir, modules, (outdir) => templateClone(outdir));
     const read = readPlan(this.outdir, this.name, cdkAppCommand(this.srcdir, layout.appEntrypoint, this.tsconfig?.fileName));
