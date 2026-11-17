@@ -128,6 +128,8 @@
     "moduleNameMapper": {
       "^(\\.{1,2}/.*)\\.js$": "$1"
     },
+    "globalSetup": "<rootDir>/projenrc/cre/scripts/jest/global-setup.js",
+    "globalTeardown": "<rootDir>/projenrc/cre/scripts/jest/global-teardown.js",
     "testMatch": [
       "<rootDir>/@(src|test)/**/*(*.)@(spec|test).ts?(x)",
       "<rootDir>/@(src|test)/**/__tests__/**/*.ts?(x)",

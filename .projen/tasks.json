@@ -414,7 +414,7 @@
       ],
       "steps": [
         {
-          "exec": "PRUNE_REGIONS=\"us-east-1\" python3 projenrc/cre/scripts/build/prune-assets.py"
+          "exec": "PRUNE_REGIONS=\"us-east-2\" python3 projenrc/cre/scripts/build/prune-assets.py"
         }
       ]
     },
@@ -433,7 +433,7 @@
           "exec": "rm -rf dist/content && mkdir -p dist/content && unzip -q dist/content.zip -d dist/content"
         },
         {
-          "exec": "python3 projenrc/cre/scripts/build/assets.py upload --regions \"us-east-1\""
+          "exec": "python3 projenrc/cre/scripts/build/assets.py upload --regions \"us-east-2\""
         }
       ]
     },

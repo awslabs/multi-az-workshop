@@ -168,20 +168,11 @@ def context(args):
     return stacks, project, aws, regions, account
 
 
-def elsewhere(args, s, found, project, account):
-    """A planned stack with `assumeRole` that isn't in this account: (its stack, the DNS account's
-    Aws) read with --dns-profile, (None, Aws) when it isn't there, or (None, None) without it."""
-    if not s.get("assumeRole") or (s["id"], s["region"]) in found or args.dns is None:
-        return None, None
-    d = args.dns.describe(s["region"], s["id"])
-    return (d if d and is_ours(d, project, s["region"], account, [s["id"]]) else None), args.dns
-
-
 def is_ours(stack, project, region, account, planned=()):
     """Named like this project's stacks, and deployed from its assets bucket in this account
-    (assets.py's name). A REVIEW_IN_PROGRESS shell (a failed first create) has no parameters:
-    matched when it is one of the planned stacks (a name alone could be another project's,
-    `demo-two` beside `demo`)."""
+    (assets.py's name): another project's `demo-two` beside `demo` is never an orphan of `demo`. A
+    REVIEW_IN_PROGRESS shell (a failed first create) has no parameters: matched when it is one of the
+    planned stacks."""
     name = stack["StackName"]
     if name != project and not name.startswith(project + "-"):
         return False
@@ -191,23 +182,41 @@ def is_ours(stack, project, region, account, planned=()):
     return params.get("AssetsBucketName") == assets.bucket_name(project, account, region)
 
 
-def deployed(aws, regions, project, account, planned=()):
-    """{(name, region): summary} of every stack of this project, in every region it may use."""
+def project_stacks(aws, regions, project, account, planned=()):
+    """{(name, region): stack} of every stack of this project, where orphans are looked for: the
+    names from list-stacks (the runner role may list every stack), each then described by name (it
+    may describe only `<project>` and `<project>-*`) to tell it from another project's. The planned
+    stacks are deleted by name, never looked for."""
     out = {}
     for region in regions:
-        token = None
+        token, names = None, []
         while True:
-            args = ["cloudformation", "describe-stacks", "--region", region]
+            args = ["cloudformation", "list-stacks", "--region", region]
             if token:
                 args += ["--next-token", token]
             d = aws.json(*args)
-            for s in d.get("Stacks", []):
-                if is_ours(s, project, region, account, planned):
-                    out[(s["StackName"], region)] = s
+            names += [x["StackName"] for x in d.get("StackSummaries", []) if x.get("StackStatus") != "DELETE_COMPLETE"
+                      and (x["StackName"] == project or x["StackName"].startswith(project + "-"))]
             token = d.get("NextToken")
             if not token:
                 break
+        for name in names:
+            st = aws.describe(region, name)
+            if st and is_ours(st, project, region, account, planned):
+                out[(name, region)] = st
     return out
+
+
+def client_for(args, s, aws):
+    """Who deletes a planned stack: the DNS account's credentials for one deployed there (assumeRole)
+    when --dns-profile gave them; without them, this account's when the role is optional (left empty,
+    it deployed here) and None (skipped) when it is required; else this account's."""
+    role = s.get("assumeRole")
+    if not role:
+        return aws
+    if args.dns:
+        return args.dns
+    return aws if isinstance(role, dict) and role.get("optional") else None
 
 
 def cmd_status(args):
@@ -216,16 +225,16 @@ def cmd_status(args):
     if main_stacks is None:
         say(f"⚠️  {ref}: orphans are judged from this checkout's plan, which may not be what main deploys.")
         main_stacks, ref = stacks, ""
-    found = deployed(aws, regions, project, account, [st["id"] for st in stacks + main_stacks])
+    # One listing gives this account's planned stacks' status and the orphans.
+    found = project_stacks(aws, regions, project, account, [st["id"] for st in stacks + main_stacks])
     here, on_main = keys(stacks), keys(main_stacks)
     rows = []
     for s in stacks:
         d = found.get((s["id"], s["region"]))
         role = s.get("assumeRole") if not d else None
         notes = []
-        there, dns = elsewhere(args, s, found, project, account)
-        if dns:
-            d, role = there, None
+        if role and args.dns:
+            d, role = args.dns.describe(s["region"], s["id"]), None
             notes.append("in the DNS account")
         if role:
             # This account's listing doesn't have it, so its status was never read: NOT_DEPLOYED stated
@@ -285,76 +294,41 @@ def cmd_outputs(args):
 
 def cmd_teardown(args):
     stacks, project, aws, regions, account = context(args)
-    found = deployed(aws, regions, project, account, [st["id"] for st in stacks])
     planned_ids = [s["id"] for s in stacks]
     # With --orphans, --stack picks orphans (one out of several, review 10g A3); alone, planned stacks.
     unknown = set(args.stack or []) - set(planned_ids) if not args.orphans else set()
     if unknown:
         raise not_in_plan(stacks, unknown, " (an orphan: --orphans --stack <id>)")
     if args.stack and not args.orphans:
-        # Stacks pass values as outputs → parameters, not exports, so CloudFormation doesn't stop the
-        # delete of a stack whose outputs a deployed stack still uses: refuse it here (review 10b D9).
+        # Stacks pass values as outputs -> parameters, not exports, so CloudFormation doesn't stop the
+        # delete of a stack whose outputs another planned stack takes: refuse it here (review 10b D9).
         chosen = set(args.stack)
-        users = {s["id"]: [o["id"] for o in stacks if s["id"] in (o.get("needs") or []) and o["id"] not in chosen
-                           and (o["id"], o["region"]) in found] for s in stacks if s["id"] in chosen}
+        users = {s["id"]: [o["id"] for o in stacks if s["id"] in (o.get("needs") or []) and o["id"] not in chosen]
+                 for s in stacks if s["id"] in chosen}
         blocked = {k: v for k, v in users.items() if v}
         if blocked:
-            raise Stop(REFUSED, "Still used by deployed stacks: " + "; ".join(f"{k} (by {', '.join(v)})" for k, v in blocked.items())
-                       + ". Delete those first (add them with --stack), or run teardown without --stack.")
+            raise Stop(REFUSED, "Used by other stacks: " + "; ".join(f"{k} (by {', '.join(v)})" for k, v in blocked.items())
+                       + ". Delete those too (add them with --stack), or run teardown without --stack.")
     targets, skipped = [], []
     # Why teardown would refuse now. A real run refuses before deleting anything; --dry-run still
-    # lists what it would delete, then says why it won't yet (exit 10): the preview the steering
-    # tells the agent to show (review 10g A1).
+    # lists what it would delete, then says why it won't yet (exit 10) (review 10g A1).
     refusal = ""
     if args.orphans:
-        main_stacks, ref = committed_plan(strict=True)
-        if main_stacks is None:
-            # Judging orphans from the checkout's own plan deleted, on a branch that renamed a stack,
-            # the old stack main still deploys (review 10g D2): only a dry run lists them that way.
-            refusal = (f"{ref}, so which stacks main no longer deploys can't be told and none are deleted. Fix that (an "
-                       "origin whose default branch has cre-stacks.json committed), or delete planned stacks with --stack.")
-            main_stacks, ref = stacks, "this checkout's plan"
-        elif keys(main_stacks) != keys(stacks):
-            added = sorted(f"{i}@{r}" for i, r in keys(stacks) - keys(main_stacks))
-            removed = sorted(f"{i}@{r}" for i, r in keys(main_stacks) - keys(stacks))
-            refusal = (f"This checkout's stack plan differs from {ref}'s (" + "; ".join(
-                x for x in (f"adds {', '.join(added)}" if added else "", f"removes {', '.join(removed)}" if removed else "") if x)
-                + "). Orphans are what main no longer deploys: merge and deploy this change first, then run teardown --orphans.")
-        # A stack main renamed is an orphan only once main's own stacks are deployed: after a merge
-        # whose deploy failed or is still running, the old copy is what the deployed stacks still use
-        # (review 10d D1). A stack in another account can't be seen from here, so it isn't counted.
-        undeployed = [f"{s['id']}@{s['region']} ({found[(s['id'], s['region'])]['StackStatus'] if (s['id'], s['region']) in found else 'not deployed'})"
-                      for s in main_stacks if not s.get("assumeRole")
-                      and found.get((s["id"], s["region"]), {}).get("StackStatus") not in DEPLOYED]
-        if undeployed and not refusal:
-            refusal = (f"The stacks of {ref} aren't all deployed yet: {', '.join(undeployed)}. Its deploy failed or is still "
-                       "running, and until it finishes an old stack may still be in use. Deploy main first (follow it with npx "
-                       "projen watch, or retry it with npx projen ci:rerun), then run teardown --orphans.")
-        # A renamed stack's replacement is created after it, so newest first deletes dependents first.
-        targets = sorted((k for k in found if k not in keys(main_stacks)),
-                         key=lambda k: found[k].get("CreationTime", ""), reverse=True)
-        if args.stack:
-            missing = sorted(set(args.stack) - {k[0] for k in targets})
-            if missing:
-                raise Stop(REFUSED, f"Not orphans: {', '.join(missing)}. The orphans are: "
-                           + (", ".join(f"{n} ({r})" for n, r in targets) or "none") + ". Nothing was deleted.")
-            targets = [k for k in targets if k[0] in args.stack]
-        targets = [(n, r, aws, found[(n, r)]["StackStatus"]) for n, r in targets]
+        targets, refusal = orphan_targets(args, stacks, project, aws, regions, account)
     else:
-        for s in reversed(stacks):   # the reverse of the deploy order: dependents first
+        # The planned stacks, by name: a delete of one that isn't there is a no-op, so nothing is
+        # looked up first. The reverse of the deploy order: dependents first.
+        for s in reversed(stacks):
             if args.stack and s["id"] not in args.stack:
                 continue
-            if (s["id"], s["region"]) in found:
-                targets.append((s["id"], s["region"], aws, found[(s["id"], s["region"])]["StackStatus"]))
-                continue
-            there, dns = elsewhere(args, s, found, project, account)
-            if there:
-                targets.append((s["id"], s["region"], dns, there["StackStatus"]))
-            elif s.get("assumeRole") and not dns:
+            client = client_for(args, s, aws)
+            if client is None:
                 skipped.append(s["id"])
+            else:
+                targets.append((s["id"], s["region"], client, ""))
     for sid in skipped:
-        say(f"Skipping {sid}: it isn't in this account, and may be in the DNS account (assumeRole). Pass --dns-profile "
-            "<that account's profile> to delete it there.")
+        say(f"Skipping {sid}: it is deployed in the DNS account (assumeRole). Pass --dns-profile <that account's profile> "
+            "to delete it there.")
     if refusal and not args.dry_run:
         raise Stop(REFUSED, refusal)
     # Each stack after every stack that takes its outputs or dependsOn it (planned stacks: their
@@ -374,11 +348,12 @@ def cmd_teardown(args):
         say(f"Account {account}: {'would delete' if args.dry_run else 'deleting'}, in this order (the same number at once):")
         for i, batch in enumerate(rounds, 1):
             for name, region, client, status in batch:
-                say(f"  {i}. {name} ({region}, {status}{', DNS account' if client is args.dns else ''})")
+                where = ", ".join(x for x in (region, status, "DNS account" if client is args.dns else "") if x)
+                say(f"  {i}. {name} ({where})")
     if args.dry_run:
         if targets:
-            say("(dry run) Nothing was deleted. Their resources go too when deleted, except what a stack retains; the assets buckets "
-                "and setup roles stay (npx projen unbootstrap removes them).")
+            say("(dry run) Nothing was deleted. A stack that isn't deployed is skipped; their resources go too when deleted, "
+                "except what a stack retains; the assets buckets and setup roles stay (npx projen unbootstrap removes them).")
         if refusal:
             raise Stop(REFUSED, f"A real run would refuse now: {refusal}")
         return OK
@@ -392,13 +367,52 @@ def cmd_teardown(args):
                 failed.append(f"{name}: {why}")
                 say(f"  ❌ {name}: {why}")
             else:
-                say(f"  ✅ {name} deleted")
+                say(f"  ✅ {name} deleted (or wasn't there)")
         if failed and not args.orphans:
             break   # a dependent left in place blocks the stacks it needs
 
     if failed:
         raise Stop(FAILED, "Not deleted: " + "; ".join(failed) + ". Fix the resource named, then re-run (deleted stacks are skipped).")
     return OK
+
+
+def orphan_targets(args, stacks, project, aws, regions, account):
+    """(the orphans to delete, why a real run would refuse ("" when it wouldn't)): this project's
+    stacks (by name) that main's committed plan doesn't have, newest first."""
+    refusal = ""
+    main_stacks, ref = committed_plan(strict=True)
+    found = project_stacks(aws, regions, project, account, [s["id"] for s in stacks + (main_stacks or [])])
+    if main_stacks is None:
+        # Judging orphans from the checkout's own plan deleted, on a branch that renamed a stack,
+        # the old stack main still deploys (review 10g D2): only a dry run lists them that way.
+        refusal = (f"{ref}, so which stacks main no longer deploys can't be told and none are deleted. Fix that (an "
+                   "origin whose default branch has cre-stacks.json committed), or delete planned stacks with --stack.")
+        main_stacks, ref = stacks, "this checkout's plan"
+    elif keys(main_stacks) != keys(stacks):
+        added = sorted(f"{i}@{r}" for i, r in keys(stacks) - keys(main_stacks))
+        removed = sorted(f"{i}@{r}" for i, r in keys(main_stacks) - keys(stacks))
+        refusal = (f"This checkout's stack plan differs from {ref}'s (" + "; ".join(
+            x for x in (f"adds {', '.join(added)}" if added else "", f"removes {', '.join(removed)}" if removed else "") if x)
+            + "). Orphans are what main no longer deploys: merge and deploy this change first, then run teardown --orphans.")
+    # A stack main renamed is an orphan only once main's own stacks are deployed: after a merge
+    # whose deploy failed or is still running, the old copy is what the deployed stacks still use
+    # (review 10d D1). A stack in another account can't be seen from here, so it isn't counted.
+    undeployed = [f"{s['id']}@{s['region']} ({found[(s['id'], s['region'])]['StackStatus'] if (s['id'], s['region']) in found else 'not deployed'})"
+                  for s in main_stacks if not s.get("assumeRole")
+                  and found.get((s["id"], s["region"]), {}).get("StackStatus") not in DEPLOYED]
+    if undeployed and not refusal:
+        refusal = (f"The stacks of {ref} aren't all deployed yet: {', '.join(undeployed)}. Its deploy failed or is still "
+                   "running, and until it finishes an old stack may still be in use. Deploy main first (follow it with npx "
+                   "projen watch, or retry it with npx projen ci:rerun), then run teardown --orphans.")
+    # A renamed stack's replacement is created after it, so newest first deletes dependents first.
+    orphans = sorted((k for k in found if k not in keys(main_stacks)), key=lambda k: str(found[k].get("CreationTime", "")), reverse=True)
+    if args.stack:
+        missing = sorted(set(args.stack) - {k[0] for k in orphans})
+        if missing:
+            raise Stop(REFUSED, f"Not orphans: {', '.join(missing)}. The orphans are: "
+                       + (", ".join(f"{n} ({r})" for n, r in orphans) or "none") + ". Nothing was deleted.")
+        orphans = [k for k in orphans if k[0] in args.stack]
+    return [(n, r, aws, found[(n, r)]["StackStatus"]) for n, r in orphans], refusal
 
 
 USAGE = {"status": "npx projen stacks [--profile p] [--dns-profile p]",
