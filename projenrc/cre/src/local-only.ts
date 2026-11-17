@@ -44,7 +44,7 @@ export function vendedSkills(): string[] {
 /** The project's .gitignore lines for what is local-only, in order (a `!` line re-includes). */
 export function localOnlyIgnores(): string[] {
   return [
-    // The agent docs, steering and skills: the template's, linked (cre-tasks.md: written) locally.
+    // The agent docs, steering and skills: the template's, linked locally.
     '/AGENTS.md',
     '/CLAUDE.md',
     '/.kiro/steering/cre-*.md',

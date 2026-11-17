@@ -2,15 +2,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Component } from 'projen';
 import type { Project } from 'projen';
-import { taskReferenceContent } from './task-reference';
 
 /**
  * Steering every project type gets. Only the core is `inclusion: always` (the type file, tooling,
- * the generated task reference, project structure, the pipeline essentials, the provider's file);
+ * the tasks, project structure, the pipeline essentials, the provider's file);
  * the rest is `inclusion: auto`, loaded when a request matches its description, so a session starts
  * with the few files every change needs (review 10c F17).
  */
-export const ALWAYS_STEERING = ['project-structure.md', 'tooling.md', 'pipelines.md'];
+export const ALWAYS_STEERING = ['project-structure.md', 'tooling.md', 'tasks.md', 'pipelines.md'];
 // The construct modules' steering comes with the modules (src/modules.ts moduleSteering).
 export const ON_DEMAND_STEERING = ['pipelines-detail.md', 'constructs.md', 'constructs-core.md', 'versions.md', 'failure-injection.md', 'fidelity.md'];
 export const BASE_STEERING = [...ALWAYS_STEERING, ...ON_DEMAND_STEERING];
@@ -43,8 +42,8 @@ export function templateSteeringDir(outdir: string, own: string = OWN_TEMPLATE):
 
 /**
  * The project's steering: `.kiro/steering/cre-<name>.md`, each a LINK to the file in the template
- * clone (where alone it is edited), for this project's type, provider and modules; and cre-tasks.md,
- * the one file written, from the project's own tasks. All local-only (src/local-only.ts): made on a
+ * clone (where alone it is edited), for this project's type, provider and modules. All local-only
+ * (src/local-only.ts): made on a
  * laptop with a template clone, never committed, and not projen's files, so CI (no clone) makes none
  * and its generated files match. A `cre-*.md` the project no longer gets is removed; the project's
  * own steering is never touched.
@@ -53,7 +52,6 @@ export class Steering extends Component {
   constructor(
     project: Project,
     public readonly files: string[],
-    private readonly provider: 'gitlab' | 'github',
     private readonly sources?: string,
   ) {
     super(project);
@@ -72,24 +70,15 @@ export class Steering extends Component {
     const dir = path.join(this.project.outdir, '.kiro', 'steering');
     fs.mkdirSync(dir, { recursive: true });
     const want = new Map(this.files.map((f) => [`cre-${f}`, f]));
-    want.set('cre-tasks.md', '');
     for (const f of fs.readdirSync(dir)) {
       if (/^cre-.*\.md$/.test(f) && !want.has(f)) fs.rmSync(path.join(dir, f), { force: true });
     }
     for (const [name, file] of want) {
       const p = path.join(dir, name);
-      if (fs.existsSync(p) || isLink(p)) {
-        if (!isLink(p)) fs.chmodSync(p, 0o644);
-        fs.rmSync(p, { force: true });
-      }
-      if (file) {
-        if (!fs.existsSync(path.join(sources, file))) throw new Error(`cre: the template clone has no steering/${file} (pull it).`);
-        // Relative between the real paths: a link climbs the physical directories (/var is /private/var on macOS).
-        fs.symlinkSync(path.relative(fs.realpathSync(dir), fs.realpathSync(path.join(sources, file))), p);
-      } else {
-        fs.writeFileSync(p, taskReferenceContent(this.project, this.provider));
-        fs.chmodSync(p, 0o444);
-      }
+      if (fs.existsSync(p) || isLink(p)) fs.rmSync(p, { force: true });
+      if (!fs.existsSync(path.join(sources, file))) throw new Error(`cre: the template clone has no steering/${file} (pull it).`);
+      // Relative between the real paths: a link climbs the physical directories (/var is /private/var on macOS).
+      fs.symlinkSync(path.relative(fs.realpathSync(dir), fs.realpathSync(path.join(sources, file))), p);
     }
   }
 }
@@ -100,5 +89,5 @@ function isLink(p: string): boolean {
 
 export function createSteering(project: Project, typeSteering: string, provider: 'gitlab' | 'github',
   extraSteering: string[] = [], sources?: string): Steering {
-  return new Steering(project, [...BASE_STEERING, typeSteering, `${provider}.md`, ...extraSteering], provider, sources);
+  return new Steering(project, [...BASE_STEERING, typeSteering, `${provider}.md`, ...extraSteering], sources);
 }

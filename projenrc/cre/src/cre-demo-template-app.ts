@@ -590,6 +590,9 @@ export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
           // gotcha 3; QEMU so build:docker can build an image for the other architecture.
           buildWorkflowOptions: {
             mutableBuild: true,
+            // The deploy's build job's runner (projen's build workflow ignores workflowRunsOn): a PR
+            // builds on the architecture main builds on, so an arm64 image's RUN steps run natively.
+            runsOn: ['ubuntu-24.04-arm'],
             preBuildSteps: githubPreBuildSteps(options),
           },
           // No releases: nothing consumes them yet, and an adopted repo's own tags became the

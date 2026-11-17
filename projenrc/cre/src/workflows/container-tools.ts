@@ -67,8 +67,7 @@ export function craneInstall(dir: string): string {
 
 /**
  * GitHub step registering QEMU binfmt handlers before a build that makes images, so `docker build
- * --platform` can run a Dockerfile's RUN steps for the other architecture: the deploy workflow's
- * runners are arm64 (an X86_64 image needs emulation there), projen's PR build runs on
- * ubuntu-latest, x86_64 (the default ARM64 image needs it there).
+ * --platform` can run a Dockerfile's RUN steps for the other architecture: the PR build and the
+ * deploy's build job run on arm64 runners, so an X86_64 image needs emulation there.
  */
 export const GITHUB_QEMU_STEP = { name: 'Set up QEMU (cross-arch image builds)', uses: ACTIONS.setupQemu };

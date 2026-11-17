@@ -450,10 +450,23 @@ def git(*args, cwd=None, env=None):
     return run(["git"] + list(args), cwd=cwd, env=env)
 
 
+def git_remote(url):
+    """(host, path) of a git URL: https://host/path, ssh://user@host[:port]/path or user@host:path,
+    the path without a trailing .git or /. ("", "") when it is none of them. The one parser of a
+    remote's host (by its host, never a substring of the whole URL)."""
+    m = (re.match(r"^[a-z+]+://(?:[^@/]+@)?([^/:]+)(?::\d+)?/(.+)$", url or "")
+         or re.match(r"^(?:[^@/]+@)?([^/:]+):(?!//)(.+)$", url or ""))
+    if not m:
+        return "", ""
+    path = m.group(2).rstrip("/")
+    return m.group(1).lower(), path[:-4] if path.endswith(".git") else path
+
+
 def provider_of(url):
     """The git host an origin URL is on: github, gitlab or unknown. The one rule (the git tasks'
     provider, attach-template's GitLab token link)."""
-    return "github" if "github.com" in url else "gitlab" if "gitlab" in url else "unknown"
+    host = git_remote(url)[0]
+    return "github" if host == "github.com" else "gitlab" if "gitlab" in host.split(".") else "unknown"
 
 
 def in_progress_op(cwd=None, run_git=None):
