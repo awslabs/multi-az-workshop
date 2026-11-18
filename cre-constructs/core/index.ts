@@ -15,3 +15,4 @@ export * from './names.js';
 export * from './versions.js';
 export * from './workshop-studio.js';
 export * from './build-output-asset.js';
+export * from './function-log-groups.js';
