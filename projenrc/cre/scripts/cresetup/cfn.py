@@ -71,13 +71,17 @@ def failed_events(call, region, name, limit=5, since=None):
 DELETE_WAITS = 3
 
 
-def delete(call, region, name):
-    """Delete the stack and wait until it is gone (up to DELETE_WAITS hours). "" when it is, else why
-    not: the failing call's own words (the waiter's say whether it hit DELETE_FAILED or gave up while
-    CloudFormation still deletes, review 10f D1), then the resources that failed."""
+def delete(call, region, name, wait=True):
+    """Delete the stack and, with wait, wait until it is gone (up to DELETE_WAITS hours). "" when it
+    is (without wait: once CloudFormation accepted the delete; a stack already deleting or gone is
+    accepted too), else why not: the failing call's own words (the waiter's say whether it hit
+    DELETE_FAILED or gave up while CloudFormation still deletes, review 10f D1), then the resources
+    that failed."""
     code, _, err = call("cloudformation", "delete-stack", "--stack-name", name, region=region)
     if code:
         return proc.last_line(err, "delete-stack failed")
+    if not wait:
+        return ""
     for _ in range(DELETE_WAITS):
         code, _, err = call("cloudformation", "wait", "stack-delete-complete", "--stack-name", name, region=region)
         if not code:
