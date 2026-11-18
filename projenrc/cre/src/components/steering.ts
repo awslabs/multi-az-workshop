@@ -18,20 +18,24 @@ export const BASE_STEERING = [...ALWAYS_STEERING, ...ON_DEMAND_STEERING];
 const OWN_TEMPLATE = path.join(__dirname, '..', '..', '..', '..');
 
 /**
- * The template clone of a project: the clone .cre/template.json records, else the sibling
- * SOURCE.json names (crelib.project_template_dir's lookup); the template itself when this code runs
- * from it. "" when there is none (CI).
+ * The template clone of a project, found as crelib.project_template_dir finds it (one lookup in
+ * both languages): the clone .cre/template.json records (older projects: SOURCE.json's
+ * templatePath), else the sibling directory SOURCE.json names (`templateDirName`, a plain name);
+ * the template itself when this code runs from it. "" when there is none (CI).
  */
 export function templateClone(outdir: string, own: string = OWN_TEMPLATE): string {
-  const isClone = (c: unknown): c is string => typeof c === 'string' && fs.existsSync(path.join(c, 'packages', 'cre-projen', 'src'))
-    && fs.existsSync(path.join(c, 'recipe', 'recipe.md'));
-  if (isClone(own)) return own;
+  // crelib.is_template_clone; the template's own checkout also has the recipe (crelib.template_dir).
+  const isClone = (c: unknown): c is string => typeof c === 'string' && c !== '' && fs.existsSync(path.join(c, 'packages', 'cre-projen', 'src'));
+  if (isClone(own) && fs.existsSync(path.join(own, 'recipe', 'recipe.md'))) return own;
   const read = (p: string) => { try { return JSON.parse(fs.readFileSync(p, 'utf-8')); } catch { return {}; } };
-  const recorded = read(path.join(outdir, '.cre', 'template.json')).templatePath;
-  const name = read(path.join(outdir, 'projenrc', 'cre', 'SOURCE.json')).templateDirName ?? 'cre-demo-template';
-  const sibling = /^[^/]+$/.test(name) && name !== '..' ? path.join(path.dirname(path.resolve(outdir)), name) : undefined;
-  for (const c of [recorded, sibling]) if (isClone(c)) return c;
-  return '';
+  const str = (v: unknown) => (typeof v === 'string' ? v : '');
+  const source = read(path.join(outdir, 'projenrc', 'cre', 'SOURCE.json'));
+  const recorded = str(read(path.join(outdir, '.cre', 'template.json')).templatePath) || str(source.templatePath);
+  if (isClone(recorded)) return recorded;
+  const name = str(source.templateDirName) || 'cre-demo-template';
+  if (name.includes('/') || name === '..' || name === '.') return '';
+  const sibling = path.join(path.dirname(path.resolve(outdir)), name);
+  return isClone(sibling) ? sibling : '';
 }
 
 /** The template clone's steering directory for a project ("" when there is no clone). */

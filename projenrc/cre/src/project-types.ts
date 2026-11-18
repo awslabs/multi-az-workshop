@@ -2,12 +2,11 @@ import { SampleFile } from 'projen';
 import { createFailureScenarioChecks } from './components/tooling-tasks';
 import { createContentspec } from './components/workshop-studio';
 import type { WorkshopStudioOptions } from './components/workshop-studio';
-import { CreDemoTemplateApp } from './cre-demo-template-app';
+import { CreDemoTemplateApp, githubPreBuildSteps } from './cre-demo-template-app';
 import type { CreDemoTemplateAppOptions } from './cre-demo-template-app';
 import { FAILURE_SCENARIO_LAYOUT, STANDARD_LAYOUT } from './layout';
 import { CreModule } from './modules';
 import { CRE_SCRIPTS } from './paths';
-import { DEPLOY_WORKFLOW } from './workflows/deploy-workflow';
 import { createGithubPublishWorkflow, createGitlabPublishJob } from './workflows/publish-workflow';
 
 /**
@@ -72,6 +71,8 @@ export class CreCustomerSandbox extends CreDemoTemplateApp {
 export const BUILD_TOOL_LOCATION = 'BUILD_TOOL_LOCATION';
 /** The build tool's platforms: a secret each, BUILD_TOOL_LOCATION_<PLATFORM> (cresetup/workshop_studio.py; a test keeps them equal). */
 export const BUILD_TOOL_PLATFORMS = ['LINUX', 'LINUX_ARM', 'OSX', 'OSX_ARM', 'WINDOWS', 'WINDOWS_ARM'];
+/** Those secrets' names; `location` takes the one for the runner it is on. */
+const BUILD_TOOL_SECRETS = BUILD_TOOL_PLATFORMS.map((p) => `${BUILD_TOOL_LOCATION}_${p}`);
 const WORKSHOP_PY = `${CRE_SCRIPTS}/build/workshop.py`;
 
 const WORKSHOP_START_PAGE = `---
@@ -109,7 +110,8 @@ export class CreWorkshopStudio extends CreDemoTemplateApp {
     if (options.containerImages) {
       throw new Error('CreWorkshopStudio: no containerImages: a team account has no ECR repository of ours. Ship an image (or a Helm chart) as an S3 asset with CreEcrImport (CreModule.ECR_IMPORT) instead.');
     }
-    super(options, STANDARD_LAYOUT, 'workshop-studio.md', ['workshop-content.md']);
+    // The build tool's location, one secret per platform: the PR build and the deploy's build read it.
+    super(options, STANDARD_LAYOUT, 'workshop-studio.md', ['workshop-content.md'], [], BUILD_TOOL_SECRETS);
     // The build stages each top-level template into static/ (built, never committed), and checks the
     // whole workshop with Workshop Studio's own build before anything is zipped or deployed.
     // The templates: every top-level stack.
@@ -150,17 +152,14 @@ export class CreWorkshopStudio extends CreDemoTemplateApp {
     });
     publish.spawn(this.tasks.tryFind('build')!);
     publish.exec(`python3 ${CRE_SCRIPTS}/build/publish.py "$@"`, { receiveArgs: true });
-    const toolSecrets = BUILD_TOOL_PLATFORMS.map((p) => `${BUILD_TOOL_LOCATION}_${p}`);
-    if (this.github) createGithubPublishWorkflow(this.github, toolSecrets, this.deployApproval);
-    else createGitlabPublishJob(this);
-    // CI: the job's environment holds every platform's secret (setup sets them), and `location` takes
-    // the one for the runner it is on. GitLab passes its CI/CD variables to every job itself.
-    for (const wf of ['build', DEPLOY_WORKFLOW]) {
-      for (const p of BUILD_TOOL_PLATFORMS) {
-        const name = `${BUILD_TOOL_LOCATION}_${p}`;
-        this.github?.tryFindWorkflow(wf)?.file?.addOverride(`jobs.build.env.${name}`, `\${{ secrets.${name} }}`);
-      }
-    }
+    // The upload alone, for CI: its own step after the build, the only step that gets the
+    // workshop's credentials (the CI's inputs: no switches).
+    this.addTask('publish:upload', {
+      description: 'CI: publish what the build made, with the inputs from the job\'s secrets (npx projen publish builds first)',
+      exec: `python3 ${CRE_SCRIPTS}/build/publish.py`,
+    });
+    if (this.github) createGithubPublishWorkflow(this.github, BUILD_TOOL_SECRETS, this.deployApproval, githubPreBuildSteps(options));
+    else createGitlabPublishJob(this, options.buildSetup?.gitlab ?? []);
     // Workshop Studio's build refuses a workshop without content/, or without the participant policy
     // contentspec.yaml names: start both (written only when missing, then the author's).
     new SampleFile(this, 'content/index.en.md', { contents: WORKSHOP_START_PAGE });

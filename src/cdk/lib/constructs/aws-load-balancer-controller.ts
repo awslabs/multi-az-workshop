@@ -7,7 +7,8 @@ import * as eks from 'aws-cdk-lib/aws-eks-v2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct, IDependable } from 'constructs';
 import { CreEcrImport } from '@cre/constructs';
-import { builtAsset } from '../build-assets';
+import { ecrImportFiles, LB_CONTROLLER_CHART, lbControllerImageTag } from '../asset-files';
+import { builtAsset } from '../built-asset';
 
 /**
  * Properties for AWS Load Balancer Controller construct
@@ -99,19 +100,20 @@ export class AwsLoadBalancerController extends Construct {
 
     // The chart and image, loaded into ECR from the build's tarballs (build:assets).
     const loadBalancerControllerHelmChartRepo = props.ecrImport.addHelmChart('aws-load-balancer-controller-chart', {
-      chart: builtAsset(this, 'chart-asset', `aws-load-balancer-controller-${version}.tgz`),
-      name: 'aws-load-balancer-controller',
+      chart: builtAsset(this, 'chart-asset', ecrImportFiles.chart(LB_CONTROLLER_CHART, version)),
+      name: LB_CONTROLLER_CHART,
       version,
     });
     const awsLB = props.ecrImport.addImage('aws-load-balancer-controller-image', {
-      tarball: builtAsset(this, 'image-asset', 'aws-load-balancer-controller.tar.gz'),
+      tarball: builtAsset(this, 'image-asset', ecrImportFiles.lbControllerImage),
       repositoryName: 'eks/aws-load-balancer-controller',
-      tag: `v${version}-linux_arm64`,
+      // The upstream tag: it changes with the version, so a new version is pushed.
+      tag: lbControllerImageTag(version),
     });
 
     // Install AWS Load Balancer Controller Helm chart
     const loadBalancerController = props.cluster.addHelmChart('AwsLoadBalancerController', {
-      chart: 'aws-load-balancer-controller',
+      chart: LB_CONTROLLER_CHART,
       repository: loadBalancerControllerHelmChartRepo.uri,
       namespace: 'kube-system',
       wait: true,
@@ -119,8 +121,8 @@ export class AwsLoadBalancerController extends Construct {
       values: {
         clusterName: props.cluster.clusterName,
         image: {
-          repository: cdk.Fn.sub('${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/eks/aws-load-balancer-controller'),
-          tag: `v${version}-linux_arm64`,
+          repository: awsLB.repository.repositoryUri,
+          tag: awsLB.tag,
         },
         enableCertManager: false,
         replicaCount: 1,

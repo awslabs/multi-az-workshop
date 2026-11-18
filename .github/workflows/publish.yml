@@ -22,19 +22,6 @@ jobs:
     env:
       CI: "true"
       WORKSHOP_ID: ${{ vars.WORKSHOP_ID }}
-      WS_ACCESS_KEY_ID: ${{ secrets.WS_ACCESS_KEY_ID }}
-      WS_SECRET_ACCESS_KEY: ${{ secrets.WS_SECRET_ACCESS_KEY }}
-      WS_SESSION_TOKEN: ${{ secrets.WS_SESSION_TOKEN }}
-      REMOTE_REPO: ${{ secrets.REMOTE_REPO }}
-      ASSETS_LOCATION: ${{ secrets.ASSETS_LOCATION }}
-      GIT_PLUGIN_LOCATION: ${{ secrets.GIT_PLUGIN_LOCATION }}
-      GIT_PLUGIN: ${{ secrets.GIT_PLUGIN }}
-      BUILD_TOOL_LOCATION_LINUX: ${{ secrets.BUILD_TOOL_LOCATION_LINUX }}
-      BUILD_TOOL_LOCATION_LINUX_ARM: ${{ secrets.BUILD_TOOL_LOCATION_LINUX_ARM }}
-      BUILD_TOOL_LOCATION_OSX: ${{ secrets.BUILD_TOOL_LOCATION_OSX }}
-      BUILD_TOOL_LOCATION_OSX_ARM: ${{ secrets.BUILD_TOOL_LOCATION_OSX_ARM }}
-      BUILD_TOOL_LOCATION_WINDOWS: ${{ secrets.BUILD_TOOL_LOCATION_WINDOWS }}
-      BUILD_TOOL_LOCATION_WINDOWS_ARM: ${{ secrets.BUILD_TOOL_LOCATION_WINDOWS_ARM }}
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
@@ -54,6 +41,29 @@ jobs:
       - name: Install dependencies
         id: install_dependencies
         run: yarn install --immutable
-      - name: Build and publish
-        id: build_and_publish
-        run: npx projen publish
+      - name: Install dotnet
+        id: install_dotnet
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73
+        with:
+          dotnet-version: "9.0"
+      - name: Build
+        id: build
+        env:
+          BUILD_TOOL_LOCATION_LINUX: ${{ secrets.BUILD_TOOL_LOCATION_LINUX }}
+          BUILD_TOOL_LOCATION_LINUX_ARM: ${{ secrets.BUILD_TOOL_LOCATION_LINUX_ARM }}
+          BUILD_TOOL_LOCATION_OSX: ${{ secrets.BUILD_TOOL_LOCATION_OSX }}
+          BUILD_TOOL_LOCATION_OSX_ARM: ${{ secrets.BUILD_TOOL_LOCATION_OSX_ARM }}
+          BUILD_TOOL_LOCATION_WINDOWS: ${{ secrets.BUILD_TOOL_LOCATION_WINDOWS }}
+          BUILD_TOOL_LOCATION_WINDOWS_ARM: ${{ secrets.BUILD_TOOL_LOCATION_WINDOWS_ARM }}
+        run: npx projen build
+      - name: Publish
+        id: publish
+        env:
+          WS_ACCESS_KEY_ID: ${{ secrets.WS_ACCESS_KEY_ID }}
+          WS_SECRET_ACCESS_KEY: ${{ secrets.WS_SECRET_ACCESS_KEY }}
+          WS_SESSION_TOKEN: ${{ secrets.WS_SESSION_TOKEN }}
+          REMOTE_REPO: ${{ secrets.REMOTE_REPO }}
+          ASSETS_LOCATION: ${{ secrets.ASSETS_LOCATION }}
+          GIT_PLUGIN_LOCATION: ${{ secrets.GIT_PLUGIN_LOCATION }}
+          GIT_PLUGIN: ${{ secrets.GIT_PLUGIN }}
+        run: npx projen publish:upload

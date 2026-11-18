@@ -94,6 +94,10 @@ KINDS = {
     "container-image": {"fields": {"image": r"[a-z0-9.-]+(:[0-9]+)?/[a-z0-9._/-]+"}, "updates": UPDATES, "aws": False},
     # A GitHub release's tag (owner/repo), drafts and prereleases left out.
     "github-release": {"fields": {"repo": r"[A-Za-z0-9-]+/[A-Za-z0-9._-]+"}, "updates": UPDATES, "aws": False},
+    # A GitHub Action a workflow step `uses` (owner/repo): `version` is its release tag, `sha` the
+    # commit that tag points to, which the workflow pins (a tag can be moved; a commit can't).
+    # versions:update fills `sha` in ("" until then) and moves both together.
+    "github-action": {"fields": {"repo": r"[A-Za-z0-9-]+/[A-Za-z0-9._-]+", "sha": r"([0-9a-f]{40})?"}, "updates": UPDATES, "aws": False},
     # The kubectl release for the file's Kubernetes minor (dl.k8s.io).
     "kubectl": {"fields": {}, "updates": ("none", "patch"), "aws": False},
 }
@@ -352,6 +356,15 @@ def github_tags(src, repo):
     return [r["tag_name"] for r in json.loads(body) if not r.get("draft") and not r.get("prerelease")]
 
 
+def tag_commit(src, repo, tag):
+    """The commit a tag of `repo` points to."""
+    headers = {"Accept": "application/vnd.github+json"}
+    if os.environ.get("GITHUB_TOKEN"):
+        headers["Authorization"] = f"Bearer {os.environ['GITHUB_TOKEN']}"
+    _status, body, _ = src.http(f"https://api.github.com/repos/{repo}/commits/{urllib.parse.quote(tag)}", headers)
+    return json.loads(body)["sha"]
+
+
 def kubectl_version(src, kubernetes):
     _status, body, _ = src.http(f"https://dl.k8s.io/release/stable-{kubernetes}.txt")
     return body.strip()
@@ -396,7 +409,7 @@ def resolve(name, e, kubernetes, src):
         return newest(cur, helm_versions(src, e["repo"], e["chart"]), upd)
     if kind == "container-image":
         return newest(cur, image_tags(src, e["image"]), upd)
-    if kind == "github-release":
+    if kind in ("github-release", "github-action"):
         tags = github_tags(src, e["repo"])
         return like(cur, newest(cur.lstrip("v"), [t.lstrip("v") for t in tags], upd))
     if kind == "kubectl":
@@ -430,6 +443,8 @@ def update(path, src):
             kubernetes = new
         if new != e["version"]:
             fields["version"] = new
+        if e["kind"] == "github-action" and (new != e["version"] or not e["sha"]):
+            fields["sha"] = tag_commit(src, e["repo"], new)
         if fields:
             changes.append((name, e["version"], new, fields))
         print(f"  {name} ({e['kind']}, update {e['update']}): {e['version'] or '(not yet resolved)'}" +

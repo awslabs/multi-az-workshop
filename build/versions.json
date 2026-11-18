@@ -68,11 +68,12 @@
     "version": "1.35.10",
     "update": "patch"
   },
-  "HELM": {
+  "DOCKER_COMPOSE": {
     "kind": "github-release",
-    "repo": "helm/helm",
-    "version": "4.3.2",
-    "update": "minor"
+    "repo": "docker/compose",
+    "version": "2.32.4",
+    "update": "minor",
+    "note": "the EC2 fleet's docker compose plugin (docker-compose-linux-aarch64)"
   },
   "ISTIO": {
     "kind": "helm-chart",
@@ -108,5 +109,13 @@
     "image": "public.ecr.aws/cloudwatch-agent/cloudwatch-agent",
     "version": "1.300074.1b2005",
     "update": "minor"
+  },
+  "SETUP_DOTNET": {
+    "kind": "github-action",
+    "repo": "actions/setup-dotnet",
+    "version": "v6.1.0",
+    "sha": "0f4a354dd5547a28c70b7853dbd95d5b67886e73",
+    "update": "minor",
+    "note": "the PR build's and the deploy's dotnet (.projenrc.ts buildSetup)"
   }
 }

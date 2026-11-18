@@ -5,5 +5,5 @@
  * The workshop's own tasks, on top of what the CreWorkshopStudio project type provides.
  */
 
-export { createBuildTasks, ECR_IMPORT_DIR } from './build-tasks';
+export { createBuildTasks } from './build-tasks';
 export { addTransitiveDependencyUpgrade } from './upgrade-tasks';

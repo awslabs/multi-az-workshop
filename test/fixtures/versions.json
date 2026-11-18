@@ -68,12 +68,6 @@
     "version": "1.35.10",
     "update": "patch"
   },
-  "HELM": {
-    "kind": "github-release",
-    "repo": "helm/helm",
-    "version": "4.3.2",
-    "update": "minor"
-  },
   "ISTIO": {
     "kind": "helm-chart",
     "repo": "https://istio-release.storage.googleapis.com/charts",

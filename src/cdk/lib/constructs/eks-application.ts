@@ -9,7 +9,8 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import { Construct } from 'constructs';
 import { CreEcrImport } from '@cre/constructs';
-import { builtAsset } from '../build-assets';
+import { ecrImportFiles } from '../asset-files';
+import { builtAsset } from '../built-asset';
 
 /**
  * Properties for EKS Application construct
@@ -60,16 +61,16 @@ export class EKSApplication extends Construct {
     const sa = `${props.namespace}-sa`;
     const shutdownDelay = cdk.Duration.seconds(30);
 
-    // The app's and the CloudWatch agent's images, loaded into ECR from the build's tarballs (build:assets).
+    // The app's and the CloudWatch agent's images, loaded into ECR from the build's tarballs
+    // (build:assets), each tagged with its content hash: a changed image is a new tag, so it is
+    // pushed and the pods roll to it (a tag already in ECR is never pushed again).
     const appContainer = props.ecrImport.addImage('app-image', {
-      tarball: builtAsset(this, 'app-image-asset', 'container.tar.gz'),
+      tarball: builtAsset(this, 'app-image-asset', ecrImportFiles.appImage),
       repositoryName: props.namespace,
-      tag: 'latest',
     });
     const cwAgentContainer = props.ecrImport.addImage('cloudwatch-agent-image', {
-      tarball: builtAsset(this, 'cloudwatch-agent-image-asset', 'cloudwatch-agent.tar.gz'),
+      tarball: builtAsset(this, 'cloudwatch-agent-image-asset', ecrImportFiles.cloudwatchAgentImage),
       repositoryName: 'cloudwatch-agent/cloudwatch-agent',
-      tag: 'latest',
     });
 
     // Create IAM role for pods

@@ -36,7 +36,7 @@ import type { GitHub } from 'projen/lib/github';
 import { JobPermission } from 'projen/lib/github/workflows-model';
 import type { JobStep } from 'projen/lib/github/workflows-model';
 import { UpgradeDependenciesSchedule } from 'projen/lib/javascript';
-import { ACTIONS, NODE_MAJOR } from './actions';
+import { ACTIONS, projenJobSetup, secretsEnv } from './actions';
 import { addGithubApproval } from './approval';
 import { craneInstall } from './container-tools';
 import { GITHUB, PRUNE_JOB, render, RUNNER_ROLE_VARIABLE, UPLOAD_JOB } from '../components/stack-jobs';
@@ -64,6 +64,8 @@ export interface DeployWorkflowOptions {
   readonly containerImages?: boolean;
   /** Steps before the build job's build: the same ones the PR build runs (QEMU, pytest, the project's buildSetup). */
   readonly preBuildSteps?: JobStep[];
+  /** Secrets the build job's build reads (the PR build gets the same ones). @default none */
+  readonly buildSecrets?: readonly string[];
   /** One deploy job per stack (stack-jobs.ts). */
   readonly jobs: readonly StackJob[];
   /** Delete old deploy prefixes after every stack deployed. @default true */
@@ -127,15 +129,7 @@ export function createDeployWorkflow(github: GitHub, opts: DeployWorkflowOptions
   });
 
   // The commit this run deploys: the merge commit on push, main's head on a dispatch from main.
-  const checkout = { name: 'Checkout', uses: ACTIONS.checkout, with: { ref: '${{ github.sha }}' } };
-  const setup = [
-    checkout,
-    { name: 'Setup Node.js', uses: ACTIONS.setupNode, with: { 'node-version': NODE_MAJOR } },
-    { name: 'Enable Corepack', run: 'corepack enable' },
-    // The locked dependencies: without node_modules `npx projen` would fetch whatever projen is
-    // latest on npm and run tasks.json under a different engine from the one the build used.
-    { name: 'Install dependencies', run: 'yarn install --immutable' },
-  ];
+  const setup = projenJobSetup();
   // Deploys only from main (a dispatch from another branch does nothing; its OIDC subject isn't
   // trusted anyway).
   const onMain = "github.ref == 'refs/heads/main'";
@@ -144,7 +138,8 @@ export function createDeployWorkflow(github: GitHub, opts: DeployWorkflowOptions
     if: onMain,
     runsOn: ['ubuntu-24.04-arm'],
     permissions: { contents: JobPermission.READ },
-    env: { CI: 'true', PROJECT_NAME: opts.projectName },
+    // The secrets the build itself reads (a workshop's build tool location, per platform).
+    env: { CI: 'true', PROJECT_NAME: opts.projectName, ...secretsEnv(opts.buildSecrets ?? []) },
     steps: [
       ...setup,
       // The PR build's own pre-build steps (QEMU for build:docker, pytest, the project's buildSetup),
@@ -174,7 +169,7 @@ function varRefs(x: JobValue): Extract<JobValue, { kind: 'var' }>[] {
 
 // Every deploy job has the same base (permissions, concurrency, the shared env, the setup steps and
 // the AWS credentials); a stack job adds its needs and the variables stack-jobs.ts generates for it.
-function addDeployJobs(workflow: GithubWorkflow, opts: DeployWorkflowOptions, setup: any[]): void {
+function addDeployJobs(workflow: GithubWorkflow, opts: DeployWorkflowOptions, setup: JobStep[]): void {
   const retentionDays = artifactRetentionDays(opts.publicRepo);
   const runner: StackJob['credentials'] = { kind: 'var', name: RUNNER_ROLE_VARIABLE, optional: false };
   const credentials = (region: string, role: StackJob['credentials'] = runner) => ({
@@ -290,7 +285,7 @@ function addDeployJobs(workflow: GithubWorkflow, opts: DeployWorkflowOptions, se
  * The `teardown` workflow: deletes the stacks, by hand (`npx projen teardown` from CI). It shares
  * the deploy workflow's concurrency group, so it never runs in the middle of a deploy.
  */
-function addTeardownWorkflow(github: GitHub, opts: DeployWorkflowOptions, setup: any[]): void {
+function addTeardownWorkflow(github: GitHub, opts: DeployWorkflowOptions, setup: JobStep[]): void {
   const wf = new GithubWorkflow(github, TEARDOWN_WORKFLOW, {
     limitConcurrency: true,
     concurrencyOptions: { group: 'deploy-${{ github.repository }}', cancelInProgress: false },
@@ -303,7 +298,8 @@ function addTeardownWorkflow(github: GitHub, opts: DeployWorkflowOptions, setup:
     runsOn: ['ubuntu-latest'],
     ...(opts.environment ? { environment: { name: opts.environment } } : {}),
     permissions: { contents: JobPermission.READ, idToken: JobPermission.WRITE },
-    env: { CI: 'true', PROJECT_NAME: opts.projectName },
+    // The secrets the build itself reads (a workshop's build tool location, per platform).
+    env: { CI: 'true', PROJECT_NAME: opts.projectName, ...secretsEnv(opts.buildSecrets ?? []) },
     steps: [
       ...setup,
       {

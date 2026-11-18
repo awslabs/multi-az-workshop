@@ -1,25 +1,26 @@
 #!/usr/bin/env python3
 """publish.py [--local] [--workshop-id <id>] — send this commit's built workshop to Workshop Studio.
 
-  1. The inputs, from one of two sources. CI: the job's environment, from the repository's secrets
-     (the credentials the user pasted, WS_ACCESS_KEY_ID / WS_SECRET_ACCESS_KEY / WS_SESSION_TOKEN; and
-     REMOTE_REPO, ASSETS_LOCATION, GIT_PLUGIN_LOCATION, GIT_PLUGIN, which setup set). --local: the same
-     names from the template's laptop-only cresetup/workshop_studio.py (`publish-env`), which gets the
-     workshop's 1-hour repository credentials with the builder's Midway session; WORKSHOP_ID from
-     --workshop-id, $WORKSHOP_ID, or the repository's variable. They are held in this process's memory
-     and given only to the commands below (never this process's environment, a file or a log), so
-     they are gone when it ends.
+  1. The inputs, from one of two sources. CI: this step's environment (`npx projen publish:upload`,
+     the only step of the job that gets them), from the repository's secrets (the credentials the user
+     pasted, WS_ACCESS_KEY_ID / WS_SECRET_ACCESS_KEY / WS_SESSION_TOKEN; and REMOTE_REPO,
+     ASSETS_LOCATION, GIT_PLUGIN_LOCATION, GIT_PLUGIN, which setup set). --local: the same names from
+     the template's laptop-only cresetup/workshop_studio.py (`publish-env`), which gets the workshop's
+     1-hour repository credentials with the builder's Midway session, held in this process's memory
+     (never its environment, a file or a log); WORKSHOP_ID from --workshop-id, $WORKSHOP_ID, or the
+     repository's variable. Either way they are given only to the commands below.
   2. The publish, the same whatever the source: the S3 assets first (assets/ to ASSETS_LOCATION, so
      Workshop Studio's build finds every one the templates name), then content/, static/,
      contentspec.yaml (and FACILITATOR_GUIDE.md) as the workshop repository's whole `mainline`, in one
      commit naming this repository and commit.
 
-Only a tested commit is published: the working tree clean, and HEAD on origin's main (a merge to main
+Only a tested commit is published: the checkout clean (no change, no untracked file), and HEAD on origin's main (a merge to main
 built and deployed it). `npx projen publish` builds first, so static/ and assets/ are this commit's.
 Exit 0 published (or nothing changed) | 10 refused (not a tested commit, a placeholder credential, an
 input missing) | 11 the credentials were refused or have expired | 20 a step failed.
 """
 import argparse
+import glob
 import json
 import os
 import re
@@ -115,8 +116,11 @@ def child_env(inp):
 
 def tested_commit():
     """HEAD, refused unless the tree is clean and origin's main has it."""
-    if git("status", "--porcelain", "--untracked-files=no").stdout.strip():
-        raise Stop(REFUSED, "The working tree has uncommitted changes: publish a commit that main has, from a clean checkout.")
+    # Untracked files too: the guide is copied from the checkout, so a file the commit doesn't have
+    # would be published with it (what the build makes is gitignored, so it doesn't count).
+    if git("status", "--porcelain").stdout.strip():
+        raise Stop(REFUSED, "The checkout has changes or files the commit doesn't (git status): publish a commit main has, "
+                   "from a clean checkout.")
     git("fetch", "-q", "origin", "main")
     head = git("rev-parse", "HEAD").stdout.strip()
     if git("merge-base", "--is-ancestor", head, "origin/main").returncode != 0:
@@ -148,21 +152,32 @@ def git_plugin(env, inp):
         shutil.rmtree(venv, ignore_errors=True)
         if run([sys.executable, "-m", "venv", venv]).returncode != 0:
             raise Stop(FAILED, "Making the git plugin's virtualenv failed (python3 -m venv).")
-        pip, py = os.path.join(venv, "bin", "pip"), os.path.join(venv, "bin", "python")
-        host = inp["GIT_PLUGIN_LOCATION"]
+        pip = os.path.join(venv, "bin", "pip")
         # The plugin alone from its own index (never a same-named package from PyPI: no dependency
         # confusion), then the dependencies it declares from PyPI (its index has only the plugin).
-        r = run([pip, "install", "-q", "--no-deps", "--trusted-host", host, "--index-url", f"https://{host}", inp["GIT_PLUGIN"]])
+        # --isolated: no pip.conf or PIP_* environment can add another index to either install.
+        r = run([pip, "install", "-q", "--isolated", "--no-deps", "--index-url", f"https://{inp['GIT_PLUGIN_LOCATION']}", inp["GIT_PLUGIN"]])
         if r.returncode != 0:
             raise Stop(FAILED, f"Installing the git plugin failed: {r.stderr.strip()[-400:]}")
-        name = re.split(r"[=<>!~ ]", inp["GIT_PLUGIN"], maxsplit=1)[0]
-        reqs = [x for x in run([py, "-c", "import importlib.metadata as m, sys; print('\\n'.join(r for r in (m.requires(sys.argv[1]) or []) "
-                                         "if 'extra ==' not in r))", name], quiet=True).stdout.splitlines() if x.strip()]
-        if reqs and run([pip, "install", "-q", *reqs]).returncode != 0:
+        reqs = requirements(venv, re.split(r"[=<>!~ ]", inp["GIT_PLUGIN"], maxsplit=1)[0])
+        if reqs and run([pip, "install", "-q", "--isolated", *reqs]).returncode != 0:
             raise Stop(FAILED, f"Installing the git plugin's dependencies ({', '.join(reqs)}) failed.")
         with open(marker, "w") as f:
             f.write(inp["GIT_PLUGIN"])
     env["PATH"] = os.path.abspath(os.path.join(venv, "bin")) + os.pathsep + env.get("PATH", "")
+
+
+def requirements(venv, name):
+    """The requirements a package installed in `venv` declares (its METADATA's Requires-Dist), its
+    optional extras left out."""
+    dist = name.replace("-", "_").lower()
+    found = [m for m in glob.glob(os.path.join(venv, "lib", "python*", "site-packages", "*.dist-info", "METADATA"))
+             if os.path.basename(os.path.dirname(m)).lower().startswith(dist + "-")]
+    if not found:
+        return []
+    with open(found[0]) as f:
+        reqs = [line.split(":", 1)[1].strip() for line in f if line.startswith("Requires-Dist:")]
+    return [r for r in reqs if "extra ==" not in r]
 
 
 def push_content(env, remote, head):

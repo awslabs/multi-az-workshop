@@ -10,7 +10,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct, DependencyGroup, IDependable } from 'constructs';
-import { Versions } from '../versions';
+import { CreVersions } from '@cre/constructs';
 
 /**
  * Instance architecture for EKS nodes
@@ -57,9 +57,9 @@ export interface EKSClusterProps {
   /**
    * The workshop's versions (build/versions.json): the add-ons (VPC_CNI, KUBE_PROXY, COREDNS,
    * POD_IDENTITY_AGENT) and the node group's AMI release (EKS_NODE_AMI).
-   * @default Versions.load(), build/versions.json
+   * @default CreVersions.of(this), build/versions.json
    */
-  readonly versions?: Versions;
+  readonly versions?: CreVersions;
 
   /**
    * Groups to add to the access entry of the user role
@@ -87,8 +87,8 @@ export class EKSCluster extends Construct {
   public readonly workloadCapacity: IDependable;
 
   constructor(scope: Construct, id: string, props: EKSClusterProps) {
-    const versions = props.versions ?? Versions.load();
     super(scope, id);
+    const versions = props.versions ?? CreVersions.of(this);
 
     // Worker node security group
     const workerSecurityGroup: ec2.ISecurityGroup = new ec2.SecurityGroup(this, "WorkerNodeSecurityGroup", {

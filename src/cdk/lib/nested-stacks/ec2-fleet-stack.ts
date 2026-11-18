@@ -12,7 +12,8 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { IVpcIpV6 } from '../constructs/vpc-ipv6-construct';
-import { Versions } from '../versions';
+import { CreVersions } from '@cre/constructs';
+import { assetFiles } from '../asset-files';
 
 /**
  * Props for EC2 Fleet Stack
@@ -20,9 +21,9 @@ import { Versions } from '../versions';
 export interface EC2FleetStackProps extends cdk.NestedStackProps {
   /**
    * The workshop's versions (build/versions.json): the fleet's AMI is its EC2_AMI_<ARCH> entry.
-   * @default Versions.load(), build/versions.json
+   * @default CreVersions.of(this), build/versions.json
    */
-  readonly versions?: Versions;
+  readonly versions?: CreVersions;
 
   /**
    * VPC where the EC2 fleet will be deployed
@@ -331,7 +332,7 @@ export class EC2FleetStack extends cdk.NestedStack {
       userData,
       // A region mapping from build/versions.json, not an SSM-typed parameter: a new AMI arrives
       // only as a change to that file, which deploys.
-      machineImage: (props.versions ?? Versions.load()).machineImage(cpuArch === ec2.InstanceArchitecture.ARM_64 ? 'EC2_AMI_ARM64' : 'EC2_AMI_X86_64'),
+      machineImage: (props.versions ?? CreVersions.of(this)).machineImage(this, cpuArch === ec2.InstanceArchitecture.ARM_64 ? 'EC2_AMI_ARM64' : 'EC2_AMI_X86_64'),
       instanceType: ec2.InstanceType.of(
         cpuArch === ec2.InstanceArchitecture.ARM_64 ? ec2.InstanceClass.T4G : ec2.InstanceClass.T3A,
         ec2.InstanceSize.MICRO,
@@ -532,7 +533,7 @@ export class EC2FleetStack extends cdk.NestedStack {
           ec2.InitPackage.yum('docker'),
           ec2.InitCommand.shellCommand('mkdir -p /usr/libexec/docker/cli-plugins'),
           ec2.InitCommand.shellCommand(
-            `aws s3 cp s3://${props.assetsBucketName}/${props.assetsBucketPrefix}docker-compose /usr/libexec/docker/cli-plugins/docker-compose --region ${cdk.Aws.REGION}`
+            `aws s3 cp s3://${props.assetsBucketName}/${props.assetsBucketPrefix}${assetFiles.dockerCompose} /usr/libexec/docker/cli-plugins/docker-compose --region ${cdk.Aws.REGION}`
           ),
           ec2.InitCommand.shellCommand('chmod +x /usr/libexec/docker/cli-plugins/docker-compose'),
           ec2.InitService.enable('docker', {

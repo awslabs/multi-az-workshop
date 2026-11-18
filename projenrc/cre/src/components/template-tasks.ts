@@ -15,6 +15,6 @@ export function createTemplateTasks(project: awscdk.AwsCdkTypeScriptApp): void {
     description:
       // Which clone it uses lives in one place, the --from entry of the task reference (review 10d G3).
       'Pull the cre-demo-template clone, refresh projenrc/cre, cre-constructs and the skill links from it, then synth + build.',
-    steps: [{ exec: `${FROM_TEMPLATE} template/update-template.py --from "{template}" "$@"`, receiveArgs: true }],
+    steps: [{ exec: `${FROM_TEMPLATE} template/update-template.py "$@"`, receiveArgs: true }],
   });
 }
