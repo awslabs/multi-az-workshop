@@ -331,25 +331,13 @@ def cmd_teardown(args):
             "to delete it there.")
     if refusal and not args.dry_run:
         raise Stop(REFUSED, refusal)
-    # Each stack after every stack that takes its outputs or dependsOn it (planned stacks: their
-    # `needs`); orphans one at a time, newest first (no plan says what they need). review 10i H5.
-    if args.orphans:
-        rounds = [[x] for x in targets]
-    else:
-        needs = {s["id"]: set(s.get("needs") or []) for s in stacks}
-        rounds, left = [], list(targets)
-        while left:
-            ready = [x for x in left if not any(x[0] in needs.get(o[0], ()) for o in left if o is not x)] or left[:1]
-            rounds.append(ready)
-            left = [x for x in left if x not in ready]
     if not targets:
         say("Nothing to delete.")
     else:
-        say(f"Account {account}: {'would delete' if args.dry_run else 'deleting'}, in this order (the same number at once):")
-        for i, batch in enumerate(rounds, 1):
-            for name, region, client, status in batch:
-                where = ", ".join(x for x in (region, status, "DNS account" if client is args.dns else "") if x)
-                say(f"  {i}. {name} ({where})")
+        say(f"Account {account}: {'would delete' if args.dry_run else 'deleting'}:")
+        for name, region, client, status in targets:
+            where = ", ".join(x for x in (region, status, "DNS account" if client is args.dns else "") if x)
+            say(f"  {name} ({where})")
     if args.dry_run:
         if targets:
             say("(dry run) Nothing was deleted. A stack that isn't deployed is skipped; their resources go too when deleted, "
@@ -359,20 +347,21 @@ def cmd_teardown(args):
         return OK
     if not targets:
         return OK
+    # Every delete is started at once and none is waited for: CloudFormation finishes them, and npx
+    # projen stacks shows when. A stack whose delete fails while another stack still uses its
+    # resources (a VPC) is DELETE_FAILED then: a re-run deletes it (one already deleting or gone is
+    # accepted, so a re-run is always safe).
     failed = []
-    for batch in rounds:
-        say("Deleting " + ", ".join(f"{name} ({region})" for name, region, _, _ in batch) + "...")
-        for (name, _, _, _), why in zip(batch, crelib.parallel(lambda x: cfn.delete(x[2].run, x[1], x[0]), batch)):
-            if why:
-                failed.append(f"{name}: {why}")
-                say(f"  ❌ {name}: {why}")
-            else:
-                say(f"  ✅ {name} deleted (or wasn't there)")
-        if failed and not args.orphans:
-            break   # a dependent left in place blocks the stacks it needs
-
+    for (name, _, _, _), why in zip(targets, crelib.parallel(lambda x: cfn.delete(x[2].run, x[1], x[0], wait=False), targets)):
+        if why:
+            failed.append(f"{name}: {why}")
+            say(f"  ❌ {name}: {why}")
+        else:
+            say(f"  ✅ {name} deleting")
     if failed:
-        raise Stop(FAILED, "Not deleted: " + "; ".join(failed) + ". Fix the resource named, then re-run (deleted stacks are skipped).")
+        raise Stop(FAILED, "Not deleted: " + "; ".join(failed) + ". Fix it, then re-run.")
+    say("CloudFormation finishes the deletes: npx projen stacks shows each until it is gone. A stack that ends "
+        "DELETE_FAILED (still in use when its delete ran): re-run npx projen teardown.")
     return OK
 
 
