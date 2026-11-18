@@ -465,6 +465,11 @@ def is_commit_sha(value):
 RELEASE_TAG = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
 
 
+def release_package(project):
+    """The GitLab generic package a release's content.zip is in: `<this>/<version>/content.zip`."""
+    return re.sub(r"[^A-Za-z0-9._-]", "-", project or "workshop")
+
+
 def release_tags(ref=None, cwd=None):
     """The release tags, newest version first: every one, or those pointing at `ref`."""
     r = git("tag", "--list", "v*", *(["--points-at", ref] if ref else []), cwd=cwd)

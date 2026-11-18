@@ -3,7 +3,7 @@ import { Version } from 'projen/lib/version';
 import { createFailureScenarioChecks } from './components/tooling-tasks';
 import { createContentspec } from './components/workshop-studio';
 import type { WorkshopStudioOptions } from './components/workshop-studio';
-import { CreDemoTemplateApp, githubPreBuildSteps } from './cre-demo-template-app';
+import { CreDemoTemplateApp } from './cre-demo-template-app';
 import type { CreDemoTemplateAppOptions } from './cre-demo-template-app';
 import { FAILURE_SCENARIO_LAYOUT, STANDARD_LAYOUT } from './layout';
 import { CreModule } from './modules';
@@ -155,24 +155,27 @@ export class CreWorkshopStudio extends CreDemoTemplateApp {
       description: 'CI: tag and release the commit the deploy just tested (the deploy runs it; publish sends the latest release)',
       exec: `python3 ${CRE_SCRIPTS}/build/release.py`,
     });
-    // The publish: a release only (the latest, or --version's). `checkout` first (CI checks the release
-    // out; a laptop must be on it), then the build, then publish.py with its inputs from the CI job's
-    // secrets, or with --local from the laptop's Midway session (only the source differs).
+    // The publish: a release only (the latest, or --version's), nothing built. `prepare` takes the
+    // release's commit (CI checks it out; a laptop must be on it) and unpacks its content.zip (the
+    // build its deploy deployed) as assets/, the zip itself at assets/content.zip for the guide's
+    // download; `workshop:stage` copies the templates into static/; then publish.py sends them with
+    // its inputs from the CI job's secrets, or with --local from the laptop's Midway session.
     const publish = this.addTask('publish', {
-      description: "Publish the latest release (or --version v<x.y.z>'s) to Workshop Studio: check it is the checkout, build, then "
-        + "the S3 assets and the guide to the workshop's repository. --local: the credentials from your Midway session; else (CI) from the pasted secrets",
+      description: "Publish the latest release (or --version v<x.y.z>'s) to Workshop Studio, from its content.zip (no build): the S3 assets, "
+        + "then the guide to the workshop's repository. --local: the credentials from your Midway session; else (CI) from the pasted secrets",
     });
-    publish.exec(`python3 ${CRE_SCRIPTS}/build/publish.py checkout "$@"`, { receiveArgs: true });
-    publish.spawn(this.tasks.tryFind('build')!);
+    publish.exec(`python3 ${CRE_SCRIPTS}/build/publish.py prepare "$@"`, { receiveArgs: true });
+    publish.spawn(stage);
     publish.exec(`python3 ${CRE_SCRIPTS}/build/publish.py "$@"`, { receiveArgs: true });
-    // The upload alone, for CI: its own step after the build, the only step that gets the
-    // workshop's credentials (the CI's inputs: no switches).
-    this.addTask('publish:upload', {
-      description: 'CI: publish what the build made of the checked-out release, with the inputs from the job\'s secrets (npx projen publish builds first)',
-      exec: `python3 ${CRE_SCRIPTS}/build/publish.py`,
+    // The upload alone, for CI: its own step after `prepare`, the only step that gets the workshop's
+    // credentials (the CI's inputs: no switches).
+    const upload = this.addTask('publish:upload', {
+      description: "CI: publish the prepared release (publish.py prepare first), with the inputs from the job's secrets",
     });
-    if (this.github) createGithubPublishWorkflow(this.github, BUILD_TOOL_SECRETS, this.deployApproval, githubPreBuildSteps(options));
-    else createGitlabPublishJob(this, options.buildSetup?.gitlab ?? []);
+    upload.spawn(stage);
+    upload.exec(`python3 ${CRE_SCRIPTS}/build/publish.py`);
+    if (this.github) createGithubPublishWorkflow(this.github, this.deployApproval);
+    else createGitlabPublishJob(this);
     // Workshop Studio's build refuses a workshop without content/, or without the participant policy
     // contentspec.yaml names: start both (written only when missing, then the author's).
     new SampleFile(this, 'content/index.en.md', { contents: WORKSHOP_START_PAGE });

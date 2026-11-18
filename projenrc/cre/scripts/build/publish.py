@@ -15,14 +15,16 @@
      commit naming this repository and commit.
 
 Only a release is published: the latest (release.py makes one after every deploy from main that
-succeeded, on the commit it tested), or the one `--version v<x.y.z>` names. The checkout must be that
-release's commit, clean (no change, no untracked file). `publish.py checkout [--version v]` gets there
-first: in CI it checks the release out; on a laptop it refuses any other commit, naming the
-`git checkout` to run (your checkout is never moved). `npx projen publish` runs it, then builds, so
-static/ and assets/ are the release's.
+succeeded, on the commit it tested, with that build's content.zip), or the one `--version v<x.y.z>`
+names. Nothing is built: `publish.py prepare [--version v]` takes the release's commit (CI checks it
+out; a laptop must be on it, never moved, and is told the `git checkout` to run), downloads its
+content.zip (GitHub: `gh release download`; GitLab: its generic package, with the job token in CI or
+your Midway session and GitLab token on a laptop) and unpacks it as assets/, with the zip itself at
+assets/content.zip (the guide's download, `:assetUrl{path=/content.zip}`). `workshop:stage` then
+copies the templates into static/, and this script sends assets/ and the guide.
 Exit 0 published (or nothing changed) | 10 refused (no such release, not the release's commit, a
-placeholder credential, an input missing) | 11 the credentials were refused or have expired | 20 a
-step failed.
+release with no content.zip, a placeholder credential, an input missing) | 11 the credentials were
+refused or have expired | 20 a step failed.
 """
 import argparse
 import glob
@@ -33,10 +35,15 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.error
+import urllib.parse
+import urllib.request
+import zipfile
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
-from crelib import RELEASE_TAG, release_tags  # noqa: E402
+import crelib  # noqa: E402
+from crelib import RELEASE_TAG, release_package, release_tags  # noqa: E402
 
 OK, REFUSED, CREDS, FAILED = 0, 10, 11, 20
 CREDENTIALS = ("WS_ACCESS_KEY_ID", "WS_SECRET_ACCESS_KEY", "WS_SESSION_TOKEN")
@@ -152,20 +159,93 @@ def released_checkout(version):
     return tag, sha
 
 
-def checkout(version):
-    """CI: check the release out (the job's clone is ours). A laptop: only check it (never move a checkout)."""
+CONTENT = os.path.join("dist", "content.zip")
+# The download of a release's zip (hundreds of MB).
+DOWNLOAD_TIMEOUT = 1800
+
+
+def download_github(tag):
+    repo = ["--repo", os.environ["GITHUB_REPOSITORY"]] if os.environ.get("GITHUB_REPOSITORY") else []
+    r = run(["gh", "release", "download", tag, *repo, "--pattern", "content.zip", "--dir", "dist", "--clobber"], quiet=True)
+    if r.returncode != 0:
+        err = r.stderr.strip()
+        if "no assets" in err.lower() or "no asset" in err.lower():
+            raise Stop(REFUSED, f"The release {tag} has no content.zip: publish a release the deploy made with one.")
+        raise Stop(CREDS if "auth" in err.lower() else FAILED, f"Downloading {tag}'s content.zip failed: {err[-400:]}")
+
+
+def download_gitlab_ci(tag):
+    project = os.environ.get("PROJECT_NAME") or os.environ.get("CI_PROJECT_NAME")
+    url = f"{os.environ['CI_API_V4_URL']}/projects/{os.environ['CI_PROJECT_ID']}/packages/generic/{release_package(project)}/{tag[1:]}/content.zip"
+    req = urllib.request.Request(url, headers={"JOB-TOKEN": os.environ["CI_JOB_TOKEN"]})
+    try:
+        with urllib.request.urlopen(req, timeout=DOWNLOAD_TIMEOUT) as r, open(CONTENT, "wb") as f:  # noqa: S310 (the instance's own API)
+            shutil.copyfileobj(r, f)
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            raise Stop(REFUSED, f"The release {tag} has no content.zip: publish a release the deploy made with one.")
+        raise Stop(FAILED, f"Downloading {tag}'s content.zip failed ({e.code}).")
+    except (urllib.error.URLError, OSError) as e:
+        raise Stop(FAILED, f"Downloading {tag}'s content.zip failed: {e}")
+
+
+def download_gitlab_local(tag):
+    """A laptop: the template's laptop-only module downloads it with your Midway session and GitLab
+    token (as the git tasks call GitLab); never imported here, which CI runs."""
+    if not os.path.isfile(LOCAL_MODULE):
+        raise Stop(REFUSED, f"Downloading from GitLab on a laptop needs the template's laptop-only files ({LOCAL_MODULE}): run npx projen "
+                            "with your cre-demo-template clone beside the project.")
+    _, path = crelib.git_remote(git("remote", "get-url", "origin").stdout.strip())
+    if not path:
+        raise Stop(REFUSED, "origin isn't a GitLab project URL: can't find the release's content.zip.")
+    r = subprocess.run([sys.executable, LOCAL_MODULE, "download-release", path, release_package(os.environ.get("PROJECT_NAME")),
+                        tag[1:], CONTENT], capture_output=True, text=True)
+    if r.returncode != 0:
+        say(r.stderr.rstrip())
+        code = r.returncode if r.returncode in (REFUSED, CREDS) else FAILED
+        raise Stop(code, f"The release {tag} has no content.zip." if code == REFUSED else f"Downloading {tag}'s content.zip failed.")
+
+
+def download(tag):
+    os.makedirs("dist", exist_ok=True)
+    say(f"→  download {tag}'s content.zip (what its deploy deployed)")
+    if os.environ.get("GITHUB_ACTIONS"):
+        download_github(tag)
+    elif os.environ.get("GITLAB_CI"):
+        download_gitlab_ci(tag)
+    elif crelib.git_remote(git("remote", "get-url", "origin").stdout.strip())[0] == "github.com":
+        download_github(tag)
+    else:
+        download_gitlab_local(tag)
+
+
+def unpack():
+    """assets/ exactly as the release's build had it, plus the zip itself (the guide's download)."""
+    shutil.rmtree("assets", ignore_errors=True)
+    try:
+        with zipfile.ZipFile(CONTENT) as z:
+            z.extractall("assets")
+    except zipfile.BadZipFile:
+        raise Stop(FAILED, f"{CONTENT} isn't a zip (a broken download?): run it again.")
+    shutil.copyfile(CONTENT, os.path.join("assets", "content.zip"))
+
+
+def prepare(version):
+    """The release's commit (CI: checked out; a laptop: checked), its content.zip as assets/."""
     tag, sha = release(version)
     if os.environ.get("CI"):
         if git("checkout", "-q", "--detach", sha).returncode != 0:
             raise Stop(FAILED, f"Checking out {tag} failed.")
         say(f"→  publishing {tag} ({sha[:9]})")
     released_checkout(version)
+    download(tag)
+    unpack()
 
 
 def built():
     missing = [p for p in ("assets", "contentspec.yaml", "content", "static") if not os.path.exists(p)]
     if missing:
-        raise Stop(REFUSED, f"{', '.join(missing)} missing: run npx projen build first (npx projen publish does).")
+        raise Stop(REFUSED, f"{', '.join(missing)} missing: npx projen publish prepares them from the release (publish.py prepare, then workshop:stage).")
 
 
 def upload_assets(env, location):
@@ -276,17 +356,17 @@ def publish(a):
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(prog="publish.py", description="Publish a release's built workshop to Workshop Studio ([checkout] first).")
+    p = argparse.ArgumentParser(prog="publish.py", description="Publish a release's workshop to Workshop Studio ([prepare] first: the release and its content.zip).")
     p.add_argument("--local", action="store_true", help="get the inputs on this laptop (Midway), not from the CI job's secrets")
     p.add_argument("--workshop-id", help="the workshop (default: $WORKSHOP_ID, or the repository's WORKSHOP_ID variable)")
     p.add_argument("--version", default=os.environ.get("RELEASE_VERSION", ""),
                    help="the release to publish, v<x.y.z> (default: $RELEASE_VERSION, else the latest release)")
     argv = list(sys.argv[1:] if argv is None else argv)
-    only_checkout = bool(argv) and argv[0] == "checkout"
-    a = p.parse_args(argv[1:] if only_checkout else argv)
+    only_prepare = bool(argv) and argv[0] == "prepare"
+    a = p.parse_args(argv[1:] if only_prepare else argv)
     try:
-        if only_checkout:
-            checkout(a.version)
+        if only_prepare:
+            prepare(a.version)
             code = OK
         else:
             code = publish(a)
@@ -296,7 +376,7 @@ def main(argv=None):
     except Exception as e:  # noqa: BLE001 (an unexpected error is still a RESULT line: failed part way)
         say(f"❌ publish failed: {type(e).__name__}: {e}")
         code = FAILED
-    print(f"RESULT code={code} step={'publish:checkout' if only_checkout else 'publish'}")
+    print(f"RESULT code={code} step={'publish:prepare' if only_prepare else 'publish'}")
     return code
 
 

@@ -44,8 +44,6 @@ export const assetFiles = {
   /** The CodeDeploy bundles: the app and the failing app (built with FAIL defined). */
   appBundle: 'app_deploy.zip',
   failingAppBundle: 'app_deploy_fail.zip',
-  /** The whole build, for the guide's "on your own" download. */
-  content: 'content.zip',
 } as const;
 
 /** The local tags the EC2 fleet's docker-compose.yml runs (src/app/docker): the tarballs are saved with them. */
