@@ -5,7 +5,7 @@
   "description": "CRE construct library, installed from cre-demo-template/constructs/src. Do not edit: change it in cre-demo-template; npx projen installs the modules .projenrc.ts lists.",
   "main": "index.ts",
   "types": "index.ts",
-  "creTemplateSha": "15872fe61998ca061a8d8dc50684fb93fe8b36c4",
+  "creTemplateSha": "adb21490a0afa0b3ab622082825c6bce115ce17e",
   "creModules": [
     "ecr-import"
   ]

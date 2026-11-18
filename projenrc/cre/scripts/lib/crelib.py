@@ -446,6 +446,13 @@ def template_dir():
 # ---- git ----------------------------------------------------------------------------------------
 
 
+def is_commit_sha(value):
+    """A full commit id (40 lowercase hex): what a project pins (SOURCE.json templateSha) and what
+    sync-constructs.py --at takes. Anything else is refused before it reaches git, where a value
+    starting with "-" would be read as an option (git archive --remote=..., --output=...)."""
+    return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{40}", value) is not None
+
+
 def git(*args, cwd=None, env=None):
     return run(["git"] + list(args), cwd=cwd, env=env)
 

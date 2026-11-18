@@ -91,6 +91,12 @@ export function installConstructModules(outdir: string, modules: readonly CreMod
   const installed = read(path.join(outdir, CRE_CONSTRUCTS_DIR, 'package.json'));
   const same = installed.creTemplateSha === pin && JSON.stringify(installed.creModules ?? null) === JSON.stringify(modules);
   if (same || !pin) return;
+  // The pin reaches git as an argument (sync-constructs.py --at): only a full commit id, never a
+  // value git could read as an option.
+  if (!/^[0-9a-f]{40}$/.test(pin)) {
+    throw new Error(`cre: projenrc/cre/SOURCE.json templateSha ${JSON.stringify(pin)} is not a full commit id: `
+      + 'run npx projen update-template to pin the template clone\'s commit.');
+  }
   execFileSync('python3', [path.join(tpl, 'packages', 'cre-projen', 'scripts', 'template', 'sync-constructs.py'), tpl,
     path.join(outdir, CRE_CONSTRUCTS_DIR), '--modules', modules.join(','), '--at', pin], { stdio: 'inherit' });
 }
