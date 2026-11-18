@@ -6,7 +6,8 @@ Add it with `CreModule.ECR_IMPORT` in `constructModules` (.projenrc.ts), then `n
 stack deploys to, from S3 assets. Use it where a `DockerImageAsset` can't be pushed ahead of the
 deploy: an account that has no registry of ours, such as a Workshop Studio team account (a
 `CreWorkshopStudio` project can't use `containerImages`). One CodeBuild project (Docker, arm64) and
-one custom resource per artifact, which completes only when its build has.
+one custom resource for every artifact, which completes only when its build has pushed the ones
+not yet in ECR.
 
 ```ts
 import { buildOutputAsset, CreEcrImport } from '@cre/constructs';

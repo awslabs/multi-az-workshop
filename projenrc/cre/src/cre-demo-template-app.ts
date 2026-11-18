@@ -11,6 +11,7 @@ import { refuseUnretriedDownloads } from './components/download-check';
 import { createGitTasks } from './components/git-tasks';
 import type { GitProvider } from './components/git-tasks';
 import { pinActions } from './components/github-actions';
+import { pythonProblem } from './components/python-check';
 import { createSkillsTasks } from './components/skills-tasks';
 import { stackJobs, VERSIONS_ROLE_VARIABLE } from './components/stack-jobs';
 import { cdkAppCommand, IAM_CONTROL_PLANE_REGION, planStacks, PLAN_FILE, readPlan, writePlanFile } from './components/stack-plan';
@@ -509,6 +510,9 @@ const RESOLUTIONS = [
  *
  * Not instantiated directly: use CreResilienceDemo, CreFailureScenario or CreCustomerSandbox.
  */
+/** pythonProblem's answer, asked once per process ('' when python3 is new enough). */
+let checkedPython: string | undefined;
+
 export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
   public readonly gitProvider: GitProvider;
   /** One approval before CI deploys (deployApproval, resolved). */
@@ -522,6 +526,12 @@ export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
 
   protected constructor(options: CreDemoTemplateAppOptions, layout: ProjectLayout, typeSteering: string, extraSteering: string[] = [],
     requiredModules: readonly CreModule[] = [], buildSecrets: readonly string[] = []) {
+    // Every task is Python: refused up front on a python3 older than MIN_PYTHON, not mid-task.
+    const python = checkedPython ??= pythonProblem() ?? '';
+    if (python) {
+      console.error(`cre: npx projen FAILED: ${python}.`);
+      process.exit(1);
+    }
     const isGithub = options.github !== undefined;
     // Before anything is written: a public repository listing an Amazon-internal module is refused.
     let modules: CreModule[] = [];
