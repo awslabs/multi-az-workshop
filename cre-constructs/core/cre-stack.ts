@@ -4,6 +4,7 @@ import * as cdk from 'aws-cdk-lib';
 import { Aws } from 'aws-cdk-lib';
 import * as cxapi from 'aws-cdk-lib/cx-api';
 import { Construct } from 'constructs';
+import { FunctionLogGroups } from './function-log-groups.js';
 import { REGION_NAME, unknownRegion } from './names.js';
 
 /** The ECR repository a project's container images go to, in each region it deploys to. Never
@@ -244,6 +245,8 @@ export type CreAppProps = Omit<cdk.AppProps, 'analyticsReporting'>;
  *   - Every top-level stack must be a {@link CreStack}, named `projectName` or
  *     `projectName-<suffix>` (`stackId()`), and every parameter it declares without a default must
  *     be a {@link CreCfnParameter}; anything else fails the synth.
+ *   - Every Lambda function gets a log group its stack owns and deletes ({@link FunctionLogGroups}),
+ *     so a teardown leaves no `/aws/lambda/*` groups behind.
  *   - Writes {@link CRE_PLAN_FILE} next to the templates: the stacks the pipeline deploys, their
  *     regions, roles, parameter sources, the outputs later stacks take, and the order. projen
  *     generates the pipeline from it.
@@ -264,6 +267,7 @@ export class CreApp extends cdk.App {
     });
     this.projectName = this.node.tryGetContext('cre:projectName');
     this.node.addValidation({ validate: () => this.problems() });
+    cdk.Aspects.of(this).add(new FunctionLogGroups());
   }
 
   /** `stackId()` → the project name; `stackId('edge')` → `<project>-edge`. */
