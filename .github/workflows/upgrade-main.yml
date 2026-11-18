@@ -8,10 +8,10 @@ on:
 jobs:
   upgrade:
     name: Upgrade
+    needs: versions
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
     outputs:
       patch_created: ${{ steps.create_patch.outputs.patch_created }}
     steps:
@@ -32,12 +32,13 @@ jobs:
       - name: Install dependencies
         id: install_dependencies
         run: yarn install --immutable
-      - name: AWS credentials for the version lookups (read-only)
-        id: versions_credentials
-        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd
+      - name: The version lookups' file
+        id: the_version_lookups_file
+        if: hashFiles('build/versions.json') != ''
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          role-to-assume: ${{ secrets.VERSIONS_ROLE_ARN }}
-          aws-region: us-east-1
+          name: versions
+          path: build
       - name: Upgrade dependencies
         id: upgrade_dependencies
         run: yarn projen upgrade
@@ -138,3 +139,35 @@ jobs:
           author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           signoff: true
+  versions:
+    name: Version lookups
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+      - name: AWS credentials for the version lookups (read-only)
+        id: aws_credentials_for_the_version_lookups_read-only
+        if: hashFiles('build/versions.json') != ''
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd
+        with:
+          role-to-assume: ${{ secrets.VERSIONS_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: Move each version
+        id: move_each_version
+        if: hashFiles('build/versions.json') != ''
+        run: python3 projenrc/cre/scripts/build/versions.py update --file build/versions.json
+      - name: Hand the version file to the upgrade
+        id: hand_the_version_file_to_the_upgrade
+        if: hashFiles('build/versions.json') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: versions
+          path: build/versions.json
+          retention-days: 1
+          if-no-files-found: error

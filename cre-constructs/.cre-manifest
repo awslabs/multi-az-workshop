@@ -12,8 +12,8 @@ c400a6b0acb2b26e87f54f3b148237ed3e47aa9a2fc4048d5ba2b383d6598cba  ./core/worksho
 23247025c813a399f82a8bb4a517a581ef9f43fafb93b0c6b7caa283c5c7e764  ./ecr-import/README.md
 cab4057a9d39d8d6d904b815cd3bfee4e3dbe10b3f1f18b15c53e14382a47a67  ./ecr-import/build/buildspec.yml
 135cdf7e58f915ef7cf0dda0334ab35fb1ac60a52e21fd12d3e2a7170f6aef73  ./ecr-import/build/import.py
-0ce5fbc4487fc601b002a7f59c8c2dcb982a69e8941e8940c8833304fab9af3c  ./ecr-import/ecr-import.ts
+5fafc71b8cb2c53b98bb78a9ec3ca25865303bb4ed8349e4544f13350270be6f  ./ecr-import/ecr-import.ts
 3e90dbc38730298c750f11ffdeee1087ce7874a87c3544dab73cfa3ee4256037  ./ecr-import/handler/index.py
 7c8b5c8755c16cb8808bf893cf52ed4f2f5b33c4301e87fdcf50aefa7b2c606c  ./ecr-import/index.ts
 eb2e18a45f8b1846f02428d4a2213aeaeea4795e52274a57929a87fe86d77560  ./index.ts
-c3b47eeb093dddbc67d294327ce68af93f1fecbe4d7195478aa4eec5d4644167  ./package.json
+f29833a69f03be2700b3102f1dc34ec31008652fd178c8826d1f1428a7445921  ./package.json

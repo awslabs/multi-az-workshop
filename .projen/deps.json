@@ -39,6 +39,11 @@
       "type": "build"
     },
     {
+      "name": "commit-and-tag-version",
+      "version": "^13",
+      "type": "build"
+    },
+    {
       "name": "esbuild",
       "type": "build"
     },

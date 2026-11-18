@@ -14,10 +14,15 @@
      contentspec.yaml (and FACILITATOR_GUIDE.md) as the workshop repository's whole `mainline`, in one
      commit naming this repository and commit.
 
-Only a tested commit is published: the checkout clean (no change, no untracked file), and HEAD on origin's main (a merge to main
-built and deployed it). `npx projen publish` builds first, so static/ and assets/ are this commit's.
-Exit 0 published (or nothing changed) | 10 refused (not a tested commit, a placeholder credential, an
-input missing) | 11 the credentials were refused or have expired | 20 a step failed.
+Only a release is published: the latest (release.py makes one after every deploy from main that
+succeeded, on the commit it tested), or the one `--version v<x.y.z>` names. The checkout must be that
+release's commit, clean (no change, no untracked file). `publish.py checkout [--version v]` gets there
+first: in CI it checks the release out; on a laptop it refuses any other commit, naming the
+`git checkout` to run (your checkout is never moved). `npx projen publish` runs it, then builds, so
+static/ and assets/ are the release's.
+Exit 0 published (or nothing changed) | 10 refused (no such release, not the release's commit, a
+placeholder credential, an input missing) | 11 the credentials were refused or have expired | 20 a
+step failed.
 """
 import argparse
 import glob
@@ -30,6 +35,8 @@ import sys
 import tempfile
 
 sys.dont_write_bytecode = True
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
+from crelib import RELEASE_TAG, release_tags  # noqa: E402
 
 OK, REFUSED, CREDS, FAILED = 0, 10, 11, 20
 CREDENTIALS = ("WS_ACCESS_KEY_ID", "WS_SECRET_ACCESS_KEY", "WS_SESSION_TOKEN")
@@ -114,18 +121,45 @@ def child_env(inp):
 
 # ---- 2. the publish ------------------------------------------------------------------------------
 
-def tested_commit():
-    """HEAD, refused unless the tree is clean and origin's main has it."""
+def release(version):
+    """(tag, commit) of the release to publish: `version` (v0.0.33 or 0.0.33), else the latest."""
+    git("fetch", "-q", "--tags", "--force", "origin")
+    if version:
+        tag = version if version.startswith("v") else f"v{version}"
+        if not RELEASE_TAG.match(tag):
+            raise Stop(REFUSED, f"--version {version!r} isn't a release version (v<major>.<minor>.<patch>).")
+        if tag not in release_tags():
+            raise Stop(REFUSED, f"No release {tag}: the releases are the v* tags (git tag --list 'v*').")
+    else:
+        tags = release_tags()
+        if not tags:
+            raise Stop(REFUSED, "No release yet: a deploy from main that succeeds makes one (the deploy's release job).")
+        tag = tags[0]
+    return tag, git("rev-parse", f"{tag}^{{commit}}").stdout.strip()
+
+
+def released_checkout(version):
+    """The release, refused unless the checkout is its commit and clean."""
+    tag, sha = release(version)
     # Untracked files too: the guide is copied from the checkout, so a file the commit doesn't have
     # would be published with it (what the build makes is gitignored, so it doesn't count).
     if git("status", "--porcelain").stdout.strip():
-        raise Stop(REFUSED, "The checkout has changes or files the commit doesn't (git status): publish a commit main has, "
-                   "from a clean checkout.")
-    git("fetch", "-q", "origin", "main")
+        raise Stop(REFUSED, "The checkout has changes or files the commit doesn't (git status): publish from a clean checkout.")
     head = git("rev-parse", "HEAD").stdout.strip()
-    if git("merge-base", "--is-ancestor", head, "origin/main").returncode != 0:
-        raise Stop(REFUSED, f"{head[:9]} isn't on origin/main: only a merged (built and deployed) commit is published.")
-    return head
+    if head != sha:
+        raise Stop(REFUSED, f"{tag} is {sha[:9]}, but the checkout is {head[:9]}: git checkout --detach {tag}, then publish "
+                            f"again (or --version for another release).")
+    return tag, sha
+
+
+def checkout(version):
+    """CI: check the release out (the job's clone is ours). A laptop: only check it (never move a checkout)."""
+    tag, sha = release(version)
+    if os.environ.get("CI"):
+        if git("checkout", "-q", "--detach", sha).returncode != 0:
+            raise Stop(FAILED, f"Checking out {tag} failed.")
+        say(f"→  publishing {tag} ({sha[:9]})")
+    released_checkout(version)
 
 
 def built():
@@ -180,7 +214,7 @@ def requirements(venv, name):
     return [r for r in reqs if "extra ==" not in r]
 
 
-def push_content(env, remote, head):
+def push_content(env, remote, tag, head):
     work = tempfile.mkdtemp(prefix="cre-publish-")
     try:
         repo = os.path.join(work, "repo")
@@ -207,7 +241,7 @@ def push_content(env, remote, head):
         origin = git("remote", "get-url", "origin").stdout.strip()
         name = git("config", "user.name").stdout.strip() or os.environ.get("GITHUB_ACTOR") or os.environ.get("GITLAB_USER_LOGIN") or "cre-publish"
         email = git("config", "user.email").stdout.strip() or os.environ.get("GITLAB_USER_EMAIL") or f"{name}@users.noreply.github.com"
-        msg = f"Publish {head[:12]}\n\nFrom {origin or 'the project repository'} at {head}."
+        msg = f"Publish {tag} ({head[:12]})\n\nFrom {origin or 'the project repository'}, release {tag} at {head}."
         if git("-c", f"user.name={name}", "-c", f"user.email={email}", "commit", "-q", "-m", msg, cwd=repo, env=env).returncode != 0:
             raise Stop(FAILED, "Committing to the workshop repository failed.")
         say("→  push to the workshop repository (mainline)")
@@ -220,7 +254,7 @@ def push_content(env, remote, head):
 
 
 def publish(a):
-    head = tested_commit()
+    tag, head = released_checkout(a.version)
     built()
     inp = local_inputs(a.workshop_id) if a.local else ci_inputs()
     check_inputs(inp)
@@ -229,29 +263,40 @@ def publish(a):
         upload_assets(env, inp["ASSETS_LOCATION"])
         if not inp["REMOTE_REPO"].startswith(("file://", "/")):
             git_plugin(env, inp)
-        pushed = push_content(env, inp["REMOTE_REPO"], head)
+        pushed = push_content(env, inp["REMOTE_REPO"], tag, head)
     finally:
         # Gone with this process anyway; dropped now so nothing later in it can reach them.
         for k in CREDENTIALS:
             inp.pop(k, None)
         for k in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"):
             env.pop(k, None)
-    say(f"✅ Published {head[:9]}" + ("" if pushed else " (the repository had it already)") +
+    say(f"✅ Published {tag} ({head[:9]})" + ("" if pushed else " (the repository had it already)") +
         ". Workshop Studio builds it now: check the build on the workshop's page.")
     return OK
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(prog="publish.py", description="Publish this commit's built workshop to Workshop Studio.")
+    p = argparse.ArgumentParser(prog="publish.py", description="Publish a release's built workshop to Workshop Studio ([checkout] first).")
     p.add_argument("--local", action="store_true", help="get the inputs on this laptop (Midway), not from the CI job's secrets")
     p.add_argument("--workshop-id", help="the workshop (default: $WORKSHOP_ID, or the repository's WORKSHOP_ID variable)")
-    a = p.parse_args(argv)
+    p.add_argument("--version", default=os.environ.get("RELEASE_VERSION", ""),
+                   help="the release to publish, v<x.y.z> (default: $RELEASE_VERSION, else the latest release)")
+    argv = list(sys.argv[1:] if argv is None else argv)
+    only_checkout = bool(argv) and argv[0] == "checkout"
+    a = p.parse_args(argv[1:] if only_checkout else argv)
     try:
-        code = publish(a)
+        if only_checkout:
+            checkout(a.version)
+            code = OK
+        else:
+            code = publish(a)
     except Stop as e:
         say(f"❌ {e}")
         code = e.code
-    print(f"RESULT code={code} step=publish")
+    except Exception as e:  # noqa: BLE001 (an unexpected error is still a RESULT line: failed part way)
+        say(f"❌ publish failed: {type(e).__name__}: {e}")
+        code = FAILED
+    print(f"RESULT code={code} step={'publish:checkout' if only_checkout else 'publish'}")
     return code
 
 

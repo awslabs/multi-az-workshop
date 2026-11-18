@@ -28,12 +28,6 @@ jobs:
     env:
       CI: "true"
       PROJECT_NAME: multi-az-workshop
-      BUILD_TOOL_LOCATION_LINUX: ${{ secrets.BUILD_TOOL_LOCATION_LINUX }}
-      BUILD_TOOL_LOCATION_LINUX_ARM: ${{ secrets.BUILD_TOOL_LOCATION_LINUX_ARM }}
-      BUILD_TOOL_LOCATION_OSX: ${{ secrets.BUILD_TOOL_LOCATION_OSX }}
-      BUILD_TOOL_LOCATION_OSX_ARM: ${{ secrets.BUILD_TOOL_LOCATION_OSX_ARM }}
-      BUILD_TOOL_LOCATION_WINDOWS: ${{ secrets.BUILD_TOOL_LOCATION_WINDOWS }}
-      BUILD_TOOL_LOCATION_WINDOWS_ARM: ${{ secrets.BUILD_TOOL_LOCATION_WINDOWS_ARM }}
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout

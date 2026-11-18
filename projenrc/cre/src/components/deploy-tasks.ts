@@ -114,7 +114,7 @@ export function createDeployTasks(
     steps: stacksPy('outputs'),
   });
   project.addTask('teardown', {
-    description: 'Delete the stacks, each after the stacks that need it (independent ones at once). Running it deletes; --dry-run only lists them, so run that first. [--orphans] [--stack id]... [--profile p] [--dns-profile p]',
+    description: 'Delete the stacks: every delete started at once (re-run for one that ends DELETE_FAILED). Running it deletes; --dry-run only lists them, so run that first. [--orphans] [--stack id]... [--profile p] [--dns-profile p]',
     steps: stacksPy('teardown'),
   });
 }

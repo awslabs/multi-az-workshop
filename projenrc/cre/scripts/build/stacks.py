@@ -11,9 +11,10 @@ deployed there (its `assumeRole`) is read and deleted with it.
   npx projen stacks:outputs [--stack id] [--profile p] [--dns-profile p]  the deployed stacks' outputs (URLs, ids),
                                                       as `<stack> <Key>=<Value>`
   npx projen teardown [--orphans] [--stack id ...] [--profile p] [--dns-profile p] [--dry-run]
-                                                      delete stacks, each once every stack that takes
-                                                      its outputs (or dependsOn it) is gone, the
-                                                      independent ones at once. Running it is the
+                                                      start every stack's delete at once and end
+                                                      (CloudFormation finishes them; a stack still in
+                                                      use then ends DELETE_FAILED: run it again;
+                                                      `stacks` shows when). Running it is the
                                                       decision, so it doesn't ask; --dry-run prints
                                                       what it would delete and deletes nothing.
                                                       Default: every planned stack. --orphans takes
@@ -121,7 +122,7 @@ def committed_plan(strict=False):
     if git("fetch", "-q", "origin", f"+refs/heads/{branch}:refs/remotes/origin/{branch}").returncode != 0:
         if strict:
             raise Stop(REFUSED, f"Could not fetch origin/{branch}, so main's current stack plan is unknown and nothing is judged an "
-                       "orphan from an older copy. Refresh your git credentials (GitLab: mwinit -f -k ~/.ssh/id_ecdsa.pub), then re-run.")
+                       "orphan from an older copy. Refresh your git credentials, then re-run.")
         say(f"⚠️  Could not fetch origin/{branch}; using the copy fetched last.")
     r = git("show", f"{head}:cre-stacks.json")
     if r.returncode != 0:
@@ -176,6 +177,10 @@ def is_ours(stack, project, region, account, planned=()):
     name = stack["StackName"]
     if name != project and not name.startswith(project + "-"):
         return False
+    # A nested stack (<project>-<logical id>-<suffix>) is its parent's: CloudFormation creates and
+    # deletes it with the parent, so it is never an orphan, and deleting it alone would break the parent.
+    if stack.get("ParentId"):
+        return False
     if stack.get("StackStatus") == "REVIEW_IN_PROGRESS" and not stack.get("Parameters"):
         return name in planned
     params = {p["ParameterKey"]: p.get("ParameterValue") for p in stack.get("Parameters", [])}
@@ -196,6 +201,7 @@ def project_stacks(aws, regions, project, account, planned=()):
                 args += ["--next-token", token]
             d = aws.json(*args)
             names += [x["StackName"] for x in d.get("StackSummaries", []) if x.get("StackStatus") != "DELETE_COMPLETE"
+                      and not x.get("ParentId")   # a nested stack: its parent's (is_ours)
                       and (x["StackName"] == project or x["StackName"].startswith(project + "-"))]
             token = d.get("NextToken")
             if not token:

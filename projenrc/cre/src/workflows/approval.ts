@@ -1,5 +1,6 @@
 import { gitlab } from 'projen';
 import type { GithubWorkflow } from 'projen/lib/github';
+import { ON_MAIN } from './actions';
 
 /**
  * Deploy approval (`deployApproval`): one person approves a run once, before anything reaches AWS
@@ -19,7 +20,7 @@ export const GITLAB_APPROVE_JOB = 'deploy:approve';
 export function addGithubApproval(workflow: GithubWorkflow, needs: string[] = []): string {
   workflow.addJob(APPROVE_JOB, {
     ...(needs.length ? { needs } : {}),
-    if: "github.ref == 'refs/heads/main'",
+    if: ON_MAIN,
     runsOn: ['ubuntu-latest'],
     environment: { name: APPROVAL_ENVIRONMENT },
     permissions: {},

@@ -2,7 +2,12 @@
 
 name: publish
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "The release to publish (v<x.y.z>); empty: the latest"
+        required: false
+        type: string
 jobs:
   approve:
     runs-on: ubuntu-latest
@@ -30,6 +35,12 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
+      - name: Check out the release
+        id: check_out_the_release
+        env:
+          CI: "true"
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: python3 projenrc/cre/scripts/build/publish.py checkout
       - name: Setup Node.js
         id: setup_node_js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
@@ -66,4 +77,5 @@ jobs:
           ASSETS_LOCATION: ${{ secrets.ASSETS_LOCATION }}
           GIT_PLUGIN_LOCATION: ${{ secrets.GIT_PLUGIN_LOCATION }}
           GIT_PLUGIN: ${{ secrets.GIT_PLUGIN }}
+          RELEASE_VERSION: ${{ inputs.version }}
         run: npx projen publish:upload

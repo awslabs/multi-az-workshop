@@ -42,3 +42,13 @@ export function projenJobSetup(fullHistory = false) {
 export function secretsEnv(names: readonly string[]): Record<string, string> {
   return Object.fromEntries(names.map((n) => [n, `\${{ secrets.${n} }}`]));
 }
+
+/** A job that only runs from main (a dispatch from another branch does nothing; its OIDC subject isn't trusted anyway). */
+export const ON_MAIN = "github.ref == 'refs/heads/main'";
+
+/**
+ * The deploy and teardown workflows' one concurrency group: one run at a time, never cancelled
+ * mid-way. A run waiting at its approval holds the group too, so later runs queue behind it, and
+ * GitHub keeps only the newest of those waiting (steering github.md, "Deploy approval").
+ */
+export const DEPLOY_CONCURRENCY = { group: 'deploy-${{ github.repository }}', cancelInProgress: false };

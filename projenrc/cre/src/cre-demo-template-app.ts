@@ -2,10 +2,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { awscdk, javascript } from 'projen';
 import { GithubCredentials } from 'projen/lib/github';
-import { AppPermission } from 'projen/lib/github/workflows-model';
+import { AppPermission, JobPermission } from 'projen/lib/github/workflows-model';
 import type { JobStep } from 'projen/lib/github/workflows-model';
 import { NodePackageManager, UpdateSnapshot, UpgradeDependenciesSchedule } from 'projen/lib/javascript';
-import { createBuildTasks } from './components/build-tasks';
+import { createBuildTasks, VERSIONS_FILE } from './components/build-tasks';
 import { createDeployTasks, DEFAULT_BINDLE_ID } from './components/deploy-tasks';
 import { refuseUnretriedDownloads } from './components/download-check';
 import { createGitTasks } from './components/git-tasks';
@@ -248,25 +248,54 @@ export function guardGithubUpgradeBranch(project: awscdk.AwsCdkTypeScriptApp): v
 }
 
 /**
- * The upgrade job's AWS credentials, for versions:update (post-upgrade): the read-only versions role
- * (VERSIONS_ROLE_ARN, a repo secret: the job runs in no environment), through OIDC from main's
- * scheduled run, in the partition's control-plane region. Before the upgrade step, which runs it.
+ * The weekly upgrade's version lookups (versions:update), on GitHub: a job of their own, `versions`,
+ * with the read-only versions role (VERSIONS_ROLE_ARN, a repo secret) through OIDC from main, in the
+ * partition's control-plane region. It runs versions.py from main's checkout (no npm install), and
+ * hands build/versions.json to the `upgrade` job as an artifact. The upgrade job, which runs the
+ * freshly upgraded npm packages, gets no id-token: in a private repo the deploy role trusts main's
+ * OIDC subject, so a token there would let upgraded code assume it.
  */
 export function upgradeWithVersionsRole(project: awscdk.AwsCdkTypeScriptApp, region: string): void {
   const wf = project.upgradeWorkflow?.workflows[0];
   if (!wf) return;
-  const job = wf.getJob('upgrade') as { permissions?: Record<string, string>; steps?: Array<Record<string, unknown>> };
+  const job = wf.getJob('upgrade') as { permissions?: Record<string, string>; steps?: Array<Record<string, unknown>>; needs?: string[] };
   const steps = [...(job.steps ?? [])];
   const at = steps.findIndex((st) => st.id === 'upgrade_dependencies');
   if (at < 0) throw new Error("cre: projen's upgrade-main workflow has no upgrade_dependencies step.");
-  steps.splice(at, 0, {
-    name: 'AWS credentials for the version lookups (read-only)',
-    id: 'versions_credentials',
-    uses: ACTIONS.configureAwsCredentials,
-    with: { 'role-to-assume': `\${{ secrets.${VERSIONS_ROLE_VARIABLE} }}`, 'aws-region': region },
+  // A project without the file has nothing to look up (and nothing to hand over).
+  const hasFile = `hashFiles('${VERSIONS_FILE}') != ''`;
+  wf.addJob('versions', {
+    name: 'Version lookups',
+    runsOn: ['ubuntu-latest'],
+    permissions: { contents: JobPermission.READ, idToken: JobPermission.WRITE },
+    steps: [
+      { name: 'Checkout', uses: ACTIONS.checkout, with: { ref: 'main' } },
+      {
+        name: 'AWS credentials for the version lookups (read-only)',
+        if: hasFile,
+        uses: ACTIONS.configureAwsCredentials,
+        with: { 'role-to-assume': `\${{ secrets.${VERSIONS_ROLE_VARIABLE} }}`, 'aws-region': region },
+      },
+      { name: 'Move each version', if: hasFile, run: `python3 ${CRE_SCRIPTS}/build/versions.py update --file ${VERSIONS_FILE}` },
+      {
+        name: 'Hand the version file to the upgrade',
+        if: hasFile,
+        uses: ACTIONS.uploadArtifact,
+        with: { 'name': VERSIONS_ARTIFACT, 'path': VERSIONS_FILE, 'retention-days': 1, 'if-no-files-found': 'error' },
+      },
+    ],
   });
-  wf.updateJob('upgrade', { ...(job as object), permissions: { ...job.permissions, idToken: 'write' }, steps } as never);
+  steps.splice(at, 0, {
+    name: 'The version lookups\' file',
+    if: hasFile,
+    uses: ACTIONS.downloadArtifact,
+    with: { name: VERSIONS_ARTIFACT, path: path.dirname(VERSIONS_FILE) },
+  });
+  wf.updateJob('upgrade', { ...(job as object), needs: [...(job.needs ?? []), 'versions'], steps } as never);
 }
+
+/** The artifact the `versions` job hands the upgrade job (build/versions.json). */
+const VERSIONS_ARTIFACT = 'versions';
 
 /**
  * The `workflow` merge mode: a job after a passing build merges the PR with the App's token (so the
@@ -378,7 +407,7 @@ export interface CreDemoTemplateAppBaseOptions {
    * included: the deploy that creates them is the test, and nothing stays running to age into
    * security findings. A failed deploy stays up to be diagnosed. Stacks in another account
    * (`assumeRole`) are not deleted. Without it, the stacks stay up until a manual teardown (`npx
-   * projen teardown`, or CI's: GitHub's `teardown` workflow, GitLab's `deploy:teardown` job).
+   * projen teardown`, or CI's: GitHub's `teardown` workflow, GitLab's `teardown` play button; `deploy:teardown` is the job this option adds).
    * @default false
    */
   readonly teardownAfterDeploy?: boolean;
@@ -446,6 +475,14 @@ export function githubPreBuildSteps(options: CreDemoTemplateAppBaseOptions & { o
 
 export type CreDemoTemplateAppOptions = CreDemoTemplateAppBaseOptions & ProviderOptions;
 
+/** What a concrete project type adds to the base's pipeline. */
+export interface ProjectTypeExtras {
+  /** Secrets its build reads (the PR build and the deploy's Build step). */
+  readonly buildSecrets?: readonly string[];
+  /** A release (tag + release notes) of the commit every deploy from main that succeeded tested (`release` task). */
+  readonly release?: boolean;
+}
+
 const BASE_GITIGNORE = [
   // The project's own steering is committed; the template's steering, skills and agent docs are
   // local-only (localOnlyIgnores, appended below), and so are an agent's working files: .agents/
@@ -482,7 +519,8 @@ const BASE_GITIGNORE = [
   '*cookie-jar*',
   '.midway/',
   'dist/',
-  'assets/',
+  // The package's assets (package:assets): the root's only, not an app's own assets/ folder.
+  '/assets/',
   'tmp/',
   '/lib/',
   '*.d.ts',
@@ -527,7 +565,8 @@ export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
   public readonly constructModules: readonly CreModule[];
 
   protected constructor(options: CreDemoTemplateAppOptions, layout: ProjectLayout, typeSteering: string, extraSteering: string[] = [],
-    requiredModules: readonly CreModule[] = [], buildSecrets: readonly string[] = []) {
+    requiredModules: readonly CreModule[] = [], typeOptions: ProjectTypeExtras = {}) {
+    const buildSecrets = typeOptions.buildSecrets ?? [];
     // Every task is Python: refused up front on a python3 older than MIN_PYTHON, not mid-task.
     const python = checkedPython ??= pythonProblem() ?? '';
     if (python) {
@@ -751,6 +790,7 @@ export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
         createDeployWorkflow(this.github!, {
           preBuildSteps: githubPreBuildSteps(options),
           buildSecrets,
+          release: typeOptions.release,
           teardownAfterDeploy: options.teardownAfterDeploy,
           containerImages,
           projectName: this.name,
@@ -769,6 +809,7 @@ export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
         credentialsRegion: IAM_CONTROL_PLANE_REGION[options.partition ?? 'aws'],
         jobs,
         defaults: jobDefaults,
+        release: typeOptions.release,
         pruneAssets: options.pruneAssets,
         disableDeploy: options.disableDeploy,
         teardownAfterDeploy: options.teardownAfterDeploy,

@@ -79,8 +79,7 @@ export interface RoleVariable {
 /** A parameter's source, resolved. */
 export type ParameterSource =
   | { readonly kind: 'output'; readonly stack: string; readonly output: string }
-  | { readonly kind: 'env'; readonly variable: string; readonly optional: boolean; readonly noEcho?: boolean; readonly magic?: string }
-  | { readonly kind: 'literal'; readonly value: string };
+  | { readonly kind: 'env'; readonly variable: string; readonly optional: boolean; readonly noEcho?: boolean; readonly magic?: string };
 
 export interface PlannedStack {
   /** The deployed stack name: the CreStack's construct id. */

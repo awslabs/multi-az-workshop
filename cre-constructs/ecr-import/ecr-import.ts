@@ -5,6 +5,7 @@ import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as s3_assets from 'aws-cdk-lib/aws-s3-assets';
 import * as cr from 'aws-cdk-lib/custom-resources';
 import { Construct, IDependable } from 'constructs';
@@ -85,6 +86,12 @@ export class CreEcrImport extends Construct {
       },
       // Every missing artifact, one after another.
       timeout: cdk.Duration.minutes(90),
+      // The stack's own log group: CodeBuild's default (/aws/codebuild/<project>) would outlive the stack.
+      logging: {
+        cloudWatch: {
+          logGroup: new logs.LogGroup(this, 'ImportLogs', { retention: logs.RetentionDays.ONE_MONTH, removalPolicy: cdk.RemovalPolicy.DESTROY }),
+        },
+      },
     });
     source.grantRead(this.project);
 

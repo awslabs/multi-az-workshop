@@ -41,8 +41,6 @@ export type JobValue =
   | { readonly kind: 'var'; readonly name: string; readonly optional: boolean; readonly fallback?: string }
   /** An earlier stack's output, as the dotenv variable its job wrote. */
   | { readonly kind: 'output'; readonly variable: string }
-  /** Parts joined with no separator, e.g. the bucket name. */
-  | { readonly kind: 'concat'; readonly parts: readonly JobValue[] }
   /** `Key=value` lines (STACK_PARAMETERS). */
   | { readonly kind: 'lines'; readonly lines: readonly (readonly [string, JobValue])[] };
 
@@ -123,7 +121,6 @@ export function stackJobs(planned: readonly PlannedStack[], defaults: JobDefault
       return { kind: 'var', name, optional: optional || fallback !== undefined, fallback };
     };
     const lines = Object.entries(s.parameters).map(([key, src]): [string, JobValue] => {
-      if (src.kind === 'literal') return [key, lit(src.value)];
       if (src.kind === 'env') return [key, v(src.variable, src.optional)];
       const from = byId.get(src.stack)!;
       const variable = outputVariable(from, src.output);
@@ -175,7 +172,8 @@ export function stackJobs(planned: readonly PlannedStack[], defaults: JobDefault
  *   - `var`:    how that runner references a deploy variable (GitLab `$X`, GitHub
  *               `${{ vars.X || secrets.X }}`), with its fallback where it has one;
  *   - `output`: how it references a dotenv variable loaded from an earlier job;
- *   - `literal`: escaped so the runner expands nothing in it.
+ *   - `literal`: a value the plan writes (a stack id, a region, output names): GitLab doubles its
+ *     `$` so the runner expands nothing; GitHub writes it as it is (none of these holds `${{`).
  */
 export interface Dialect {
   literal(v: string): string;
@@ -188,7 +186,6 @@ export function render(value: JobValue, d: Dialect): string {
     case 'literal': return d.literal(value.value);
     case 'var': return d.variable(value.name, value.optional, value.fallback);
     case 'output': return d.output(value.variable);
-    case 'concat': return value.parts.map((p) => render(p, d)).join('');
     case 'lines': return value.lines.map(([k, x]) => `${k}=${render(x, d)}`).join('\n');
   }
 }
