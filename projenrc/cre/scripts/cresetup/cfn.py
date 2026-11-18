@@ -66,17 +66,25 @@ def failed_events(call, region, name, limit=5, since=None):
     return [f"{e['LogicalResourceId']} {e['ResourceStatus']}: {e.get('ResourceStatusReason', '')}" for e in evs[:limit]]
 
 
+# The CLI's delete waiter gives up after 1 hour (120 polls, 30 s apart) while CloudFormation keeps
+# deleting; a stack with an EKS cluster and a database takes longer. Wait up to this many of them.
+DELETE_WAITS = 3
+
+
 def delete(call, region, name):
-    """Delete the stack and wait until it is gone. "" when it is, else why not: the failing call's
-    own words (the waiter's say whether it hit DELETE_FAILED or gave up while CloudFormation still
-    deletes, review 10f D1), then the resources that failed."""
-    for op in (("delete-stack",), ("wait", "stack-delete-complete")):
-        code, _, err = call("cloudformation", *op, "--stack-name", name, region=region)
-        if code:
-            why = proc.last_line(err, f"{' '.join(op)} failed")
-            failed = failed_events(call, region, name) if op[0] == "wait" else []
-            return "; ".join([why] + failed)
-    return ""
+    """Delete the stack and wait until it is gone (up to DELETE_WAITS hours). "" when it is, else why
+    not: the failing call's own words (the waiter's say whether it hit DELETE_FAILED or gave up while
+    CloudFormation still deletes, review 10f D1), then the resources that failed."""
+    code, _, err = call("cloudformation", "delete-stack", "--stack-name", name, region=region)
+    if code:
+        return proc.last_line(err, "delete-stack failed")
+    for _ in range(DELETE_WAITS):
+        code, _, err = call("cloudformation", "wait", "stack-delete-complete", "--stack-name", name, region=region)
+        if not code:
+            return ""
+        if "Max attempts exceeded" not in err:
+            break   # DELETE_FAILED, or the credentials ran out: say why
+    return "; ".join([proc.last_line(err, "wait stack-delete-complete failed")] + failed_events(call, region, name))
 
 
 def clear_failed_create(call, region, name, st, say):
