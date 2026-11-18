@@ -268,12 +268,17 @@ function addDeployJobs(workflow: GithubWorkflow, opts: DeployWorkflowOptions, se
     // After every stack job succeeded: the commit the deploy tested, tagged and released (none when
     // a stack failed). It needs no AWS and no environment; it doesn't wait for the teardown.
     workflow.addJob(RELEASE_JOB, {
-      needs: [UPLOAD_JOB.github, ...opts.jobs.map((j) => j.githubJob)],
+      needs: [BUILD_JOB, UPLOAD_JOB.github, ...opts.jobs.map((j) => j.githubJob)],
       runsOn: ['ubuntu-latest'],
       permissions: { contents: JobPermission.WRITE },
       env: { CI: 'true', PROJECT_NAME: opts.projectName, GH_TOKEN: '${{ github.token }}' },
-      // The whole history and every tag: the next version follows the latest one.
-      steps: [...projenJobSetup(true), { name: 'Tag and release the deployed commit', run: 'npx projen release' }],
+      // The whole history and every tag: the next version follows the latest one. The build's
+      // content.zip (what the deploy deployed) goes with the release.
+      steps: [
+        ...projenJobSetup(true),
+        { name: 'Download content artifact', uses: ACTIONS.downloadArtifact, with: { name: CONTENT_ARTIFACT, path: 'dist' } },
+        { name: 'Tag and release the deployed commit', run: 'npx projen release' },
+      ],
     });
   }
 

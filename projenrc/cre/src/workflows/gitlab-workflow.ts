@@ -419,13 +419,16 @@ export function createGitlabWorkflow(
 
   if (opts.release) {
     // After every stack job succeeded: the commit the deploy tested, tagged and released with the
-    // job's own CI_JOB_TOKEN (the Releases API takes it; the release makes the tag at its ref). No
+    // job's own CI_JOB_TOKEN (the Packages API takes content.zip, the Releases API the release, which
+    // makes the tag at its ref and links the zip). No
     // AWS: no credential variable, no environment. It doesn't wait for the teardown.
     deployJobs[RELEASE_JOB] = {
       stage: 'deploy',
       rules: [{ if: onMain }],
       interruptible: false,
-      needs: [UPLOAD_JOB.gitlab, ...opts.jobs.map((j) => j.gitlabJob)].map((job) => ({ job, artifacts: false })),
+      // The build's content.zip (what the deploy deployed) goes with the release.
+      needs: [{ job: 'build:package', artifacts: true },
+        ...[UPLOAD_JOB.gitlab, ...opts.jobs.map((j) => j.gitlabJob)].map((job) => ({ job, artifacts: false }))],
       // The whole history and every tag: the next version follows the latest one.
       variables: { GIT_DEPTH: '0' },
       script: ['npx projen release'],
