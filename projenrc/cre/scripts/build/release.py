@@ -10,14 +10,17 @@ latest release (or the one `--version` names), never main's head.
   2. The next version: projen's `bump` (the same as projen's own release: the latest `v*` tag, the
      conventional commits since it, commit-and-tag-version), which writes dist/releasetag.txt and
      dist/changelog.md. Nothing is committed: the version lives in the tag alone.
-  3. The tag and the release at this commit, with that changelog: GitHub through `gh` with the job's
-     token (contents: write); GitLab through the Releases API with the job's own CI_JOB_TOKEN (it
-     may create releases, and the release creates the tag at `ref`).
+  3. The tag and the release at this commit, with that changelog and dist/content.zip (the build
+     the deploy deployed, from its CI artifact): GitHub through `gh` with the job's token
+     (contents: write), the zip a release asset; GitLab with the job's own CI_JOB_TOKEN, the zip
+     uploaded to the project's generic package registry (`<project>/<version>/content.zip`), then
+     the release through the Releases API, which creates the tag at `ref` and links the zip.
 
 Exit 0 released (or already) | 10 refused (not in CI) | 20 failed. Last stdout line `RESULT code=<n> step=release`.
 """
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.error
@@ -29,6 +32,9 @@ from crelib import RELEASE_TAG, release_tags  # noqa: E402
 
 OK, REFUSED, FAILED = 0, 10, 20
 TIMEOUT = 60
+# The zip is hundreds of MB: its upload gets longer.
+UPLOAD_TIMEOUT = 1800
+CONTENT = os.path.join("dist", "content.zip")
 
 
 class Stop(Exception):
@@ -47,28 +53,44 @@ def git(*args):
 
 def create_github(tag, sha, notes):
     repo = os.environ["GITHUB_REPOSITORY"]
-    r = subprocess.run(["gh", "release", "create", tag, "--repo", repo, "--target", sha, "--title", tag, "--notes-file", notes],
+    r = subprocess.run(["gh", "release", "create", tag, "--repo", repo, "--target", sha, "--title", tag, "--notes-file", notes, CONTENT],
                        capture_output=True, text=True)
     if r.returncode != 0:
         raise Stop(f"gh release create {tag} failed: {r.stderr.strip()[-400:]}")
 
 
-def create_gitlab(tag, sha, notes):
-    url = f"{os.environ['CI_API_V4_URL']}/projects/{os.environ['CI_PROJECT_ID']}/releases"
-    with open(notes) as f:
-        body = json.dumps({"tag_name": tag, "ref": sha, "name": tag, "description": f.read()}).encode()
-    req = urllib.request.Request(url, data=body, method="POST",
-                                 headers={"JOB-TOKEN": os.environ["CI_JOB_TOKEN"], "Content-Type": "application/json"})
+def gitlab_call(what, url, data, content_type, timeout=TIMEOUT):
+    """One write to the instance's API with the job's token; a refusal or no answer stops the release."""
+    headers = {"JOB-TOKEN": os.environ["CI_JOB_TOKEN"], "Content-Type": content_type}
+    if hasattr(data, "read"):
+        headers["Content-Length"] = str(os.fstat(data.fileno()).st_size)
+    req = urllib.request.Request(url, data=data, method="PUT" if hasattr(data, "read") else "POST", headers=headers)
     try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT):  # noqa: S310 (the instance's own https API)
+        with urllib.request.urlopen(req, timeout=timeout):  # noqa: S310 (the instance's own https API)
             pass
     except urllib.error.HTTPError as e:
-        raise Stop(f"GitLab refused the release {tag} ({e.code}): {e.read().decode(errors='replace')[:400]}")
+        raise Stop(f"GitLab refused {what} ({e.code}): {e.read().decode(errors='replace')[:400]}")
     except (urllib.error.URLError, OSError) as e:
-        raise Stop(f"GitLab didn't answer the release {tag}: {e}")
+        raise Stop(f"GitLab didn't answer {what}: {e}")
+
+
+def create_gitlab(tag, sha, notes):
+    project = f"{os.environ['CI_API_V4_URL']}/projects/{os.environ['CI_PROJECT_ID']}"
+    # The zip first, in the generic package registry (the Releases API links assets, it doesn't hold them).
+    package = re.sub(r"[^A-Za-z0-9._-]", "-", os.environ.get("PROJECT_NAME") or os.environ.get("CI_PROJECT_NAME") or "workshop")
+    asset = f"{project}/packages/generic/{package}/{tag[1:]}/content.zip"
+    with open(CONTENT, "rb") as f:
+        gitlab_call(f"the upload of content.zip for {tag}", asset, f, "application/zip", UPLOAD_TIMEOUT)
+    with open(notes) as f:
+        body = json.dumps({"tag_name": tag, "ref": sha, "name": tag, "description": f.read(),
+                           "assets": {"links": [{"name": "content.zip", "url": asset, "link_type": "package"}]}}).encode()
+    gitlab_call(f"the release {tag}", f"{project}/releases", body, "application/json")
 
 
 def release():
+    create = create_github if os.environ.get("GITHUB_ACTIONS") else create_gitlab if os.environ.get("GITLAB_CI") else None
+    if create is None:
+        raise Stop("Not in CI: a release is made only by the deploy, of the commit it tested.", REFUSED)
     # Every tag: the next version continues from the latest one (a CI clone may have none fetched).
     git("fetch", "-q", "--tags", "--force", "origin")
     sha = git("rev-parse", "HEAD").stdout.strip()
@@ -76,6 +98,8 @@ def release():
     if done:
         say(f"✓  {sha[:9]} is released already as {done[0]}: nothing to do.")
         return
+    if not os.path.isfile(CONTENT):
+        raise Stop(f"No {CONTENT}: the release job takes the build's content artifact (the deploy's build).")
     r = subprocess.run(["npx", "projen", "bump"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     say(r.stdout.rstrip())
     if r.returncode != 0:
@@ -85,12 +109,7 @@ def release():
     if not RELEASE_TAG.match(tag):
         raise Stop(f"bump made the tag {tag!r}, not v<major>.<minor>.<patch>.")
     notes = os.path.join("dist", "changelog.md")
-    if os.environ.get("GITHUB_ACTIONS"):
-        create_github(tag, sha, notes)
-    elif os.environ.get("GITLAB_CI"):
-        create_gitlab(tag, sha, notes)
-    else:
-        raise Stop("Not in CI: a release is made only by the deploy, of the commit it tested.", REFUSED)
+    create(tag, sha, notes)
     say(f"✅ Released {tag} at {sha[:9]}: `npx projen publish` sends it.")
 
 

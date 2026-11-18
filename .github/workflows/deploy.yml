@@ -228,6 +228,7 @@ jobs:
         run: npx projen deploy:prune
   release:
     needs:
+      - build
       - deploy-upload
       - deploy-multi-az-workshop
     runs-on: ubuntu-latest
@@ -255,6 +256,12 @@ jobs:
       - name: Install dependencies
         id: install_dependencies
         run: yarn install --immutable
+      - name: Download content artifact
+        id: download_content_artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: demo-content
+          path: dist
       - name: Tag and release the deployed commit
         id: tag_and_release_the_deployed_commit
         run: npx projen release
