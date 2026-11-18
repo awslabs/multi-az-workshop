@@ -5,206 +5,6 @@
     "PROJECT_NAME": "multi-az-workshop"
   },
   "tasks": {
-    "assets:arm64-container": {
-      "name": "assets:arm64-container",
-      "description": "Build the arm64 app container (EKS image and the CodeDeploy bundle app_deploy.zip)",
-      "steps": [
-        {
-          "exec": "rm -rf src/app/output"
-        },
-        {
-          "exec": "mkdir -p src/app/output/src"
-        },
-        {
-          "exec": "cd src/app && dotnet publish --configuration Release --runtime linux-musl-arm64 --output output/src -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained"
-        },
-        {
-          "exec": "eval \"$(node build/load-versions.js)\" && build/docker-pull-with-retry.sh --platform linux/arm64 $ALPINE_IMAGE:$ALPINE && docker build --tag $PROJECT_NAME:latest --platform linux/arm64 --build-arg SRC=src --build-arg BASE=$ALPINE_IMAGE:$ALPINE --file build/dockerfile src/app/output"
-        },
-        {
-          "exec": "docker save $PROJECT_NAME:latest | gzip > dist/ecr-import/container.tar.gz"
-        },
-        {
-          "exec": "zip -j assets/app_deploy.zip dist/ecr-import/container.tar.gz dist/ecr-import/cloudwatch-agent.tar.gz"
-        },
-        {
-          "exec": "cd src/app && zip -r ../../assets/app_deploy.zip docker/"
-        },
-        {
-          "exec": "cd src/app/docker && zip ../../../assets/app_deploy.zip appspec.yml"
-        },
-        {
-          "exec": "rm -rf src/app/output"
-        }
-      ],
-      "shell": [
-        "bash",
-        "-c"
-      ]
-    },
-    "assets:arm64-container-fail": {
-      "name": "assets:arm64-container-fail",
-      "description": "Build the failing arm64 app container (the CodeDeploy bundle app_deploy_fail.zip)",
-      "steps": [
-        {
-          "exec": "rm -rf src/app/output"
-        },
-        {
-          "exec": "mkdir -p src/app/output/src"
-        },
-        {
-          "exec": "cd src/app && dotnet publish --configuration Release --runtime linux-musl-arm64 --output output/src -p:DefineConstants=\"FAIL\" -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained"
-        },
-        {
-          "exec": "eval \"$(node build/load-versions.js)\" && build/docker-pull-with-retry.sh --platform linux/arm64 $ALPINE_IMAGE:$ALPINE && docker build --tag $PROJECT_NAME:latest --platform linux/arm64 --build-arg SRC=src --build-arg BASE=$ALPINE_IMAGE:$ALPINE --file build/dockerfile src/app/output"
-        },
-        {
-          "exec": "docker save $PROJECT_NAME:latest | gzip > /tmp/container.tar.gz"
-        },
-        {
-          "exec": "zip -j assets/app_deploy_fail.zip /tmp/container.tar.gz dist/ecr-import/cloudwatch-agent.tar.gz"
-        },
-        {
-          "exec": "cd src/app && zip -r ../../assets/app_deploy_fail.zip docker/"
-        },
-        {
-          "exec": "cd src/app/docker && zip ../../../assets/app_deploy_fail.zip appspec.yml"
-        },
-        {
-          "exec": "rm -rf src/app/output"
-        },
-        {
-          "exec": "rm /tmp/container.tar.gz"
-        }
-      ],
-      "shell": [
-        "bash",
-        "-c"
-      ]
-    },
-    "assets:cloudwatch-agent": {
-      "name": "assets:cloudwatch-agent",
-      "description": "Pull CloudWatch agent container image",
-      "steps": [
-        {
-          "exec": "eval \"$(node build/load-versions.js)\" && build/docker-pull-with-retry.sh $CLOUDWATCH_AGENT_IMAGE:$CLOUDWATCH_AGENT && docker tag $CLOUDWATCH_AGENT_IMAGE:$CLOUDWATCH_AGENT cloudwatch-agent/cloudwatch-agent:latest && docker save cloudwatch-agent/cloudwatch-agent:latest | gzip > dist/ecr-import/cloudwatch-agent.tar.gz"
-        }
-      ],
-      "shell": [
-        "bash",
-        "-c"
-      ]
-    },
-    "assets:create-directories": {
-      "name": "assets:create-directories",
-      "description": "Create required directories for asset building",
-      "steps": [
-        {
-          "exec": "mkdir -p assets dist"
-        },
-        {
-          "exec": "rm -rf dist/ecr-import && mkdir -p dist/ecr-import"
-        }
-      ],
-      "shell": [
-        "bash",
-        "-c"
-      ]
-    },
-    "assets:destination-rules": {
-      "name": "assets:destination-rules",
-      "description": "Copy destination rules to assets",
-      "steps": [
-        {
-          "exec": "cp src/cdk/configs/destination-rule.yaml assets/"
-        },
-        {
-          "exec": "for region in us-east-1 us-east-2 us-west-2 eu-west-1 ap-southeast-1 ap-southeast-2; do if [ -f \"src/cdk/configs/destination-rule-${region}.yaml\" ]; then cp \"src/cdk/configs/destination-rule-${region}.yaml\" assets/; fi; done"
-        }
-      ],
-      "shell": [
-        "bash",
-        "-c"
-      ]
-    },
-    "assets:docker-compose": {
-      "name": "assets:docker-compose",
-      "description": "Download docker compose binary",
-      "steps": [
-        {
-          "exec": "curl --fail --location --retry 5 --retry-all-errors --retry-delay 5 --connect-timeout 10 --max-time 1800 https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-aarch64 --output assets/docker-compose"
-        }
-      ],
-      "shell": [
-        "bash",
-        "-c"
-      ]
-    },
-    "assets:istio-charts": {
-      "name": "assets:istio-charts",
-      "description": "Download Istio helm charts",
-      "steps": [
-        {
-          "exec": "eval \"$(node build/load-versions.js)\" && for chart in base istiod cni; do curl --fail --location --retry 5 --retry-all-errors --retry-delay 5 --connect-timeout 10 --max-time 300 $ISTIO_REPO/${chart}-$ISTIO.tgz --output dist/ecr-import/${chart}-$ISTIO.tgz || exit 1; done"
-        }
-      ],
-      "shell": [
-        "bash",
-        "-c"
-      ]
-    },
-    "assets:istio-containers": {
-      "name": "assets:istio-containers",
-      "description": "Pull Istio container images",
-      "steps": [
-        {
-          "exec": "eval \"$(node build/load-versions.js)\" && for image in install-cni proxyv2 pilot; do build/docker-pull-with-retry.sh docker.io/istio/${image}:$ISTIO-distroless && docker save istio/${image}:$ISTIO-distroless | gzip > dist/ecr-import/${image}.tar.gz || exit 1; done"
-        }
-      ],
-      "shell": [
-        "bash",
-        "-c"
-      ]
-    },
-    "assets:kubectl": {
-      "name": "assets:kubectl",
-      "description": "Download kubectl binary",
-      "steps": [
-        {
-          "exec": "eval \"$(node build/load-versions.js)\" && curl --fail --location --retry 5 --retry-all-errors --retry-delay 5 --connect-timeout 10 --max-time 1800 https://dl.k8s.io/release/v$KUBECTL/bin/linux/arm64/kubectl --output assets/kubectl"
-        }
-      ],
-      "shell": [
-        "bash",
-        "-c"
-      ]
-    },
-    "assets:lb-controller-chart": {
-      "name": "assets:lb-controller-chart",
-      "description": "Download AWS LB controller helm chart",
-      "steps": [
-        {
-          "exec": "eval \"$(node build/load-versions.js)\" && curl --fail --location --retry 5 --retry-all-errors --retry-delay 5 --connect-timeout 10 --max-time 300 $AWS_LOAD_BALANCER_CONTROLLER_REPO/aws-load-balancer-controller-$AWS_LOAD_BALANCER_CONTROLLER.tgz --output dist/ecr-import/aws-load-balancer-controller-$AWS_LOAD_BALANCER_CONTROLLER.tgz"
-        }
-      ],
-      "shell": [
-        "bash",
-        "-c"
-      ]
-    },
-    "assets:lb-controller-container": {
-      "name": "assets:lb-controller-container",
-      "description": "Pull AWS LB controller container image",
-      "steps": [
-        {
-          "exec": "eval \"$(node build/load-versions.js)\" && build/docker-pull-with-retry.sh public.ecr.aws/eks/aws-load-balancer-controller:v$AWS_LOAD_BALANCER_CONTROLLER-linux_arm64 && docker save public.ecr.aws/eks/aws-load-balancer-controller:v$AWS_LOAD_BALANCER_CONTROLLER-linux_arm64 | gzip > dist/ecr-import/aws-load-balancer-controller.tar.gz"
-        }
-      ],
-      "shell": [
-        "bash",
-        "-c"
-      ]
-    },
     "branch": {
       "name": "branch",
       "description": "Start new work: create <name> from origin's default branch (just fetched), carrying uncommitted changes.",
@@ -242,61 +42,12 @@
         }
       ]
     },
-    "build:app": {
-      "name": "build:app",
-      "description": "Build .NET application",
-      "steps": [
-        {
-          "exec": "rm -rf src/app/output"
-        },
-        {
-          "exec": "mkdir -p src/app/output/src"
-        },
-        {
-          "exec": "dotnet publish src/app/multi-az-workshop-application.csproj --configuration Release --runtime linux-musl-arm64 --output src/app/output/src -p:PublishReadyToRun=true -p:PublishReadyToRunShowWarnings=true --self-contained"
-        }
-      ],
-      "shell": [
-        "bash",
-        "-c"
-      ]
-    },
     "build:assets": {
       "name": "build:assets",
       "description": "Build all workshop assets: assets/ (fetched by name) and the ECR images and charts (dist/ecr-import)",
       "steps": [
         {
-          "spawn": "assets:create-directories"
-        },
-        {
-          "spawn": "assets:destination-rules"
-        },
-        {
-          "spawn": "assets:kubectl"
-        },
-        {
-          "spawn": "assets:istio-charts"
-        },
-        {
-          "spawn": "assets:lb-controller-chart"
-        },
-        {
-          "spawn": "assets:istio-containers"
-        },
-        {
-          "spawn": "assets:lb-controller-container"
-        },
-        {
-          "spawn": "assets:cloudwatch-agent"
-        },
-        {
-          "spawn": "assets:docker-compose"
-        },
-        {
-          "spawn": "assets:arm64-container"
-        },
-        {
-          "spawn": "assets:arm64-container-fail"
+          "exec": "ts-node -P tsconfig.json --prefer-ts-exts src/cdk/build-assets.ts"
         }
       ]
     },
@@ -372,9 +123,6 @@
       "steps": [
         {
           "exec": "tsc --noEmit"
-        },
-        {
-          "spawn": "build:app"
         },
         {
           "spawn": "build:assets"
@@ -636,6 +384,15 @@
         }
       ]
     },
+    "publish:upload": {
+      "name": "publish:upload",
+      "description": "CI: publish what the build made, with the inputs from the job's secrets (npx projen publish builds first)",
+      "steps": [
+        {
+          "exec": "python3 projenrc/cre/scripts/build/publish.py"
+        }
+      ]
+    },
     "push": {
       "name": "push",
       "description": "Validate, commit, push, open/update the MR/PR and arm auto-merge. Needs --message; --branch when a new branch is needed.",
@@ -847,7 +604,7 @@
       "description": "Pull the cre-demo-template clone, refresh projenrc/cre, cre-constructs and the skill links from it, then synth + build.",
       "steps": [
         {
-          "exec": "python3 projenrc/cre/scripts/lib/template.py template/update-template.py --from \"{template}\" \"$@\"",
+          "exec": "python3 projenrc/cre/scripts/lib/template.py template/update-template.py \"$@\"",
           "receiveArgs": true
         }
       ]

@@ -1,17 +1,17 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 ARG PLATFORM=linux/arm64
-# The base image, from build/versions.json (ALPINE), so it moves with the weekly version update.
+# The base image, from build/versions.json (ALPINE), so it moves with the weekly version update. No
+# default: a second copy of the version here would drift. build:assets passes it.
 ARG BASE
 
 FROM --platform=${PLATFORM} ${BASE}
+RUN apk upgrade --no-cache
 
 ARG SRC=src
 
+RUN apk --no-cache add curl libstdc++ libgcc
 ADD ${SRC} /var/www/multi-az-workshop-application
-# Upgrade the base image's packages first: a base image can lag behind
-# package fixes published after it was cut.
-RUN apk --no-cache upgrade && apk --no-cache add curl libstdc++ libgcc
 
 EXPOSE 5000
 ENTRYPOINT [ "/var/www/multi-az-workshop-application/multi-az-workshop-application" ]

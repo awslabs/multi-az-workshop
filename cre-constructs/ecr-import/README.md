@@ -34,11 +34,17 @@ helmChart.node.addDependency(chart.ready);      // chart.uri is the oci:// repos
   placeholder (so does jest); any other synth without the file fails, naming the task. Keep the
   files out of `assets/`, which is uploaded as a whole: each is uploaded as its own CDK asset. An image is pushed as `docker save` wrote it, so save the
   architecture the cluster runs (`--platform linux/arm64`).
-- **A new tag pushes again; the same tag doesn't.** The custom resource runs its build when its
-  properties change (the asset's key or the tag). Change the tag with the image.
+- **A tag already in ECR is never pushed again.** Each deploy, the custom resource looks up which
+  artifacts' tags aren't in their repositories and starts one build for only those (none: no build),
+  so a redeploy or a rollback pushes nothing. An image's tag is its content hash by default, so a
+  changed image always gets a new tag; give `tag` only a value that changes with the image (its
+  version), never `latest`.
+- **One build for all of them.** A single CodeBuild build pushes every missing artifact, one after
+  another (90 minutes at most), and every artifact's `ready` is the same resource.
 - **Depend on `ready`.** Anything that pulls the artifact (a task definition, a Helm release) must
   depend on it, or its first pull can race the push.
 - **Deleted with the stack.** Each repository is `emptyOnDelete` and destroyed, and every log group
   the construct makes is deleted: nothing outlives the stack in a recycled account.
-- **No helm in the build.** A chart is pushed as `helm push` makes it (an OCI manifest with Chart.yaml
-  as the config), through ECR's API; `helm pull oci://<registry>/<prefix><name> --version <v>` reads it.
+- **No helm in the build.** A chart is pushed as `helm push` makes it (an OCI manifest with Chart.yaml's
+  string fields as the config), through ECR's API; `helm pull oci://<registry>/<prefix><name> --version <v>`
+  reads it. The build's script is `build/import.py`, the custom resource's handler `handler/index.py`.

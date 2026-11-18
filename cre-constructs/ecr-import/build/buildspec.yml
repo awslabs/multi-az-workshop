@@ -1,0 +1,6 @@
+# CreEcrImport's build: every artifact in $ARTIFACTS (JSON) not yet in ECR, from S3 into its repository.
+version: 0.2
+phases:
+  build:
+    commands:
+      - python3 import.py

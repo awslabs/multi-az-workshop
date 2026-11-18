@@ -13,11 +13,11 @@ import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
-import { CreCfnParameter, CreStack, CreStackProps, WorkshopStudioMagic } from '@cre/constructs';
+import { CreCfnParameter, CreStack, CreStackProps, CreVersions, WorkshopStudioMagic } from '@cre/constructs';
 import { InstanceArchitecture } from './constructs/eks-cluster';
 import { EnhancedApplicationLoadBalancer } from './constructs/enhanced-load-balancer';
 import { NestedStackWithSource } from './constructs/nested-stack-with-source';
-import { Versions } from './versions';
+import { assetFiles } from './asset-files';
 import { ApplicationRecoveryControllerStack } from './nested-stacks/application-recovery-controller-stack';
 import { AZTaggerStack } from './nested-stacks/az-tagger-stack';
 import { CodeDeployApplicationStack } from './nested-stacks/code-deploy-application-stack';
@@ -100,7 +100,7 @@ export class MultiAZWorkshopStack extends CreStack {
 
     new ssm.StringParameter(this, 'failing-deployment-asset', {
       parameterName: 'DeploymentAsset',
-      stringValue: cdk.Fn.sub('s3://${AssetsBucketName}/${AssetsBucketPrefix}app_deploy_fail.zip'),
+      stringValue: cdk.Fn.sub('s3://${AssetsBucketName}/${AssetsBucketPrefix}' + assetFiles.failingAppBundle),
     });
 
     // Create availability zone mapper
@@ -125,7 +125,7 @@ export class MultiAZWorkshopStack extends CreStack {
     });
 
     // Every externally sourced version, from build/versions.json (the weekly upgrade moves them).
-    const versions = Versions.load();
+    const versions = CreVersions.of(this);
 
     // Create Database Stack
     this.databaseStack = new DatabaseStack(this, 'database', {
@@ -375,7 +375,7 @@ export class MultiAZWorkshopStack extends CreStack {
     // Create CodeDeploy Application Stack
     this.codeDeployStack = new CodeDeployApplicationStack(this, 'codedeploy', {
       ec2Fleet: this.ec2Stack,
-      applicationKey: this.assetsBucketPrefix.valueAsString + 'app_deploy.zip',
+      applicationKey: this.assetsBucketPrefix.valueAsString + assetFiles.appBundle,
       availabilityZoneCount: availabilityZoneIds.length,
       totalEC2InstancesInFleet: fleetSize,
       applicationName: 'multi-az-workshop',

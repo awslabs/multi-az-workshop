@@ -13,6 +13,7 @@ import {
   assertResourceExists,
   assertResourceProperties,
   assertResourceCount,
+  ecrImportArtifacts,
 } from '../../helpers/assertion-helpers';
 import { createMockVpc } from '../../helpers/mock-factories';
 import { synthesizeStack } from '../../helpers/stack-helpers';
@@ -233,28 +234,23 @@ describe('Istio', () => {
 
   describe('ECR import (CreEcrImport)', () => {
     test('loads the three charts and three images into ECR', () => {
-      assertResourceCount(sharedTemplate, 'Custom::CreEcrImport', 6);
-      for (const name of ['base', 'istiod', 'cni']) {
-        assertResourceProperties(sharedTemplate, 'Custom::CreEcrImport', { Kind: 'helm', ChartName: name, Tag: '1.29.0' });
-        sharedTemplate.hasResourceProperties('AWS::ECR::Repository', { RepositoryName: name });
-      }
-      for (const name of ['pilot', 'proxyv2', 'install-cni']) {
+      const { artifacts } = ecrImportArtifacts(sharedTemplate);
+      expect(artifacts.map((a) => [a.kind, a.tag]).sort()).toEqual([
+        ['helm', '1.29.0'], ['helm', '1.29.0'], ['helm', '1.29.0'],
         // The distroless images, in the repositories global.hub (<registry>/istio) names.
-        assertResourceProperties(sharedTemplate, 'Custom::CreEcrImport', { Kind: 'image', Repository: Match.anyValue(), Tag: '1.29.0-distroless' });
+        ['image', '1.29.0-distroless'], ['image', '1.29.0-distroless'], ['image', '1.29.0-distroless'],
+      ]);
+      for (const name of ['base', 'istiod', 'cni']) sharedTemplate.hasResourceProperties('AWS::ECR::Repository', { RepositoryName: name });
+      for (const name of ['pilot', 'proxyv2', 'install-cni']) {
         sharedTemplate.hasResourceProperties('AWS::ECR::Repository', { RepositoryName: `istio/${name}` });
       }
     });
 
-    test('every chart installs only after its chart and images are in ECR', () => {
-      const resources = sharedTemplate.toJSON().Resources;
-      const importIds = Object.entries(resources).filter(([, r]: [string, any]) => r.Type === 'Custom::CreEcrImport').map(([id]) => id);
-      const dependsOnImports = (chart: string) => {
-        const [, r]: any = Object.entries(resources).find(([, x]: [string, any]) => x.Type === 'Custom::AWSCDK-EKS-HelmChart' && x.Properties.Chart === chart);
-        return (r.DependsOn ?? []).filter((d: string) => importIds.includes(d)).length;
-      };
-      expect(dependsOnImports('base')).toBe(1); // its chart
-      expect(dependsOnImports('istiod')).toBe(3); // its chart, pilot, proxyv2
-      expect(dependsOnImports('cni')).toBe(2); // its chart, install-cni
+    test('every chart installs only after the import has loaded its chart and images into ECR', () => {
+      const { id } = ecrImportArtifacts(sharedTemplate);
+      const charts = Object.values(sharedTemplate.toJSON().Resources).filter((r: any) => r.Type === 'Custom::AWSCDK-EKS-HelmChart');
+      expect(charts.map((r: any) => r.Properties.Chart).sort()).toEqual(['base', 'cni', 'istiod']);
+      for (const r of charts as any[]) expect(r.DependsOn).toContain(id);
     });
 
     test('installs each chart from its OCI repository in ECR', () => {

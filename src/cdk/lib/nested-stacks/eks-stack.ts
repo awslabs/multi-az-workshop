@@ -12,7 +12,7 @@ import { EKSCluster, InstanceArchitecture } from '../constructs/eks-cluster';
 import { Istio } from '../constructs/istio';
 import { NestedStackWithSource } from '../constructs/nested-stack-with-source';
 import { KubernetesVersion } from 'aws-cdk-lib/aws-eks';
-import { Versions } from '../versions';
+import { CreVersions } from '@cre/constructs';
 import { CreEcrImport } from '@cre/constructs';
 
 /**
@@ -68,9 +68,9 @@ export interface EKSStackProps extends cdk.NestedStackProps {
 
   /**
    * The workshop's versions (build/versions.json): the cluster's add-ons and node AMI.
-   * @default Versions.load(), build/versions.json
+   * @default CreVersions.of(this), build/versions.json
    */
-  readonly versions?: Versions;
+  readonly versions?: CreVersions;
 }
 
 /**

@@ -95,3 +95,26 @@ export function assertResourceCount(
   const actualCount = getResourceCount(template, resourceType);
   expect(actualCount).toBe(expectedCount);
 }
+
+/** One artifact CreEcrImport loads, as its custom resource lists it (a token in it reads 'TOKEN'). */
+export interface EcrImportArtifact {
+  readonly kind: 'image' | 'helm';
+  readonly repository: string;
+  readonly tag: string;
+}
+
+/**
+ * The template's one CreEcrImport resource (its logical id) and the artifacts its `Artifacts`
+ * property lists. The list is JSON with tokens in it (the buckets, keys and repository names), which
+ * CloudFormation joins: each token becomes 'TOKEN'.
+ */
+export function ecrImportArtifacts(template: Template): { id: string; artifacts: EcrImportArtifact[] } {
+  const imports = Object.entries(template.findResources('Custom::CreEcrImport'));
+  expect(imports).toHaveLength(1);
+  const [id, resource] = imports[0] as [string, any];
+  const value = resource.Properties.Artifacts;
+  const text = typeof value === 'string'
+    ? value
+    : (value['Fn::Join'][1] as unknown[]).map((p) => (typeof p === 'string' ? p : 'TOKEN')).join('');
+  return { id, artifacts: JSON.parse(text) };
+}

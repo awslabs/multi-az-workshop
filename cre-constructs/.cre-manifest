@@ -9,8 +9,11 @@ d24ebdd1cee1a4df37e981fcbb832fbf74ed75beaa60661050fad369c7dbefb3  ./core/names.t
 28c3cf37943d91e7377d0314a7fc8f632776125ee97507755f41201ac8beaaf1  ./core/partitions.ts
 cab1449b9574f942f58e25d58d691f42aab6478d7f6d614671369d0caf85da44  ./core/versions.ts
 c400a6b0acb2b26e87f54f3b148237ed3e47aa9a2fc4048d5ba2b383d6598cba  ./core/workshop-studio.ts
-a46e467c8d80802587f0da360fb7c81d32641df2ec342dbdb78f80c651f805bb  ./ecr-import/README.md
-e0caf0594a3b9b86f479abbadc01b4a5519bc42662b5b03e98ed7baf9e0ebc04  ./ecr-import/ecr-import.ts
+353cf03280aeb90dd61d5c36e8776f5116a54fbb1f33986cec281c8b2bfc8419  ./ecr-import/README.md
+cab4057a9d39d8d6d904b815cd3bfee4e3dbe10b3f1f18b15c53e14382a47a67  ./ecr-import/build/buildspec.yml
+135cdf7e58f915ef7cf0dda0334ab35fb1ac60a52e21fd12d3e2a7170f6aef73  ./ecr-import/build/import.py
+0ce5fbc4487fc601b002a7f59c8c2dcb982a69e8941e8940c8833304fab9af3c  ./ecr-import/ecr-import.ts
+3e90dbc38730298c750f11ffdeee1087ce7874a87c3544dab73cfa3ee4256037  ./ecr-import/handler/index.py
 7c8b5c8755c16cb8808bf893cf52ed4f2f5b33c4301e87fdcf50aefa7b2c606c  ./ecr-import/index.ts
 eb2e18a45f8b1846f02428d4a2213aeaeea4795e52274a57929a87fe86d77560  ./index.ts
-321eff00f25f21e3b7555d7b23d5841a8f8dfbdb53b11f40dc844b29aa02ec32  ./package.json
+3ec96d8bdb8f262d11e30ef8053cc8800a024bac0b578f60f3e2511fd7463583  ./package.json

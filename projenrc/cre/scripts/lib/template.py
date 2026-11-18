@@ -4,8 +4,8 @@
 What only a laptop needs is never committed in a project (src/local-only.ts), so a fresh clone has
 none of it, including the updater. `npx projen update-template` starts here, the one committed piece of that bridge: it finds the cre-demo-template clone the way
 every script does (crelib.project_template_dir: the recorded one, else the sibling directory
-SOURCE.json names), or the one `--from <path>` names (taken out of the arguments), and runs its
-packages/cre-projen/scripts/<script> with the rest, `{template}` replaced by the clone's path.
+SOURCE.json names), or the one `--from <path>` names, and runs its packages/cre-projen/scripts/<script>
+as `<script> --from <the clone> <the other arguments>`.
 Exit 10 (and the script's `RESULT code=10 step=<name>` line) when there is no clone; otherwise the
 script's own exit code.
 """
@@ -30,11 +30,10 @@ def main(argv):
         return 0 if argv else REFUSED
     script, args = argv[0], list(argv[1:])
     given = os.environ.get("CRE_TEMPLATE_DIR", "")
-    # The builder's --from (any but the task's own `--from {template}`): used to find the clone, then
-    # taken out; the script gets the clone as `{template}`.
+    # The builder's --from finds the clone; the script then gets the clone it found as its --from.
     i = 0
     while i < len(args) - 1:
-        if args[i] == "--from" and args[i + 1] != "{template}":
+        if args[i] == "--from":
             given = args[i + 1]
             del args[i:i + 2]
         else:
@@ -52,7 +51,7 @@ def main(argv):
         print(f"RESULT code={REFUSED} step={step}")
         print(f"The template clone at {tpl} has no scripts/{script}: pull it (git -C {tpl} pull).", file=sys.stderr)
         return REFUSED
-    os.execv(sys.executable, [sys.executable, path, *[a.replace("{template}", tpl) for a in args]])
+    os.execv(sys.executable, [sys.executable, path, "--from", tpl, *args])
 
 
 if __name__ == "__main__":

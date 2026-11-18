@@ -10,6 +10,7 @@ import { createDeployTasks, DEFAULT_BINDLE_ID } from './components/deploy-tasks'
 import { refuseUnretriedDownloads } from './components/download-check';
 import { createGitTasks } from './components/git-tasks';
 import type { GitProvider } from './components/git-tasks';
+import { pinActions } from './components/github-actions';
 import { createSkillsTasks } from './components/skills-tasks';
 import { stackJobs, VERSIONS_ROLE_VARIABLE } from './components/stack-jobs';
 import { cdkAppCommand, IAM_CONTROL_PLANE_REGION, planStacks, PLAN_FILE, readPlan, writePlanFile } from './components/stack-plan';
@@ -21,7 +22,7 @@ import type { ProjectLayout } from './layout';
 import { LocalOnlyFiles, localOnlyIgnores } from './local-only';
 import { ConstructModules, CreModule, installConstructModules, moduleSteering, resolveModules } from './modules';
 import { CRE_CONSTRUCTS_DIR, CRE_CONSTRUCTS_PACKAGE, CRE_SCRIPTS } from './paths';
-import { ACTIONS, NODE_MAJOR } from './workflows/actions';
+import { ACTIONS, NODE_MAJOR, secretsEnv } from './workflows/actions';
 import { GITHUB_QEMU_STEP } from './workflows/container-tools';
 import { createDeployWorkflow } from './workflows/deploy-workflow';
 import { createGitlabWorkflow, DEPLOY_ENVIRONMENT } from './workflows/gitlab-workflow';
@@ -414,7 +415,11 @@ export interface CreDemoTemplateAppBaseOptions {
 
 /** {@link CreDemoTemplateAppBaseOptions.buildSetup}: what each provider runs before the build. */
 export interface CreBuildSetup {
-  /** Workflow steps before the build (e.g. `{ uses: 'actions/setup-dotnet@<sha>', with: { 'dotnet-version': '9.0' } }`). */
+  /**
+   * Workflow steps before the build (e.g. `{ uses: 'actions/setup-dotnet', with: { 'dotnet-version': '9.0' } }`).
+   * An action named without `@<ref>` takes its version from build/versions.json (a `github-action`
+   * entry), pinned to the commit its tag points to.
+   */
   readonly github?: JobStep[];
   /** Shell lines before the build on the Alpine image (e.g. `apk add --no-cache dotnet9-sdk`). */
   readonly gitlab?: string[];
@@ -430,11 +435,11 @@ const GITHUB_PYTEST_STEP = {
  * The GitHub steps before every build, the PR build's and the deploy's: QEMU for container images,
  * pytest for Python tests, then the project's own (buildSetup.github).
  */
-function githubPreBuildSteps(options: CreDemoTemplateAppBaseOptions): JobStep[] {
+export function githubPreBuildSteps(options: CreDemoTemplateAppBaseOptions & { outdir?: string }): JobStep[] {
   return [
     ...(options.containerImages ? [GITHUB_QEMU_STEP] : []),
     ...(options.pythonTests ? [GITHUB_PYTEST_STEP] : []),
-    ...(options.buildSetup?.github ?? []),
+    ...pinActions(options.buildSetup?.github ?? [], options.outdir ?? process.cwd()),
   ];
 }
 
@@ -516,7 +521,7 @@ export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
   public readonly constructModules: readonly CreModule[];
 
   protected constructor(options: CreDemoTemplateAppOptions, layout: ProjectLayout, typeSteering: string, extraSteering: string[] = [],
-    requiredModules: readonly CreModule[] = []) {
+    requiredModules: readonly CreModule[] = [], buildSecrets: readonly string[] = []) {
     const isGithub = options.github !== undefined;
     // Before anything is written: a public repository listing an Amazon-internal module is refused.
     let modules: CreModule[] = [];
@@ -610,6 +615,9 @@ export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
             // builds on the architecture main builds on, so an arm64 image's RUN steps run natively.
             runsOn: ['ubuntu-24.04-arm'],
             preBuildSteps: githubPreBuildSteps(options),
+            // The secrets the type's build reads (a workshop's build tool location); the deploy's
+            // build job gets the same. GitLab passes its CI/CD variables to every job itself.
+            env: secretsEnv(buildSecrets),
           },
           // No releases: nothing consumes them yet, and an adopted repo's own tags became the
           // version line, publishing a release in its numbering (review 10h D3). Git history has
@@ -730,6 +738,7 @@ export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
       if (!options.disableDeploy) {
         createDeployWorkflow(this.github!, {
           preBuildSteps: githubPreBuildSteps(options),
+          buildSecrets,
           teardownAfterDeploy: options.teardownAfterDeploy,
           containerImages,
           projectName: this.name,

@@ -13,6 +13,7 @@ import { AwsLoadBalancerController } from '../../../src/cdk/lib/constructs/aws-l
 import {
   assertResourceExists,
   assertResourceProperties,
+  ecrImportArtifacts,
 } from '../../helpers/assertion-helpers';
 import { createMockVpc } from '../../helpers/mock-factories';
 import { synthesizeStack } from '../../helpers/stack-helpers';
@@ -235,8 +236,8 @@ describe('AwsLoadBalancerController', () => {
     test('loads the controller image and chart into ECR, as the chart values name them', () => {
       sharedTemplate.hasResourceProperties('AWS::ECR::Repository', { RepositoryName: 'eks/aws-load-balancer-controller' });
       sharedTemplate.hasResourceProperties('AWS::ECR::Repository', { RepositoryName: 'aws-load-balancer-controller' });
-      sharedTemplate.hasResourceProperties('Custom::CreEcrImport', { Kind: 'image', Tag: 'v3.0.0-linux_arm64' });
-      sharedTemplate.hasResourceProperties('Custom::CreEcrImport', { Kind: 'helm', ChartName: 'aws-load-balancer-controller', Tag: '3.0.0' });
+      const { artifacts } = ecrImportArtifacts(sharedTemplate);
+      expect(artifacts.map((a) => [a.kind, a.tag]).sort()).toEqual([['helm', '3.0.0'], ['image', 'v3.0.0-linux_arm64']]);
     });
   });
 

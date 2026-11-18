@@ -21,3 +21,24 @@ export const ACTIONS = {
  * package.json `engines` (`minNodeVersion`). Node 20 reached end of life in April 2026.
  */
 export const NODE_MAJOR = '22';
+
+/**
+ * The first steps of every CRE job that runs projen (the deploy's, the teardown's, the publish's):
+ * the commit the run is for, Node, Corepack and the locked dependencies. Without node_modules
+ * `npx projen` would fetch whatever projen is latest on npm and run tasks.json under a different
+ * engine from the one the build used. `fullHistory`: every commit (publish checks its commit is on
+ * origin/main).
+ */
+export function projenJobSetup(fullHistory = false) {
+  return [
+    { name: 'Checkout', uses: ACTIONS.checkout, with: { ref: '${{ github.sha }}', ...(fullHistory ? { 'fetch-depth': 0 } : {}) } },
+    { name: 'Setup Node.js', uses: ACTIONS.setupNode, with: { 'node-version': NODE_MAJOR } },
+    { name: 'Enable Corepack', run: 'corepack enable' },
+    { name: 'Install dependencies', run: 'yarn install --immutable' },
+  ];
+}
+
+/** `${{ secrets.<name> }}` for each name, as a job's or step's env. */
+export function secretsEnv(names: readonly string[]): Record<string, string> {
+  return Object.fromEntries(names.map((n) => [n, `\${{ secrets.${n} }}`]));
+}

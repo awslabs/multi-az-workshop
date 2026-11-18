@@ -14,6 +14,7 @@ import {
   assertResourceExists,
   assertResourceProperties,
   assertResourceCount,
+  ecrImportArtifacts,
 } from '../../helpers/assertion-helpers';
 import { createMockVpc } from '../../helpers/mock-factories';
 import { synthesizeStack } from '../../helpers/stack-helpers';
@@ -99,6 +100,11 @@ describe('EKSApplication', () => {
       assertResourceProperties(sharedTemplate, 'Custom::AWSCDK-EKS-KubernetesResource', {
         Manifest: Match.stringLikeRegexp('.*test-app.*'),
       });
+    });
+    test('tags both images with their content hash, never latest (a tag already in ECR is never pushed again)', () => {
+      const { artifacts } = ecrImportArtifacts(sharedTemplate);
+      expect(artifacts).toHaveLength(2);
+      for (const a of artifacts) expect(a.tag).toMatch(/^[0-9a-f]{64}$/);
     });
   });
 

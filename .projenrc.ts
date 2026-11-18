@@ -18,7 +18,8 @@ const project = new CreWorkshopStudio({
   buildSetup: {
     github: [{
       name: 'Install dotnet',
-      uses: 'actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73', // v6.1.0 (node24)
+      // Its version: build/versions.json SETUP_DOTNET (the step is written pinned to that commit).
+      uses: 'actions/setup-dotnet',
       with: { 'dotnet-version': '9.0' },
     }],
   },

@@ -5,7 +5,8 @@ import * as cdk from 'aws-cdk-lib';
 import * as eks from 'aws-cdk-lib/aws-eks-v2';
 import { Construct, IDependable } from 'constructs';
 import { CreEcrImport } from '@cre/constructs';
-import { builtAsset } from '../build-assets';
+import { ecrImportFiles, IstioChart, IstioImage } from '../asset-files';
+import { builtAsset } from '../built-asset';
 
 /**
  * Properties for Istio construct
@@ -50,13 +51,13 @@ export class Istio extends Construct {
     const version = props.version;
 
     // The charts and images, loaded into ECR from the build's tarballs (build:assets).
-    const chart = (name: string) => props.ecrImport.addHelmChart(`istio-${name}-chart`, {
-      chart: builtAsset(this, `${name}-chart-asset`, `${name}-${version}.tgz`),
+    const chart = (name: IstioChart) => props.ecrImport.addHelmChart(`istio-${name}-chart`, {
+      chart: builtAsset(this, `${name}-chart-asset`, ecrImportFiles.chart(name, version)),
       name,
       version,
     });
-    const image = (name: string) => props.ecrImport.addImage(`istio-${name}-image`, {
-      tarball: builtAsset(this, `${name}-image-asset`, `${name}.tar.gz`),
+    const image = (name: IstioImage) => props.ecrImport.addImage(`istio-${name}-image`, {
+      tarball: builtAsset(this, `${name}-image-asset`, ecrImportFiles.istioImage(name)),
       repositoryName: `istio/${name}`,
       // The distroless variant (global.variant below).
       tag: `${version}-distroless`,
@@ -97,7 +98,7 @@ export class Istio extends Construct {
       wait: true,
       values: {
         global: {
-          hub: cdk.Fn.sub('${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/istio'),
+          hub: `${cdk.Aws.ACCOUNT_ID}.dkr.ecr.${cdk.Aws.REGION}.${cdk.Aws.URL_SUFFIX}/istio`,
           // The distroless images (assets:istio-containers pulls <version>-distroless).
           variant: 'distroless',
         },
@@ -123,7 +124,7 @@ export class Istio extends Construct {
       wait: true,
       values: {
         global: {
-          hub: cdk.Fn.sub('${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/istio'),
+          hub: `${cdk.Aws.ACCOUNT_ID}.dkr.ecr.${cdk.Aws.REGION}.${cdk.Aws.URL_SUFFIX}/istio`,
           // The distroless images (assets:istio-containers pulls <version>-distroless).
           variant: 'distroless',
         },
