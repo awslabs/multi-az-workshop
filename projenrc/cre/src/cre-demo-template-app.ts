@@ -447,8 +447,10 @@ export function githubPreBuildSteps(options: CreDemoTemplateAppBaseOptions & { o
 export type CreDemoTemplateAppOptions = CreDemoTemplateAppBaseOptions & ProviderOptions;
 
 const BASE_GITIGNORE = [
-  // The project's own steering and .agents/ (PDD's design record) are committed; the template's
-  // steering, skills and agent docs are local-only (localOnlyIgnores, appended below).
+  // The project's own steering is committed; the template's steering, skills and agent docs are
+  // local-only (localOnlyIgnores, appended below), and so are an agent's working files: .agents/
+  // (PDD's planning) and .kiro/specs/.
+  '/.agents/',
   '.kiro/specs/',
   'idea/',
   // Claude Code per-machine state: agent worktrees (embedded git repos that `--files "."` would

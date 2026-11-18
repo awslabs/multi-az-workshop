@@ -38,6 +38,7 @@ jspm_packages/
 *.tgz
 .yarn-integrity
 .cache
+/.agents/
 .kiro/specs/
 idea/
 .claude/worktrees/
