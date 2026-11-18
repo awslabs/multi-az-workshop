@@ -67,6 +67,8 @@ const CRANE_INSTALL = [craneInstall('/usr/local/bin')];
 export const TEARDOWN_JOB = 'deploy:teardown';
 /** The play-button job that deletes the stacks by hand (`npx projen teardown` from CI). */
 export const MANUAL_TEARDOWN_JOB = 'teardown';
+/** A workshop's release, after the deploy jobs (release.py). */
+export const RELEASE_JOB = 'deploy:release';
 
 /** The weekly dependency upgrade job, and the branch its MR comes from. */
 export const UPGRADE_JOB = 'upgrade:main';
@@ -94,8 +96,8 @@ export const UPGRADE_SKIPPED = 75;
  * (gitlab.aws.dev answers 403 even with `ci_push_repository_for_job_token_allowed`).
  *
  * Its AWS credentials are the read-only versions role's (VERSIONS_ROLE_ARN, in every scope: this
- * job has no environment), for the lookups `npx projen upgrade` runs in post-upgrade
- * (versions:update), in the partition's control-plane region.
+ * job has no environment), for the lookups it runs before the upgrade (versions:update), in the
+ * partition's control-plane region.
  */
 function upgradeJob(credentialsRegion: string): gitlab.Job {
   const remote = `"https://cre-upgrade:\${${UPGRADE_VARIABLE}}@\${CI_SERVER_HOST}/\${CI_PROJECT_PATH}.git"`;
@@ -140,6 +142,8 @@ function upgradeJob(credentialsRegion: string): gitlab.Job {
       // Author and committer: a person who amends or rebases the bot's commit keeps the bot as its
       // author, and only the committer is them (review 10f B3).
       `if [ -n "$LEASE" ] && git log --format='%ae%n%ce' "\${CI_COMMIT_SHA}..$LEASE" | grep -qvxF "${bot}"; then echo "${UPGRADE_BRANCH} has commits that aren't the upgrade job's; skipping so they are not overwritten. Merge its MR, or delete the branch (closing the MR leaves the branch, and this job keeps skipping); then the next run upgrades again." >&2; exit ${UPGRADE_SKIPPED}; fi`,
+      // The lookups first, with the locked packages: `upgrade` no longer runs them (post-upgrade).
+      'npx projen versions:update',
       'npx projen upgrade',
       'if [ -z "$(git status --porcelain)" ]; then echo "Dependencies are up to date: nothing to do."; exit 0; fi',
       `git config user.name "cre-upgrade" && git config user.email "${bot}"`,
@@ -212,6 +216,7 @@ export function createGitlabWorkflow(
     disableDeploy?: boolean;
     teardownAfterDeploy?: boolean;
     pythonTests?: boolean;
+    release?: boolean;
     /** A play-button approval before the deploy (src/workflows/approval.ts). */
     approval?: boolean;
     /** The project's own build setup (buildSetup.gitlab): build:cdk runs it after the toolchain install. */
@@ -410,6 +415,21 @@ export function createGitlabWorkflow(
       needs: [{ job: UPLOAD_JOB.gitlab, artifacts: false }, ...opts.jobs.map((j) => ({ job: j.gitlabJob, artifacts: false }))],
       script: ['npx projen deploy:prune'],
     });
+  }
+
+  if (opts.release) {
+    // After every stack job succeeded: the commit the deploy tested, tagged and released with the
+    // job's own CI_JOB_TOKEN (the Releases API takes it; the release makes the tag at its ref). No
+    // AWS: no credential variable, no environment. It doesn't wait for the teardown.
+    deployJobs[RELEASE_JOB] = {
+      stage: 'deploy',
+      rules: [{ if: onMain }],
+      interruptible: false,
+      needs: [UPLOAD_JOB.gitlab, ...opts.jobs.map((j) => j.gitlabJob)].map((job) => ({ job, artifacts: false })),
+      // The whole history and every tag: the next version follows the latest one.
+      variables: { GIT_DEPTH: '0' },
+      script: ['npx projen release'],
+    };
   }
 
   const teardown = { [CREDENTIALS_VARIABLE]: `$${RUNNER_ROLE_VARIABLE}` };

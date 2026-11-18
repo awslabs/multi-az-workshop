@@ -36,7 +36,7 @@ import type { GitHub } from 'projen/lib/github';
 import { JobPermission } from 'projen/lib/github/workflows-model';
 import type { JobStep } from 'projen/lib/github/workflows-model';
 import { UpgradeDependenciesSchedule } from 'projen/lib/javascript';
-import { ACTIONS, projenJobSetup, secretsEnv } from './actions';
+import { ACTIONS, DEPLOY_CONCURRENCY, ON_MAIN, projenJobSetup, secretsEnv } from './actions';
 import { addGithubApproval } from './approval';
 import { craneInstall } from './container-tools';
 import { GITHUB, PRUNE_JOB, render, RUNNER_ROLE_VARIABLE, UPLOAD_JOB } from '../components/stack-jobs';
@@ -89,6 +89,12 @@ export interface DeployWorkflowOptions {
    * have no environments. @default none
    */
   readonly environment?: string;
+  /**
+   * After every stack deployed, a `release` job tags the commit and makes its release (the
+   * `release` task, release.py), with the job's token (contents: write). A workshop's publish sends
+   * the latest release. @default false
+   */
+  readonly release?: boolean;
   /** One approval before the deploy, and before a teardown (src/workflows/approval.ts). @default false */
   readonly approval?: boolean;
   /**
@@ -101,6 +107,8 @@ export interface DeployWorkflowOptions {
 /** teardownAfterDeploy's job after the deploy, and the manual teardown workflow. */
 export const TEARDOWN_JOB = 'teardown';
 export const TEARDOWN_WORKFLOW = 'teardown';
+/** A workshop's release job, after the deploy (both providers). */
+export const RELEASE_JOB = 'release';
 
 /** Days a deploy artifact is kept: 1 in a public or internal repo (anyone can read it), else 7. One
  * value for the content and the outputs artifacts, so neither outlives the other (review 10c G10). */
@@ -116,7 +124,7 @@ export function createDeployWorkflow(github: GitHub, opts: DeployWorkflowOptions
   // main's latest commit to every stack anyway.
   const workflow = new GithubWorkflow(github, DEPLOY_WORKFLOW, {
     limitConcurrency: true,
-    concurrencyOptions: { group: 'deploy-${{ github.repository }}', cancelInProgress: false },
+    concurrencyOptions: DEPLOY_CONCURRENCY,
   });
   workflow.on({
     push: { branches: ['main'] },
@@ -130,16 +138,11 @@ export function createDeployWorkflow(github: GitHub, opts: DeployWorkflowOptions
 
   // The commit this run deploys: the merge commit on push, main's head on a dispatch from main.
   const setup = projenJobSetup();
-  // Deploys only from main (a dispatch from another branch does nothing; its OIDC subject isn't
-  // trusted anyway).
-  const onMain = "github.ref == 'refs/heads/main'";
-
   workflow.addJob(BUILD_JOB, {
-    if: onMain,
+    if: ON_MAIN,
     runsOn: ['ubuntu-24.04-arm'],
     permissions: { contents: JobPermission.READ },
-    // The secrets the build itself reads (a workshop's build tool location, per platform).
-    env: { CI: 'true', PROJECT_NAME: opts.projectName, ...secretsEnv(opts.buildSecrets ?? []) },
+    env: { CI: 'true', PROJECT_NAME: opts.projectName },
     steps: [
       ...setup,
       // The PR build's own pre-build steps (QEMU for build:docker, pytest, the project's buildSetup),
@@ -147,7 +150,9 @@ export function createDeployWorkflow(github: GitHub, opts: DeployWorkflowOptions
       ...(opts.preBuildSteps ?? []),
       // The build regenerates the pipeline and plan first, so check the committed ones before (#15).
       { name: 'Generated files are current', run: 'npx projen check:generated' },
-      { name: 'Build', run: 'npx projen build' },
+      // The secrets the build itself reads (a workshop's build tool location, per platform): this
+      // step only, not the setup's third-party actions.
+      { name: 'Build', run: 'npx projen build', ...(opts.buildSecrets?.length ? { env: secretsEnv(opts.buildSecrets) } : {}) },
       {
         name: 'Upload content artifact',
         uses: ACTIONS.uploadArtifact,
@@ -162,7 +167,6 @@ export function createDeployWorkflow(github: GitHub, opts: DeployWorkflowOptions
 /** Every deploy-variable reference inside a job value. */
 function varRefs(x: JobValue): Extract<JobValue, { kind: 'var' }>[] {
   if (x.kind === 'var') return [x];
-  if (x.kind === 'concat') return x.parts.flatMap(varRefs);
   if (x.kind === 'lines') return x.lines.flatMap(([, y]) => varRefs(y));
   return [];
 }
@@ -171,18 +175,7 @@ function varRefs(x: JobValue): Extract<JobValue, { kind: 'var' }>[] {
 // the AWS credentials); a stack job adds its needs and the variables stack-jobs.ts generates for it.
 function addDeployJobs(workflow: GithubWorkflow, opts: DeployWorkflowOptions, setup: JobStep[]): void {
   const retentionDays = artifactRetentionDays(opts.publicRepo);
-  const runner: StackJob['credentials'] = { kind: 'var', name: RUNNER_ROLE_VARIABLE, optional: false };
-  const credentials = (region: string, role: StackJob['credentials'] = runner) => ({
-    name: 'Configure AWS credentials',
-    uses: ACTIONS.configureAwsCredentials,
-    with: {
-      'role-to-assume': render(role, GITHUB),
-      'aws-region': region,
-      'mask-aws-account-id': true,
-      // A CloudFront or certificate stack can outlast 1 h of credentials (review 10b D3).
-      ...(opts.roleDurationSeconds && opts.roleDurationSeconds > 3600 ? { 'role-duration-seconds': opts.roleDurationSeconds } : {}),
-    },
-  });
+  const credentials = (region: string, role?: StackJob['credentials']) => credentialsStep(opts, region, role);
   const job = (id: string, needs: string[], steps: any[]) => {
     workflow.addJob(id, {
       needs,
@@ -271,6 +264,19 @@ function addDeployJobs(workflow: GithubWorkflow, opts: DeployWorkflowOptions, se
     ]);
   }
 
+  if (opts.release) {
+    // After every stack job succeeded: the commit the deploy tested, tagged and released (none when
+    // a stack failed). It needs no AWS and no environment; it doesn't wait for the teardown.
+    workflow.addJob(RELEASE_JOB, {
+      needs: [UPLOAD_JOB.github, ...opts.jobs.map((j) => j.githubJob)],
+      runsOn: ['ubuntu-latest'],
+      permissions: { contents: JobPermission.WRITE },
+      env: { CI: 'true', PROJECT_NAME: opts.projectName, GH_TOKEN: '${{ github.token }}' },
+      // The whole history and every tag: the next version follows the latest one.
+      steps: [...projenJobSetup(true), { name: 'Tag and release the deployed commit', run: 'npx projen release' }],
+    });
+  }
+
   if (opts.teardownAfterDeploy) {
     // After every job of a deploy that succeeded (a failed one stays up to be diagnosed).
     job(TEARDOWN_JOB, [UPLOAD_JOB.github, ...opts.jobs.map((j) => j.githubJob), ...(opts.pruneAssets !== false ? [PRUNE_JOB.github] : [])], [
@@ -281,6 +287,23 @@ function addDeployJobs(workflow: GithubWorkflow, opts: DeployWorkflowOptions, se
   }
 }
 
+const RUNNER: StackJob['credentials'] = { kind: 'var', name: RUNNER_ROLE_VARIABLE, optional: false };
+
+/** The AWS credentials step: the runner role (or a stack's own), in `region`. */
+function credentialsStep(opts: DeployWorkflowOptions, region: string, role: StackJob['credentials'] = RUNNER): JobStep {
+  return {
+    name: 'Configure AWS credentials',
+    uses: ACTIONS.configureAwsCredentials,
+    with: {
+      'role-to-assume': render(role, GITHUB),
+      'aws-region': region,
+      'mask-aws-account-id': true,
+      // A CloudFront or certificate stack can outlast 1 h of credentials (review 10b D3).
+      ...(opts.roleDurationSeconds && opts.roleDurationSeconds > 3600 ? { 'role-duration-seconds': opts.roleDurationSeconds } : {}),
+    },
+  };
+}
+
 /**
  * The `teardown` workflow: deletes the stacks, by hand (`npx projen teardown` from CI). It shares
  * the deploy workflow's concurrency group, so it never runs in the middle of a deploy.
@@ -288,30 +311,20 @@ function addDeployJobs(workflow: GithubWorkflow, opts: DeployWorkflowOptions, se
 function addTeardownWorkflow(github: GitHub, opts: DeployWorkflowOptions, setup: JobStep[]): void {
   const wf = new GithubWorkflow(github, TEARDOWN_WORKFLOW, {
     limitConcurrency: true,
-    concurrencyOptions: { group: 'deploy-${{ github.repository }}', cancelInProgress: false },
+    concurrencyOptions: DEPLOY_CONCURRENCY,
   });
   wf.on({ workflowDispatch: {} });
   const approved = opts.approval ? [addGithubApproval(wf)] : [];
   wf.addJob(TEARDOWN_JOB, {
     ...(approved.length ? { needs: approved } : {}),
-    if: "github.ref == 'refs/heads/main'",
+    if: ON_MAIN,
     runsOn: ['ubuntu-latest'],
     ...(opts.environment ? { environment: { name: opts.environment } } : {}),
     permissions: { contents: JobPermission.READ, idToken: JobPermission.WRITE },
-    // The secrets the build itself reads (a workshop's build tool location, per platform).
-    env: { CI: 'true', PROJECT_NAME: opts.projectName, ...secretsEnv(opts.buildSecrets ?? []) },
+    env: { CI: 'true', PROJECT_NAME: opts.projectName },
     steps: [
       ...setup,
-      {
-        name: 'Configure AWS credentials',
-        uses: ACTIONS.configureAwsCredentials,
-        with: {
-          'role-to-assume': render({ kind: 'var', name: RUNNER_ROLE_VARIABLE, optional: false }, GITHUB),
-          'aws-region': opts.credentialsRegion,
-          'mask-aws-account-id': true,
-          ...(opts.roleDurationSeconds && opts.roleDurationSeconds > 3600 ? { 'role-duration-seconds': opts.roleDurationSeconds } : {}),
-        },
-      },
+      credentialsStep(opts, opts.credentialsRegion),
       { name: 'Delete the stacks', run: 'npx projen teardown' },
     ],
   });

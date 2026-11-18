@@ -115,9 +115,9 @@ export function contentspec(opts: WorkshopStudioOptions, stacks: readonly Planne
       { templateParameter: 'AssetsBucketPrefix', defaultValue: '{{.AssetsBucketPrefix}}' },
     ];
     for (const [name, src] of Object.entries(s.parameters)) {
-      const magic = src.kind === 'env' ? (src as { magic?: string }).magic : undefined;
+      const magic = src.kind === 'env' ? src.magic : undefined;
       if (!magic) {
-        problems.push(`${s.id}: parameter ${name} takes ${src.kind === 'output' ? `${src.stack}'s output` : src.kind === 'env' ? `deploy variable ${src.variable}` : 'a literal'}, ` +
+        problems.push(`${s.id}: parameter ${name} takes ${src.kind === 'output' ? `${src.stack}'s output` : `deploy variable ${src.variable}`}, ` +
           'which Workshop Studio can\'t pass: give it a default, or take a Workshop Studio value (CreCfnParameter fromMagic).');
         continue;
       }

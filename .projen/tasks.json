@@ -51,6 +51,46 @@
         }
       ]
     },
+    "bump": {
+      "name": "bump",
+      "description": "Bumps version based on latest git tag and generates a changelog entry",
+      "env": {
+        "OUTFILE": "package.json",
+        "CHANGELOG": "dist/changelog.md",
+        "BUMPFILE": "dist/version.txt",
+        "RELEASETAG": "dist/releasetag.txt",
+        "RELEASE_TAG_PREFIX": "",
+        "BUMP_PACKAGE": "commit-and-tag-version@^13"
+      },
+      "steps": [
+        {
+          "builtin": "release/resolve-latest-tag",
+          "outputEnv": "LATEST_TAG"
+        },
+        {
+          "spawn": "bump:releasable-commits",
+          "outputEnv": "RELEASABLE_COMMITS",
+          "condition": "git rev-parse --verify --quiet \"refs/tags/$LATEST_TAG\""
+        },
+        {
+          "builtin": "release/suggest-version-bump",
+          "outputEnv": "SUGGESTED_BUMP"
+        },
+        {
+          "builtin": "release/apply-version-bump"
+        }
+      ],
+      "condition": "git log --oneline -1 | grep -v \"chore(release):\" > /dev/null"
+    },
+    "bump:releasable-commits": {
+      "name": "bump:releasable-commits",
+      "description": "Print the releasable commits since the latest release",
+      "steps": [
+        {
+          "exec": "git log --oneline $LATEST_TAG..HEAD"
+        }
+      ]
+    },
     "bundle": {
       "name": "bundle",
       "description": "Prepare assets"
@@ -344,9 +384,6 @@
       "description": "Runs after upgrading dependencies",
       "steps": [
         {
-          "spawn": "versions:update"
-        },
-        {
           "exec": "yarn up -R '*' '@*/*'",
           "name": "Re-resolve transitive dependencies to the newest versions their ranges allow"
         }
@@ -373,8 +410,12 @@
     },
     "publish": {
       "name": "publish",
-      "description": "Build, then publish this commit (main's) to Workshop Studio: the S3 assets, then the guide to the workshop's repository. --local: the credentials from your Midway session; else (CI) from the pasted secrets",
+      "description": "Publish the latest release (or --version v<x.y.z>'s) to Workshop Studio: check it is the checkout, build, then the S3 assets and the guide to the workshop's repository. --local: the credentials from your Midway session; else (CI) from the pasted secrets",
       "steps": [
+        {
+          "exec": "python3 projenrc/cre/scripts/build/publish.py checkout \"$@\"",
+          "receiveArgs": true
+        },
         {
           "spawn": "build"
         },
@@ -386,7 +427,7 @@
     },
     "publish:upload": {
       "name": "publish:upload",
-      "description": "CI: publish what the build made, with the inputs from the job's secrets (npx projen publish builds first)",
+      "description": "CI: publish what the build made of the checked-out release, with the inputs from the job's secrets (npx projen publish builds first)",
       "steps": [
         {
           "exec": "python3 projenrc/cre/scripts/build/publish.py"
@@ -403,6 +444,15 @@
         {
           "exec": "python3 projenrc/cre/scripts/git/push.py \"$@\"",
           "receiveArgs": true
+        }
+      ]
+    },
+    "release": {
+      "name": "release",
+      "description": "CI: tag and release the commit the deploy just tested (the deploy runs it; publish sends the latest release)",
+      "steps": [
+        {
+          "exec": "python3 projenrc/cre/scripts/build/release.py"
         }
       ]
     },
@@ -498,7 +548,7 @@
     },
     "teardown": {
       "name": "teardown",
-      "description": "Delete the stacks, each after the stacks that need it (independent ones at once). Running it deletes; --dry-run only lists them, so run that first. [--orphans] [--stack id]... [--profile p] [--dns-profile p]",
+      "description": "Delete the stacks: every delete started at once (re-run for one that ends DELETE_FAILED). Running it deletes; --dry-run only lists them, so run that first. [--orphans] [--stack id]... [--profile p] [--dns-profile p]",
       "steps": [
         {
           "exec": "python3 projenrc/cre/scripts/build/stacks.py teardown \"$@\"",
@@ -599,6 +649,23 @@
         }
       ]
     },
+    "unbump": {
+      "name": "unbump",
+      "description": "Restores version to 0.0.0",
+      "env": {
+        "OUTFILE": "package.json",
+        "CHANGELOG": "dist/changelog.md",
+        "BUMPFILE": "dist/version.txt",
+        "RELEASETAG": "dist/releasetag.txt",
+        "RELEASE_TAG_PREFIX": "",
+        "BUMP_PACKAGE": "commit-and-tag-version@^13"
+      },
+      "steps": [
+        {
+          "builtin": "release/reset-version"
+        }
+      ]
+    },
     "update-template": {
       "name": "update-template",
       "description": "Pull the cre-demo-template clone, refresh projenrc/cre, cre-constructs and the skill links from it, then synth + build.",
@@ -646,6 +713,7 @@
             "@typescript-eslint/eslint-plugin",
             "@typescript-eslint/parser",
             "aws-cdk",
+            "commit-and-tag-version",
             "esbuild",
             "eslint-import-resolver-typescript",
             "eslint-plugin-import",

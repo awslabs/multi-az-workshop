@@ -169,11 +169,12 @@ export function createBuildTasks(
     description: `Check ${VERSIONS_FILE} (every entry has a lookup) and that no synthesized template takes a version from elsewhere (no network)`,
     exec: `python3 ${CRE_SCRIPTS}/build/versions.py check --file ${VERSIONS_FILE} --templates cdk.out`,
   });
-  const versionsUpdate = project.addTask('versions:update', {
+  // Not part of `upgrade` (post-upgrade): the weekly upgrade runs the lookups apart from the upgraded
+  // npm code, which gets no AWS credentials (GitHub: the `versions` job; GitLab: before the upgrade).
+  project.addTask('versions:update', {
     description: `Move each ${VERSIONS_FILE} entry to the newest version its update allows (AWS lookups need credentials)`,
     exec: `python3 ${CRE_SCRIPTS}/build/versions.py update --file ${VERSIONS_FILE}`,
   });
-  project.tasks.tryFind('post-upgrade')!.spawn(versionsUpdate);
   for (const name of POST_SYNTH_CHECKS) project.postCompileTask.spawn(project.tasks.tryFind(name)!);
 
   // --- container tasks (gated on containerImages) ---------------------------

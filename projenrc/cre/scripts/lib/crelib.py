@@ -294,12 +294,20 @@ def mirror(src, dest, exclude=MIRROR_EXCLUDES, skip_ignored=False):
     """Make <dest> a copy of <src> (what `rsync -a --delete` did, without needing rsync; review 10c
     G7): every file copied with its mode and times, symlinks kept as links, and anything in <dest>
     that <src> doesn't have removed. An excluded path is neither copied nor removed. skip_ignored:
-    a file git ignores in <src>'s repository isn't copied (local scratch, a build's output), and one
-    git ignores in <dest>'s isn't removed (review 10g B12). Returns the number of files copied."""
+    a file git ignores in <src>'s repository isn't copied (local scratch, a build's output), and
+    scratch git ignores in <dest>'s isn't removed (review 10g B12): what <src>'s repository would
+    ignore there too (a __pycache__). A file <dest> ignores only because it is local-only there (a
+    laptop script the template has since removed) is removed like any other. Returns the number of
+    files copied."""
     copied = 0
     os.makedirs(dest, exist_ok=True)
     src_ignored = git_ignored(src) if skip_ignored else set()
     dest_ignored = git_ignored(dest) if skip_ignored else set()
+    if dest_ignored:
+        # Kept only when the template's repository ignores that path as well: its scratch, not its files.
+        r = subprocess.run(["git", "-C", src, "check-ignore", "--no-index", "--stdin", "-z"],
+                           input="\0".join(sorted(dest_ignored)) + "\0", capture_output=True, text=True)
+        dest_ignored = {x.rstrip("/") for x in r.stdout.split("\0") if x} if r.returncode in (0, 1) else dest_ignored
 
     def remove(path):
         if os.path.isdir(path) and not os.path.islink(path):
@@ -451,6 +459,17 @@ def is_commit_sha(value):
     sync-constructs.py --at takes. Anything else is refused before it reaches git, where a value
     starting with "-" would be read as an option (git archive --remote=..., --output=...)."""
     return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{40}", value) is not None
+
+
+# A workshop's release tag (release.py makes it; publish sends the latest, or the one named).
+RELEASE_TAG = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
+
+
+def release_tags(ref=None, cwd=None):
+    """The release tags, newest version first: every one, or those pointing at `ref`."""
+    r = git("tag", "--list", "v*", *(["--points-at", ref] if ref else []), cwd=cwd)
+    tags = [t for t in r.stdout.split() if RELEASE_TAG.match(t)]
+    return sorted(tags, key=lambda t: tuple(int(x) for x in RELEASE_TAG.match(t).groups()), reverse=True)
 
 
 def git(*args, cwd=None, env=None):

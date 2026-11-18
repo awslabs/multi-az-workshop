@@ -17,12 +17,6 @@ jobs:
     env:
       CI: "true"
       PROJECT_NAME: multi-az-workshop
-      BUILD_TOOL_LOCATION_LINUX: ${{ secrets.BUILD_TOOL_LOCATION_LINUX }}
-      BUILD_TOOL_LOCATION_LINUX_ARM: ${{ secrets.BUILD_TOOL_LOCATION_LINUX_ARM }}
-      BUILD_TOOL_LOCATION_OSX: ${{ secrets.BUILD_TOOL_LOCATION_OSX }}
-      BUILD_TOOL_LOCATION_OSX_ARM: ${{ secrets.BUILD_TOOL_LOCATION_OSX_ARM }}
-      BUILD_TOOL_LOCATION_WINDOWS: ${{ secrets.BUILD_TOOL_LOCATION_WINDOWS }}
-      BUILD_TOOL_LOCATION_WINDOWS_ARM: ${{ secrets.BUILD_TOOL_LOCATION_WINDOWS_ARM }}
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
@@ -51,6 +45,13 @@ jobs:
         run: npx projen check:generated
       - name: Build
         id: build
+        env:
+          BUILD_TOOL_LOCATION_LINUX: ${{ secrets.BUILD_TOOL_LOCATION_LINUX }}
+          BUILD_TOOL_LOCATION_LINUX_ARM: ${{ secrets.BUILD_TOOL_LOCATION_LINUX_ARM }}
+          BUILD_TOOL_LOCATION_OSX: ${{ secrets.BUILD_TOOL_LOCATION_OSX }}
+          BUILD_TOOL_LOCATION_OSX_ARM: ${{ secrets.BUILD_TOOL_LOCATION_OSX_ARM }}
+          BUILD_TOOL_LOCATION_WINDOWS: ${{ secrets.BUILD_TOOL_LOCATION_WINDOWS }}
+          BUILD_TOOL_LOCATION_WINDOWS_ARM: ${{ secrets.BUILD_TOOL_LOCATION_WINDOWS_ARM }}
         run: npx projen build
       - name: Upload content artifact
         id: upload_content_artifact
@@ -225,6 +226,38 @@ jobs:
       - name: Remove old deploy prefixes
         id: remove_old_deploy_prefixes
         run: npx projen deploy:prune
+  release:
+    needs:
+      - deploy-upload
+      - deploy-multi-az-workshop
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      CI: "true"
+      PROJECT_NAME: multi-az-workshop
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: Setup Node.js
+        id: setup_node_js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Enable Corepack
+        id: enable_corepack
+        run: corepack enable
+      - name: Install dependencies
+        id: install_dependencies
+        run: yarn install --immutable
+      - name: Tag and release the deployed commit
+        id: tag_and_release_the_deployed_commit
+        run: npx projen release
   teardown:
     needs:
       - deploy-upload

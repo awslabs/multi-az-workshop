@@ -1,4 +1,5 @@
 import { SampleFile } from 'projen';
+import { Version } from 'projen/lib/version';
 import { createFailureScenarioChecks } from './components/tooling-tasks';
 import { createContentspec } from './components/workshop-studio';
 import type { WorkshopStudioOptions } from './components/workshop-studio';
@@ -111,7 +112,7 @@ export class CreWorkshopStudio extends CreDemoTemplateApp {
       throw new Error('CreWorkshopStudio: no containerImages: a team account has no ECR repository of ours. Ship an image (or a Helm chart) as an S3 asset with CreEcrImport (CreModule.ECR_IMPORT) instead.');
     }
     // The build tool's location, one secret per platform: the PR build and the deploy's build read it.
-    super(options, STANDARD_LAYOUT, 'workshop-studio.md', ['workshop-content.md'], [], BUILD_TOOL_SECRETS);
+    super(options, STANDARD_LAYOUT, 'workshop-studio.md', ['workshop-content.md'], [], { buildSecrets: BUILD_TOOL_SECRETS, release: true });
     // The build stages each top-level template into static/ (built, never committed), and checks the
     // whole workshop with Workshop Studio's own build before anything is zipped or deployed.
     // The templates: every top-level stack.
@@ -144,18 +145,30 @@ export class CreWorkshopStudio extends CreDemoTemplateApp {
       exec: `${tool} python3 ${WORKSHOP_PY} preview "$@"`,
       receiveArgs: true,
     });
-    // The publish: build this commit, then publish.py with its inputs from the CI job's secrets, or with
-    // --local from the laptop's Midway session (the same publish, only the source differs).
-    const publish = this.addTask('publish', {
-      description: "Build, then publish this commit (main's) to Workshop Studio: the S3 assets, then the guide to the workshop's "
-        + 'repository. --local: the credentials from your Midway session; else (CI) from the pasted secrets',
+    // The release: after every deploy from main that succeeded, the deploy's `release` job tags the
+    // commit it tested and makes its release (release.py), with projen's own bump: the latest v* tag
+    // and the conventional commits since it (commit-and-tag-version, a dev dependency so the lockfile
+    // pins it). Nothing is committed: the version lives in the tag.
+    new Version(this, { versionInputFile: 'package.json', artifactsDirectory: 'dist', bumpPackage: 'commit-and-tag-version@^13' });
+    this.addDevDeps('commit-and-tag-version@^13');
+    this.addTask('release', {
+      description: 'CI: tag and release the commit the deploy just tested (the deploy runs it; publish sends the latest release)',
+      exec: `python3 ${CRE_SCRIPTS}/build/release.py`,
     });
+    // The publish: a release only (the latest, or --version's). `checkout` first (CI checks the release
+    // out; a laptop must be on it), then the build, then publish.py with its inputs from the CI job's
+    // secrets, or with --local from the laptop's Midway session (only the source differs).
+    const publish = this.addTask('publish', {
+      description: "Publish the latest release (or --version v<x.y.z>'s) to Workshop Studio: check it is the checkout, build, then "
+        + "the S3 assets and the guide to the workshop's repository. --local: the credentials from your Midway session; else (CI) from the pasted secrets",
+    });
+    publish.exec(`python3 ${CRE_SCRIPTS}/build/publish.py checkout "$@"`, { receiveArgs: true });
     publish.spawn(this.tasks.tryFind('build')!);
     publish.exec(`python3 ${CRE_SCRIPTS}/build/publish.py "$@"`, { receiveArgs: true });
     // The upload alone, for CI: its own step after the build, the only step that gets the
     // workshop's credentials (the CI's inputs: no switches).
     this.addTask('publish:upload', {
-      description: 'CI: publish what the build made, with the inputs from the job\'s secrets (npx projen publish builds first)',
+      description: 'CI: publish what the build made of the checked-out release, with the inputs from the job\'s secrets (npx projen publish builds first)',
       exec: `python3 ${CRE_SCRIPTS}/build/publish.py`,
     });
     if (this.github) createGithubPublishWorkflow(this.github, BUILD_TOOL_SECRETS, this.deployApproval, githubPreBuildSteps(options));
