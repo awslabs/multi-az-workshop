@@ -317,16 +317,10 @@
       "description": "Stage CFN assets and zip into dist/content.zip",
       "steps": [
         {
-          "exec": "rm -f assets/content.zip"
-        },
-        {
           "spawn": "package:assets"
         },
         {
           "spawn": "package:content"
-        },
-        {
-          "exec": "cp dist/content.zip assets/content.zip"
         }
       ]
     },
@@ -410,14 +404,14 @@
     },
     "publish": {
       "name": "publish",
-      "description": "Publish the latest release (or --version v<x.y.z>'s) to Workshop Studio: check it is the checkout, build, then the S3 assets and the guide to the workshop's repository. --local: the credentials from your Midway session; else (CI) from the pasted secrets",
+      "description": "Publish the latest release (or --version v<x.y.z>'s) to Workshop Studio, from its content.zip (no build): the S3 assets, then the guide to the workshop's repository. --local: the credentials from your Midway session; else (CI) from the pasted secrets",
       "steps": [
         {
-          "exec": "python3 projenrc/cre/scripts/build/publish.py checkout \"$@\"",
+          "exec": "python3 projenrc/cre/scripts/build/publish.py prepare \"$@\"",
           "receiveArgs": true
         },
         {
-          "spawn": "build"
+          "spawn": "workshop:stage"
         },
         {
           "exec": "python3 projenrc/cre/scripts/build/publish.py \"$@\"",
@@ -427,8 +421,11 @@
     },
     "publish:upload": {
       "name": "publish:upload",
-      "description": "CI: publish what the build made of the checked-out release, with the inputs from the job's secrets (npx projen publish builds first)",
+      "description": "CI: publish the prepared release (publish.py prepare first), with the inputs from the job's secrets",
       "steps": [
+        {
+          "spawn": "workshop:stage"
+        },
         {
           "exec": "python3 projenrc/cre/scripts/build/publish.py"
         }

@@ -35,12 +35,12 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
-      - name: Check out the release
-        id: check_out_the_release
+      - name: Prepare the release
+        id: prepare_the_release
         env:
-          CI: "true"
           RELEASE_VERSION: ${{ inputs.version }}
-        run: python3 projenrc/cre/scripts/build/publish.py checkout
+          GH_TOKEN: ${{ github.token }}
+        run: python3 projenrc/cre/scripts/build/publish.py prepare
       - name: Setup Node.js
         id: setup_node_js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
@@ -52,21 +52,6 @@ jobs:
       - name: Install dependencies
         id: install_dependencies
         run: yarn install --immutable
-      - name: Install dotnet
-        id: install_dotnet
-        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73
-        with:
-          dotnet-version: "9.0"
-      - name: Build
-        id: build
-        env:
-          BUILD_TOOL_LOCATION_LINUX: ${{ secrets.BUILD_TOOL_LOCATION_LINUX }}
-          BUILD_TOOL_LOCATION_LINUX_ARM: ${{ secrets.BUILD_TOOL_LOCATION_LINUX_ARM }}
-          BUILD_TOOL_LOCATION_OSX: ${{ secrets.BUILD_TOOL_LOCATION_OSX }}
-          BUILD_TOOL_LOCATION_OSX_ARM: ${{ secrets.BUILD_TOOL_LOCATION_OSX_ARM }}
-          BUILD_TOOL_LOCATION_WINDOWS: ${{ secrets.BUILD_TOOL_LOCATION_WINDOWS }}
-          BUILD_TOOL_LOCATION_WINDOWS_ARM: ${{ secrets.BUILD_TOOL_LOCATION_WINDOWS_ARM }}
-        run: npx projen build
       - name: Publish
         id: publish
         env:

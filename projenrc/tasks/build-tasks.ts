@@ -3,7 +3,6 @@
 
 import { AwsCdkTypeScriptApp } from 'projen/lib/awscdk';
 import { Task } from 'projen/lib/task';
-import { ASSETS_DIR, assetFiles } from '../../src/cdk/lib/asset-files';
 
 /**
  * Creates .NET test tasks
@@ -34,8 +33,8 @@ function createDotnetTestTasks(project: AwsCdkTypeScriptApp): { unit: Task; inte
  *  - compile: every asset (src/cdk/build-assets.ts: the app's images and bundles, the charts and
  *    images for ECR, kubectl and docker compose), after pre-compile emptied assets/, before the
  *    synth that takes the images and charts as CDK assets;
- *  - test: the .NET tests, after jest and eslint;
- *  - package: dist/content.zip is also put in assets/, for the guide's "on your own" download.
+ *  - test: the .NET tests, after jest and eslint.
+ * The guide's "on your own" download (assets/content.zip) is the release's zip, which publish puts there.
  */
 export function createBuildTasks(project: AwsCdkTypeScriptApp): void {
   const { unit, integration } = createDotnetTestTasks(project);
@@ -49,8 +48,4 @@ export function createBuildTasks(project: AwsCdkTypeScriptApp): void {
   project.testTask.spawn(unit);
   project.testTask.spawn(integration);
 
-  // Not inside the zip it is a copy of: removed before package:content zips assets/.
-  const content = `${ASSETS_DIR}/${assetFiles.content}`;
-  project.packageTask.prependExec(`rm -f ${content}`);
-  project.packageTask.exec(`cp dist/content.zip ${content}`);
 }

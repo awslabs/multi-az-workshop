@@ -20,7 +20,6 @@ Exit 0 released (or already) | 10 refused (not in CI) | 20 failed. Last stdout l
 """
 import json
 import os
-import re
 import subprocess
 import sys
 import urllib.error
@@ -28,7 +27,7 @@ import urllib.request
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
-from crelib import RELEASE_TAG, release_tags  # noqa: E402
+from crelib import RELEASE_TAG, release_package, release_tags  # noqa: E402
 
 OK, REFUSED, FAILED = 0, 10, 20
 TIMEOUT = 60
@@ -77,7 +76,7 @@ def gitlab_call(what, url, data, content_type, timeout=TIMEOUT):
 def create_gitlab(tag, sha, notes):
     project = f"{os.environ['CI_API_V4_URL']}/projects/{os.environ['CI_PROJECT_ID']}"
     # The zip first, in the generic package registry (the Releases API links assets, it doesn't hold them).
-    package = re.sub(r"[^A-Za-z0-9._-]", "-", os.environ.get("PROJECT_NAME") or os.environ.get("CI_PROJECT_NAME") or "workshop")
+    package = release_package(os.environ.get("PROJECT_NAME") or os.environ.get("CI_PROJECT_NAME"))
     asset = f"{project}/packages/generic/{package}/{tag[1:]}/content.zip"
     with open(CONTENT, "rb") as f:
         gitlab_call(f"the upload of content.zip for {tag}", asset, f, "application/zip", UPLOAD_TIMEOUT)
