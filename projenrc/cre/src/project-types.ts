@@ -100,6 +100,11 @@ export type CreWorkshopStudioOptions = CreDemoTemplateAppOptions & {
   readonly workshopStudio?: WorkshopStudioOptions;
 };
 
+/** The guide: a change here on main releases without a deploy (its code is the latest release's). */
+export const WORKSHOP_GUIDE_PATHS = ['content/**', 'static/**', 'contentspec.yaml', 'FACILITATOR_GUIDE.md'];
+/** What a workshop's deploy doesn't depend on: the guide, and the docs. Everything else deploys. */
+export const WORKSHOP_NON_DEPLOY_PATHS = [...WORKSHOP_GUIDE_PATHS, 'docs/**', '*.md'];
+
 /**
  * A workshop for AWS Workshop Studio: the CDK app is the infrastructure Workshop Studio deploys into
  * each team's account (in the one region an event picks), and `content/` is the guide participants
@@ -112,7 +117,8 @@ export class CreWorkshopStudio extends CreDemoTemplateApp {
       throw new Error('CreWorkshopStudio: no containerImages: a team account has no ECR repository of ours. Ship an image (or a Helm chart) as an S3 asset with CreEcrImport (CreModule.ECR_IMPORT) instead.');
     }
     // The build tool's location, one secret per platform: the PR build and the deploy's build read it.
-    super(options, STANDARD_LAYOUT, 'workshop-studio.md', ['workshop-content.md'], [], { buildSecrets: BUILD_TOOL_SECRETS, release: true });
+    super(options, STANDARD_LAYOUT, 'workshop-studio.md', ['workshop-content.md'], [],
+      { buildSecrets: BUILD_TOOL_SECRETS, release: true, nonDeployPaths: WORKSHOP_NON_DEPLOY_PATHS, guidePaths: WORKSHOP_GUIDE_PATHS });
     // The build stages each top-level template into static/ (built, never committed), and checks the
     // whole workshop with Workshop Studio's own build before anything is zipped or deployed.
     // The templates: every top-level stack.
@@ -152,8 +158,10 @@ export class CreWorkshopStudio extends CreDemoTemplateApp {
     new Version(this, { versionInputFile: 'package.json', artifactsDirectory: 'dist', bumpPackage: 'commit-and-tag-version@^13' });
     this.addDevDeps('commit-and-tag-version@^13');
     this.addTask('release', {
-      description: 'CI: tag and release the commit the deploy just tested (the deploy runs it; publish sends the latest release)',
-      exec: `python3 ${CRE_SCRIPTS}/build/release.py`,
+      description: 'CI: tag and release a commit whose code a deploy tested (CRE_RELEASE_TRIGGER deploy, guide or manual; --check only decides). '
+        + 'publish sends the latest release',
+      exec: `python3 ${CRE_SCRIPTS}/build/release.py "$@"`,
+      receiveArgs: true,
     });
     // The publish: a release only (the latest, or --version's), nothing built. `prepare` takes the
     // release's commit (CI checks it out; a laptop must be on it) and unpacks its content.zip (the

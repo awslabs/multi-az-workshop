@@ -148,6 +148,7 @@ junit.xml
 !/cre-stacks.json
 !/.github/workflows/deploy.yml
 !/.github/workflows/teardown.yml
+!/.github/workflows/release.yml
 /static/multi-az-workshop.json
 /dist/changelog.md
 /dist/version.txt

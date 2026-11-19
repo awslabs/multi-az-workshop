@@ -486,6 +486,13 @@ export interface ProjectTypeExtras {
   readonly buildSecrets?: readonly string[];
   /** A release (tag + release notes) of the commit every deploy from main that succeeded tested (`release` task). */
   readonly release?: boolean;
+  /**
+   * Paths a deploy doesn't depend on (git and GitHub globs: `*` stays in one directory). On GitHub
+   * a push to main that changes only these doesn't deploy, and a release's code check leaves them out.
+   */
+  readonly nonDeployPaths?: readonly string[];
+  /** Paths whose change on main releases without a deploy, the code being the latest release's (the guide). */
+  readonly guidePaths?: readonly string[];
 }
 
 const BASE_GITIGNORE = [
@@ -799,6 +806,8 @@ export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
           preBuildSteps: githubPreBuildSteps(options),
           buildSecrets,
           release: typeOptions.release,
+          nonDeployPaths: typeOptions.nonDeployPaths,
+          guidePaths: typeOptions.guidePaths,
           teardownAfterDeploy: options.teardownAfterDeploy,
           containerImages,
           projectName: this.name,
@@ -818,6 +827,7 @@ export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
         jobs,
         defaults: jobDefaults,
         release: typeOptions.release,
+        nonDeployPaths: typeOptions.nonDeployPaths,
         pruneAssets: options.pruneAssets,
         disableDeploy: options.disableDeploy,
         teardownAfterDeploy: options.teardownAfterDeploy,
