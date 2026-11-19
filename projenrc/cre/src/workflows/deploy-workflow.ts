@@ -271,13 +271,15 @@ function addDeployJobs(workflow: GithubWorkflow, opts: DeployWorkflowOptions, se
       needs: [BUILD_JOB, UPLOAD_JOB.github, ...opts.jobs.map((j) => j.githubJob)],
       runsOn: ['ubuntu-latest'],
       permissions: { contents: JobPermission.WRITE },
-      env: { CI: 'true', PROJECT_NAME: opts.projectName, GH_TOKEN: '${{ github.token }}' },
+      env: { CI: 'true', PROJECT_NAME: opts.projectName },
       // The whole history and every tag: the next version follows the latest one. The build's
-      // content.zip (what the deploy deployed) goes with the release.
+      // content.zip (what the deploy deployed) goes with the release. The token that may write tags
+      // and releases reaches the release step alone: not kept in .git/config by the checkout, and
+      // not in the environment of `yarn install` (its packages' install scripts).
       steps: [
-        ...projenJobSetup(true),
+        ...releaseCheckout(),
         { name: 'Download content artifact', uses: ACTIONS.downloadArtifact, with: { name: CONTENT_ARTIFACT, path: 'dist' } },
-        { name: 'Tag and release the deployed commit', run: 'npx projen release' },
+        { name: 'Tag and release the deployed commit', run: 'npx projen release', env: { GH_TOKEN: '${{ github.token }}' } },
       ],
     });
   }
@@ -290,6 +292,12 @@ function addDeployJobs(workflow: GithubWorkflow, opts: DeployWorkflowOptions, se
       { name: 'Delete the stacks', run: 'npx projen teardown' },
     ]);
   }
+}
+
+/** The release job's setup: projenJobSetup's, its checkout keeping no credentials. */
+function releaseCheckout(): JobStep[] {
+  const [checkout, ...rest] = projenJobSetup(true);
+  return [{ ...checkout, with: { ...checkout.with, 'persist-credentials': false } }, ...rest];
 }
 
 const RUNNER: StackJob['credentials'] = { kind: 'var', name: RUNNER_ROLE_VARIABLE, optional: false };

@@ -237,7 +237,6 @@ jobs:
     env:
       CI: "true"
       PROJECT_NAME: multi-az-workshop
-      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout
         id: checkout
@@ -245,6 +244,7 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
+          persist-credentials: false
       - name: Setup Node.js
         id: setup_node_js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
@@ -264,6 +264,8 @@ jobs:
           path: dist
       - name: Tag and release the deployed commit
         id: tag_and_release_the_deployed_commit
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: npx projen release
   teardown:
     needs:

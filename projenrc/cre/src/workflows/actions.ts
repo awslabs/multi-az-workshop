@@ -23,11 +23,11 @@ export const ACTIONS = {
 export const NODE_MAJOR = '22';
 
 /**
- * The first steps of every CRE job that runs projen (the deploy's, the teardown's, the publish's):
- * the commit the run is for, Node, Corepack and the locked dependencies. Without node_modules
- * `npx projen` would fetch whatever projen is latest on npm and run tasks.json under a different
- * engine from the one the build used. `fullHistory`: every commit (publish checks its commit is on
- * origin/main).
+ * The first steps of every CRE job that runs projen (the deploy's, the teardown's, the release's,
+ * the publish's): the commit the run is for, Node, Corepack and the locked dependencies. Without
+ * node_modules `npx projen` would fetch whatever projen is latest on npm and run tasks.json under a
+ * different engine from the one the build used. `fullHistory`: every commit and tag (the release's
+ * next version, and the publish's release).
  */
 export function projenJobSetup(fullHistory = false) {
   return [

@@ -16,7 +16,7 @@ latest release (or the one `--version` names), never main's head.
      uploaded to the project's generic package registry (`<project>/<version>/content.zip`), then
      the release through the Releases API, which creates the tag at `ref` and links the zip.
 
-Exit 0 released (or already) | 10 refused (not in CI) | 20 failed. Last stdout line `RESULT code=<n> step=release`.
+Exit 0 released (or already) | 10 refused (not in CI, or a commit older than the latest release) | 20 failed. Last stdout line `RESULT code=<n> step=release`.
 """
 import json
 import os
@@ -97,16 +97,26 @@ def release():
     if done:
         say(f"✓  {sha[:9]} is released already as {done[0]}: nothing to do.")
         return
+    # Only a commit after the latest release: an older pipeline's job (a retry, an overlap) would
+    # otherwise get bump's answer for the latest tag and attach its zip to that version.
+    tags = release_tags()
+    if tags and git("merge-base", "--is-ancestor", tags[0], sha).returncode != 0:
+        raise Stop(f"{sha[:9]} isn't after the latest release {tags[0]}: an older commit is never released.", REFUSED)
     if not os.path.isfile(CONTENT):
         raise Stop(f"No {CONTENT}: the release job takes the build's content artifact (the deploy's build).")
     r = subprocess.run(["npx", "projen", "bump"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     say(r.stdout.rstrip())
     if r.returncode != 0:
         raise Stop("npx projen bump failed (above).")
-    with open(os.path.join("dist", "releasetag.txt")) as f:
+    tag_file = os.path.join("dist", "releasetag.txt")
+    if not os.path.isfile(tag_file):
+        raise Stop("bump wrote no version (it skips a commit whose subject starts with `chore(release):`).")
+    with open(tag_file) as f:
         tag = f.read().strip()
     if not RELEASE_TAG.match(tag):
         raise Stop(f"bump made the tag {tag!r}, not v<major>.<minor>.<patch>.")
+    if tag in tags:
+        raise Stop(f"bump made {tag}, which is already a release: a version is never reused.")
     notes = os.path.join("dist", "changelog.md")
     create(tag, sha, notes)
     say(f"✅ Released {tag} at {sha[:9]}: `npx projen publish` sends it.")
@@ -119,6 +129,9 @@ def main():
     except Stop as e:
         say(f"❌ {e}")
         code = e.code
+    except Exception as e:  # noqa: BLE001 (an unexpected error is still a RESULT line: failed part way)
+        say(f"❌ release failed: {type(e).__name__}: {e}")
+        code = FAILED
     print(f"RESULT code={code} step=release")
     return code
 

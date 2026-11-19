@@ -10,10 +10,11 @@ import { CRE_SCRIPTS } from '../paths';
 /**
  * A Workshop Studio workshop's publish from CI, by hand: the user pastes the workshop's 1-hour
  * Repository credentials into the repository's secrets (WS_ACCESS_KEY_ID, WS_SECRET_ACCESS_KEY,
- * WS_SESSION_TOKEN; setup made them placeholders), then runs it. It builds the commit and runs
- * `npx projen publish` with every input from the secrets, the same publish `npx projen publish
- * --local` runs with the inputs from a laptop's Midway session. Only main's commits (publish.py
- * refuses others).
+ * WS_SESSION_TOKEN; setup made them placeholders), then runs it, optionally naming a release
+ * (`version`; else the latest). Nothing is built: `publish.py prepare` checks the release out and
+ * unpacks its content.zip, then the upload sends it with every input from the secrets, the same
+ * publish `npx projen publish --local` runs with the inputs from a laptop's Midway session. Only a
+ * release of a commit on main (publish.py refuses others).
  */
 export const PUBLISH_SECRETS = ['WS_ACCESS_KEY_ID', 'WS_SECRET_ACCESS_KEY', 'WS_SESSION_TOKEN', 'REMOTE_REPO', 'ASSETS_LOCATION',
   'GIT_PLUGIN_LOCATION', 'GIT_PLUGIN'];

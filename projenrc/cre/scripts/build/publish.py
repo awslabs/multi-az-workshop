@@ -118,11 +118,23 @@ def check_inputs(inp):
                             "Workshop Studio into the repository's secrets (they last an hour), or publish from a laptop with --local.")
 
 
+# The AWS CLI's S3 settings for the upload: the classic transfer client, not the CRT one `auto` picks.
+# The CRT client sizes its parallel part uploads for the host's network and fails a slow part with
+# AWS_IO_SOCKET_TIMEOUT; over a laptop's uplink the 600 MB of images failed that way every time. The
+# classic client retries a slow part.
+S3_CONFIG = "[default]\ns3 =\n  preferred_transfer_client = classic\n  max_concurrent_requests = 4\n"
+
+
 def child_env(inp):
-    """The commands' environment: this process's, plus the credentials as the AWS CLI reads them."""
+    """The commands' environment: this process's, plus the credentials as the AWS CLI reads them, and
+    its S3 settings (S3_CONFIG; no other profile or config file applies)."""
     env = {k: v for k, v in os.environ.items() if not k.startswith("AWS_") or k in ("AWS_CA_BUNDLE",)}
+    os.makedirs(TOOLS, exist_ok=True)
+    config = os.path.abspath(os.path.join(TOOLS, "aws-config"))
+    with open(config, "w") as f:
+        f.write(S3_CONFIG)
     env.update(AWS_ACCESS_KEY_ID=inp["WS_ACCESS_KEY_ID"], AWS_SECRET_ACCESS_KEY=inp["WS_SECRET_ACCESS_KEY"],
-               AWS_SESSION_TOKEN=inp["WS_SESSION_TOKEN"], AWS_REGION=REGION, AWS_DEFAULT_REGION=REGION)
+               AWS_SESSION_TOKEN=inp["WS_SESSION_TOKEN"], AWS_REGION=REGION, AWS_DEFAULT_REGION=REGION, AWS_CONFIG_FILE=config)
     return env
 
 
@@ -142,7 +154,24 @@ def release(version):
         if not tags:
             raise Stop(REFUSED, "No release yet: a deploy from main that succeeds makes one (the deploy's release job).")
         tag = tags[0]
-    return tag, git("rev-parse", f"{tag}^{{commit}}").stdout.strip()
+    sha = git("rev-parse", f"{tag}^{{commit}}").stdout.strip()
+    # Only the deploy's releases, which are of main's commits: a v* tag pushed on a branch isn't one.
+    git("fetch", "-q", "origin", "main")
+    if git("merge-base", "--is-ancestor", sha, "origin/main").returncode != 0:
+        raise Stop(REFUSED, f"{tag} ({sha[:9]}) isn't on origin/main, so it isn't a release the deploy made.")
+    return tag, sha
+
+
+# The release `prepare` chose, for the upload that follows (a release made in between changes nothing).
+CHOSEN = os.path.join("dist", "release-tag.txt")
+
+
+def chosen(version):
+    """The version to upload: the one named, else the release `prepare` unpacked."""
+    if version or not os.path.isfile(CHOSEN):
+        return version
+    with open(CHOSEN) as f:
+        return f.read().strip()
 
 
 def released_checkout(version):
@@ -174,12 +203,28 @@ def download_github(tag):
         raise Stop(CREDS if "auth" in err.lower() else FAILED, f"Downloading {tag}'s content.zip failed: {err[-400:]}")
 
 
+class _DropTokenOnRedirect(urllib.request.HTTPRedirectHandler):
+    """GitLab may answer a package download with a redirect to its object storage (a presigned URL):
+    followed without the job token, which is GitLab's alone."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        new = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if new is not None:
+            for h in ("Job-token", "JOB-TOKEN"):
+                new.headers.pop(h, None)
+                new.unredirected_hdrs.pop(h, None)
+        return new
+
+
+NO_TOKEN_REDIRECTS = urllib.request.build_opener(_DropTokenOnRedirect)
+
+
 def download_gitlab_ci(tag):
     project = os.environ.get("PROJECT_NAME") or os.environ.get("CI_PROJECT_NAME")
     url = f"{os.environ['CI_API_V4_URL']}/projects/{os.environ['CI_PROJECT_ID']}/packages/generic/{release_package(project)}/{tag[1:]}/content.zip"
     req = urllib.request.Request(url, headers={"JOB-TOKEN": os.environ["CI_JOB_TOKEN"]})
     try:
-        with urllib.request.urlopen(req, timeout=DOWNLOAD_TIMEOUT) as r, open(CONTENT, "wb") as f:  # noqa: S310 (the instance's own API)
+        with NO_TOKEN_REDIRECTS.open(req, timeout=DOWNLOAD_TIMEOUT) as r, open(CONTENT, "wb") as f:
             shutil.copyfileobj(r, f)
     except urllib.error.HTTPError as e:
         if e.code == 404:
@@ -240,6 +285,8 @@ def prepare(version):
     released_checkout(version)
     download(tag)
     unpack()
+    with open(CHOSEN, "w") as f:
+        f.write(tag + "\n")
 
 
 def built():
@@ -334,7 +381,7 @@ def push_content(env, remote, tag, head):
 
 
 def publish(a):
-    tag, head = released_checkout(a.version)
+    tag, head = released_checkout(chosen(a.version))
     built()
     inp = local_inputs(a.workshop_id) if a.local else ci_inputs()
     check_inputs(inp)
