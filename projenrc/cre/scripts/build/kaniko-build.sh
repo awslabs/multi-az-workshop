@@ -18,7 +18,7 @@
 #   CONTAINER_PLAN_FILE  Defaults to dist/container-plan.tsv.
 #   CONTAINERS_DIR       Defaults to assets/containers.
 #   CONTAINER_CACHE_DIR  Persistent content-addressed tarball cache. Defaults to dist/.cache/containers.
-#   CRE_IMAGE_REBUILD    1: ignore the cache and build every image (the weekly scheduled pipeline).
+#   CRE_IMAGE_REBUILD    1: ignore the cache and build every image (the daily scheduled pipeline).
 #
 # CACHING: CDK image hashes are content hashes of the build context, so an existing <hash>.tar.gz is
 # what a rebuild would produce. On a cache hit the tarball is reused and kaniko is skipped — no
@@ -77,7 +77,7 @@ while IFS="$(printf '\t')" read -r IMAGE_HASH DIRECTORY PLATFORM DOCKERFILE; do
   # Cache hit: an identical image (same content hash) was already built — reuse it and skip
   # kaniko entirely (this is what makes an unchanged build a near no-op). Checked BEFORE the
   # staged-dir check because a cache hit needs neither cdk.out nor a base-image pull.
-  # CRE_IMAGE_REBUILD=1 (the weekly scheduled pipeline) builds every image again, OS updates included.
+  # CRE_IMAGE_REBUILD=1 (the daily scheduled pipeline) builds every image again, OS updates included.
   if [ -f "$CACHED_TARGZ" ] && [ "${CRE_IMAGE_REBUILD:-}" != 1 ]; then
     echo
     echo "=== $IMAGE_HASH === (cache hit — reusing $CACHED_TARGZ, no rebuild)"

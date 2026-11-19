@@ -5,7 +5,7 @@ CI runs it (the `release` task) after every stack of a deploy from main succeede
 commit. The release is how a publish knows which commit to send: `npx projen publish` sends the
 latest release (or the one `--version` names), never main's head.
 
-  1. Already released (a `v<semver>` tag points at this commit: the weekly image patch, a re-run):
+  1. Already released (a `v<semver>` tag points at this commit: the daily image patch, a re-run):
      nothing to do.
   2. The next version: projen's `bump` (the same as projen's own release: the latest `v*` tag, the
      conventional commits since it, commit-and-tag-version), which writes dist/releasetag.txt and

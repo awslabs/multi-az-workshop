@@ -5,9 +5,9 @@ f3dd12b778dcadff3cfc1745d19aecd4ed87380b22c7e0933fa804989caa7605  ./core/build-o
 77278ac49112a06efcc208a60b3147b9d7fbe45991bcff2536ed0e3e4c648da6  ./core/function-log-groups.ts
 59383303afddbf132e8ea26977aeb1b7df60fc3c71693c902f7c0cf21904fa61  ./core/iam-stack.ts
 49de86ecc4061815c870c0b9fa9ec6b32f81c8a290ee309d687bb9e3f2c06eea  ./core/index.ts
-d24ebdd1cee1a4df37e981fcbb832fbf74ed75beaa60661050fad369c7dbefb3  ./core/names.ts
+15c760a799771c3c1859956924597222e0d59e257fa43200f1e368330c77c000  ./core/names.ts
 28c3cf37943d91e7377d0314a7fc8f632776125ee97507755f41201ac8beaaf1  ./core/partitions.ts
-cab1449b9574f942f58e25d58d691f42aab6478d7f6d614671369d0caf85da44  ./core/versions.ts
+51bb0bfd0566d809a9d5406e99e3ac104debf6be92798078b4efb21a78bc726a  ./core/versions.ts
 c400a6b0acb2b26e87f54f3b148237ed3e47aa9a2fc4048d5ba2b383d6598cba  ./core/workshop-studio.ts
 23247025c813a399f82a8bb4a517a581ef9f43fafb93b0c6b7caa283c5c7e764  ./ecr-import/README.md
 cab4057a9d39d8d6d904b815cd3bfee4e3dbe10b3f1f18b15c53e14382a47a67  ./ecr-import/build/buildspec.yml
@@ -16,4 +16,4 @@ cab4057a9d39d8d6d904b815cd3bfee4e3dbe10b3f1f18b15c53e14382a47a67  ./ecr-import/b
 3e90dbc38730298c750f11ffdeee1087ce7874a87c3544dab73cfa3ee4256037  ./ecr-import/handler/index.py
 7c8b5c8755c16cb8808bf893cf52ed4f2f5b33c4301e87fdcf50aefa7b2c606c  ./ecr-import/index.ts
 eb2e18a45f8b1846f02428d4a2213aeaeea4795e52274a57929a87fe86d77560  ./index.ts
-de283e4ac5ccfdf699615297305f9ec82afcdb3b542c723127d7ab8171b2bb64  ./package.json
+22fd5f24cc270bbe53565da3ce089e527439c81fdc369ee026ef5fbb69b02c7b  ./package.json

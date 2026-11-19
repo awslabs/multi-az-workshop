@@ -14,7 +14,7 @@
  * Triggers:
  *  - push to main: the merged PR (merged by projen's auto-merge with the builder's GitHub App token, not GITHUB_TOKEN, so it triggers this);
  *  - workflow_dispatch: redeploy main by hand;
- *  - schedule (with containerImages): the weekly OS patch of the images.
+ *  - schedule (with containerImages): the daily OS patch of the images.
  *
  * Jobs: `build` (checks out the exact commit, `npx projen build`, uploads dist/content.zip),
  * `deploy-upload`, one job per stack (stack-jobs.ts, the same needs and variables as the GitLab
@@ -85,7 +85,7 @@ export interface DeployWorkflowOptions {
    * The GitHub environment every deploy job runs in (a public repo's, DEPLOY_ENVIRONMENT): only
    * main may deploy to it (setup's deployment branch policy), its secrets reach only these jobs,
    * and the runner role trusts its OIDC subject (`repo:…:environment:AWS`), not main's, so no
-   * other workflow on main (the weekly upgrade) can assume it. Private repos on GitHub's free plan
+   * other workflow on main (the daily upgrade) can assume it. Private repos on GitHub's free plan
    * have no environments. @default none
    */
   readonly environment?: string;
@@ -98,7 +98,7 @@ export interface DeployWorkflowOptions {
   /** One approval before the deploy, and before a teardown (src/workflows/approval.ts). @default false */
   readonly approval?: boolean;
   /**
-   * Delete the stacks after every deploy that succeeded (the weekly image patch's too). The
+   * Delete the stacks after every deploy that succeeded (the daily image patch's too). The
    * `teardown` workflow, run by hand, deletes them either way. @default false
    */
   readonly teardownAfterDeploy?: boolean;
@@ -131,11 +131,11 @@ export function createDeployWorkflow(github: GitHub, opts: DeployWorkflowOptions
   workflow.on({
     push: { branches: ['main'] },
     workflowDispatch: {},
-    // The weekly OS patch: main rebuilt (the runner has no image cache, so every image is built
+    // The daily OS patch: main rebuilt (the runner has no image cache, so every image is built
     // again with the OS updates), each image tagged by its packages (build:image-tags) and deployed,
     // so ECS redeploys only an image whose packages changed. No PR: nothing is committed. At the
     // dependency upgrade's time (projen's upgrade-main), as GitLab's patch rides its schedule.
-    ...(opts.containerImages ? { schedule: UpgradeDependenciesSchedule.WEEKLY.cron.map((cron) => ({ cron })) } : {}),
+    ...(opts.containerImages ? { schedule: UpgradeDependenciesSchedule.DAILY.cron.map((cron) => ({ cron })) } : {}),
   });
 
   // The commit this run deploys: the merge commit on push, main's head on a dispatch from main.

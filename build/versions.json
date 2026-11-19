@@ -117,5 +117,12 @@
     "sha": "0f4a354dd5547a28c70b7853dbd95d5b67886e73",
     "update": "minor",
     "note": "the PR build's and the deploy's dotnet (.projenrc.ts buildSetup)"
+  },
+  "aws-cdk-lib": {
+    "kind": "npm-package",
+    "package": "aws-cdk-lib",
+    "version": "2.277.0",
+    "update": "minor",
+    "note": "the project type pins aws-cdk-lib to this version (cdkVersion); the scheduled upgrade moves it"
   }
 }

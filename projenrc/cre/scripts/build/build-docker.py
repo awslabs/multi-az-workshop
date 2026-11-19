@@ -20,7 +20,7 @@ build then names the missing tarballs). CRE_REQUIRE_IMAGES=1, or CI set: an erro
 
 Env: CONTAINER_PLAN_FILE (dist/container-plan.tsv), CONTAINERS_DIR (assets/containers),
 CONTAINER_CACHE_DIR (dist/.cache/containers), CRE_IMAGE_REBUILD (1: ignore the cache and build every
-image with --no-cache --pull, as the weekly scheduled pipeline does). The build contexts are under
+image with --no-cache --pull, as the daily scheduled pipeline does). The build contexts are under
 cdk.out. Exit 0 | 1.
 """
 import gzip
@@ -69,7 +69,7 @@ def main():
         return 0
     os.makedirs(out_dir, exist_ok=True)
 
-    # CRE_IMAGE_REBUILD=1 (the weekly scheduled pipeline): build every image again, base image and
+    # CRE_IMAGE_REBUILD=1 (the daily scheduled pipeline): build every image again, base image and
     # OS updates included, instead of reusing the cached tarball of the same asset hash.
     rebuild = os.environ.get("CRE_IMAGE_REBUILD") == "1"
     todo = [r for r in rows if rebuild or not os.path.isfile(os.path.join(cache, f"{r[0]}.tar.gz"))]
