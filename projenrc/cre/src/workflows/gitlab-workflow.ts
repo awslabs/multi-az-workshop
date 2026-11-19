@@ -426,6 +426,8 @@ export function createGitlabWorkflow(
       stage: 'deploy',
       rules: [{ if: onMain }],
       interruptible: false,
+      // One release job at a time: two overlapping pipelines would read the same latest tag.
+      resourceGroup: 'release',
       // The build's content.zip (what the deploy deployed) goes with the release.
       needs: [{ job: 'build:package', artifacts: true },
         ...[UPLOAD_JOB.gitlab, ...opts.jobs.map((j) => j.gitlabJob)].map((job) => ({ job, artifacts: false }))],

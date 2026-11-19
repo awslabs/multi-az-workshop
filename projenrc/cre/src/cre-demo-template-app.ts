@@ -269,7 +269,9 @@ export function upgradeWithVersionsRole(project: awscdk.AwsCdkTypeScriptApp, reg
     runsOn: ['ubuntu-latest'],
     permissions: { contents: JobPermission.READ, idToken: JobPermission.WRITE },
     steps: [
-      { name: 'Checkout', uses: ACTIONS.checkout, with: { ref: 'main' } },
+      // The run's commit, as the upgrade job checks out: a merge between the two can't be reverted
+      // by an older version file.
+      { name: 'Checkout', uses: ACTIONS.checkout, with: { ref: '${{ github.sha }}' } },
       {
         name: 'AWS credentials for the version lookups (read-only)',
         if: hasFile,
@@ -291,6 +293,8 @@ export function upgradeWithVersionsRole(project: awscdk.AwsCdkTypeScriptApp, reg
     uses: ACTIONS.downloadArtifact,
     with: { name: VERSIONS_ARTIFACT, path: path.dirname(VERSIONS_FILE) },
   });
+  const checkout = steps.findIndex((st) => st.id === 'checkout');
+  if (checkout >= 0) steps[checkout] = { ...steps[checkout], with: { ...(steps[checkout].with as object), ref: '${{ github.sha }}' } };
   wf.updateJob('upgrade', { ...(job as object), needs: [...(job.needs ?? []), 'versions'], steps } as never);
 }
 
