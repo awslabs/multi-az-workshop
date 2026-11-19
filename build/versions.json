@@ -26,7 +26,7 @@
   "POD_IDENTITY_AGENT": {
     "kind": "eks-addon",
     "addon": "eks-pod-identity-agent",
-    "version": "v1.4.1-eksbuild.3",
+    "version": "v1.5.0-eksbuild.3",
     "update": "minor"
   },
   "EKS_NODE_AMI": {
@@ -38,29 +38,29 @@
   "EC2_AMI_ARM64": {
     "kind": "ec2-ami",
     "parameter": "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64",
-    "version": "al2023-ami-2023.12.20261112.0-kernel-6.18-arm64",
+    "version": "al2023-ami-2023.12.20261118.0-kernel-6.18-arm64",
     "update": "patch",
     "ids": {
-      "ap-southeast-1": "ami-070afc23991351d6d",
-      "ap-southeast-2": "ami-071733a41b3cc3de4",
-      "eu-west-1": "ami-01feb2929337f1f0f",
-      "us-east-1": "ami-04bde3808fe5f70cf",
-      "us-east-2": "ami-0984c50e3efa82711",
-      "us-west-2": "ami-0c09db4d8b86a32d2"
+      "ap-southeast-1": "ami-0656e5e54e3d304f7",
+      "ap-southeast-2": "ami-08e304f4f3188ea13",
+      "eu-west-1": "ami-069a350601192714b",
+      "us-east-1": "ami-0d4200be4e2666bf6",
+      "us-east-2": "ami-06bdac96dbe9ab8dc",
+      "us-west-2": "ami-0c3004d580cfdb450"
     }
   },
   "EC2_AMI_X86_64": {
     "kind": "ec2-ami",
     "parameter": "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64",
-    "version": "al2023-ami-2023.12.20261112.0-kernel-6.18-x86_64",
+    "version": "al2023-ami-2023.12.20261118.0-kernel-6.18-x86_64",
     "update": "patch",
     "ids": {
-      "ap-southeast-1": "ami-0c7fe98adcbb622fc",
-      "ap-southeast-2": "ami-0e9262cbb2344d5ee",
-      "eu-west-1": "ami-0f00e1cf9df80b6ac",
-      "us-east-1": "ami-096ef200a877f36af",
-      "us-east-2": "ami-0df8a753693e6366d",
-      "us-west-2": "ami-0dac6cd09676c9fb1"
+      "ap-southeast-1": "ami-022c3bc9ff7cf2ba7",
+      "ap-southeast-2": "ami-052190d76c25f66d1",
+      "eu-west-1": "ami-05f39dc88efe6b9a0",
+      "us-east-1": "ami-06f98347e4f9c7328",
+      "us-east-2": "ami-013b3bd3f98d8c046",
+      "us-west-2": "ami-062e367aff5bc494b"
     }
   },
   "KUBECTL": {
@@ -71,7 +71,7 @@
   "DOCKER_COMPOSE": {
     "kind": "github-release",
     "repo": "docker/compose",
-    "version": "2.32.4",
+    "version": "2.40.3",
     "update": "minor",
     "note": "the EC2 fleet's docker compose plugin (docker-compose-linux-aarch64)"
   },
@@ -107,7 +107,7 @@
   "CLOUDWATCH_AGENT": {
     "kind": "container-image",
     "image": "public.ecr.aws/cloudwatch-agent/cloudwatch-agent",
-    "version": "1.300074.1b2005",
+    "version": "1.300075.0b2061",
     "update": "minor"
   },
   "SETUP_DOTNET": {
