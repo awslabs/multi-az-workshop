@@ -152,7 +152,7 @@ def release(version):
     else:
         tags = release_tags()
         if not tags:
-            raise Stop(REFUSED, "No release yet: a deploy from main that succeeds makes one (the deploy's release job).")
+            raise Stop(REFUSED, "No release yet: a deploy from main that succeeds makes one (the release workflow, or GitLab's deploy:release).")
         tag = tags[0]
     sha = git("rev-parse", f"{tag}^{{commit}}").stdout.strip()
     # Only the deploy's releases, which are of main's commits: a v* tag pushed on a branch isn't one.

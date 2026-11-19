@@ -90,11 +90,16 @@ export interface DeployWorkflowOptions {
    */
   readonly environment?: string;
   /**
-   * After every stack deployed, a `release` job tags the commit and makes its release (the
-   * `release` task, release.py), with the job's token (contents: write). A workshop's publish sends
-   * the latest release. @default false
+   * A `release` workflow (release.py): after every deploy run that succeeded it tags the deployed
+   * commit and makes its release; a push to main changing only `guidePaths`, or a manual run (main's
+   * head), releases when the code is what a deploy tested. A workshop's publish sends the latest
+   * release. @default false
    */
   readonly release?: boolean;
+  /** Paths a push to main that changes only these doesn't deploy (a workshop's guide and docs). @default none */
+  readonly nonDeployPaths?: readonly string[];
+  /** Paths whose change on main runs the release workflow (a workshop's guide). @default none */
+  readonly guidePaths?: readonly string[];
   /** One approval before the deploy, and before a teardown (src/workflows/approval.ts). @default false */
   readonly approval?: boolean;
   /**
@@ -107,10 +112,13 @@ export interface DeployWorkflowOptions {
 /** teardownAfterDeploy's job after the deploy, and the manual teardown workflow. */
 export const TEARDOWN_JOB = 'teardown';
 export const TEARDOWN_WORKFLOW = 'teardown';
-/** A workshop's release job, after the deploy (both providers). */
+/** A workshop's release workflow (GitHub) and its job. */
+export const RELEASE_WORKFLOW = 'release';
 export const RELEASE_JOB = 'release';
 /** The release job's step that mints the App's token. */
 const RELEASE_TOKEN_STEP = 'release_token';
+/** The release job's step that decides (release.py --check): its `release` output. */
+const RELEASE_CHECK_STEP = 'release_check';
 
 /** Days a deploy artifact is kept: 1 in a public or internal repo (anyone can read it), else 7. One
  * value for the content and the outputs artifacts, so neither outlives the other (review 10c G10). */
@@ -129,7 +137,9 @@ export function createDeployWorkflow(github: GitHub, opts: DeployWorkflowOptions
     concurrencyOptions: DEPLOY_CONCURRENCY,
   });
   workflow.on({
-    push: { branches: ['main'] },
+    // Everything deploys but `nonDeployPaths` (GitHub reads `!` patterns after `**`): a push that
+    // changes only those doesn't, and the release workflow releases it instead.
+    push: { branches: ['main'], ...(opts.nonDeployPaths?.length ? { paths: ['**', ...opts.nonDeployPaths.map((p) => `!${p}`)] } : {}) },
     workflowDispatch: {},
     // The daily OS patch: main rebuilt (the runner has no image cache, so every image is built
     // again with the OS updates), each image tagged by its packages (build:image-tags) and deployed,
@@ -164,6 +174,93 @@ export function createDeployWorkflow(github: GitHub, opts: DeployWorkflowOptions
   });
   addDeployJobs(workflow, opts, setup);
   addTeardownWorkflow(github, opts, setup);
+  if (opts.release) addReleaseWorkflow(github, opts);
+}
+
+/**
+ * The `release` workflow (release.py). Three ways in, one job:
+ *  - `workflow_run`: a `deploy` run on main succeeded. It releases the commit that run deployed,
+ *    with that run's own content artifact (what the deploy deployed).
+ *  - `push` to main changing `guidePaths`: it releases main's commit when its code (all but
+ *    `nonDeployPaths`) is a deployed commit's, building content.zip there; otherwise the deploy
+ *    this push started releases it.
+ *  - `workflow_dispatch`: main's head, under the same code check, else refused.
+ * `release.py --check` decides first, so nothing is built for a release it won't make. The release
+ * is made with the CRE automation App's token: GitHub refuses a GITHUB_TOKEN a tag on a commit
+ * whose workflow files differ from the branch's head (it would need `workflows`, which that token
+ * never has). One release at a time: two would read the same latest tag.
+ */
+function addReleaseWorkflow(github: GitHub, opts: DeployWorkflowOptions): void {
+  const wf = new GithubWorkflow(github, RELEASE_WORKFLOW, {
+    limitConcurrency: true,
+    concurrencyOptions: { group: 'release-${{ github.repository }}', cancelInProgress: false },
+  });
+  wf.on({
+    workflowRun: { workflows: [DEPLOY_WORKFLOW], types: ['completed'], branches: ['main'] },
+    ...(opts.guidePaths?.length ? { push: { branches: ['main'], paths: [...opts.guidePaths] } } : {}),
+    workflowDispatch: {},
+  });
+  const fromDeploy = "github.event_name == 'workflow_run'";
+  const go = `steps.${RELEASE_CHECK_STEP}.outputs.release == 'true'`;
+  const [checkout, ...rest] = projenJobSetup(true);
+  // The pre-build steps run only for a release this run builds (a step's own `if` is kept).
+  const building = `${go} && !(${fromDeploy})`;
+  const buildStep = (st: JobStep): JobStep => ({ ...st, if: st.if ? `(${building}) && (${st.if})` : building });
+  wf.addJob(RELEASE_JOB, {
+    // A deploy run that failed releases nothing; a dispatch from another branch does nothing.
+    if: `(${fromDeploy} && github.event.workflow_run.conclusion == 'success') || (!(${fromDeploy}) && ${ON_MAIN})`,
+    // The build's architecture (an arm64 image's RUN steps run natively).
+    runsOn: ['ubuntu-24.04-arm'],
+    // The job's own token only reads (the deploy run's artifact, its last successful deploy): the
+    // release is made with the App's.
+    permissions: { contents: JobPermission.READ, actions: JobPermission.READ },
+    env: {
+      CI: 'true',
+      PROJECT_NAME: opts.projectName,
+      CRE_RELEASE_TRIGGER: `\${{ ${fromDeploy} && 'deploy' || github.event_name == 'push' && 'guide' || 'manual' }}`,
+      CRE_RELEASE_IGNORE: (opts.nonDeployPaths ?? []).join(' '),
+    },
+    steps: [
+      // The deployed commit (a workflow_run's github.sha is main's head, not the run's), with every
+      // tag and the whole history: the next version follows the latest one. No credentials kept.
+      {
+        ...checkout,
+        with: { ...checkout.with, 'ref': `\${{ ${fromDeploy} && github.event.workflow_run.head_sha || github.sha }}`, 'persist-credentials': false },
+      },
+      ...rest,
+      {
+        name: 'The last commit a deploy tested',
+        if: `!(${fromDeploy})`,
+        env: { GH_TOKEN: '${{ github.token }}' },
+        run: [
+          `sha="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/${DEPLOY_WORKFLOW}.yml/runs?branch=main&status=success&per_page=1" --jq '.workflow_runs[0].head_sha // ""')"`,
+          'echo "CRE_DEPLOYED_SHA=$sha" >> "$GITHUB_ENV"',
+        ].join('\n'),
+      },
+      { name: 'Decide', id: RELEASE_CHECK_STEP, run: 'npx projen release --check' },
+      {
+        name: 'Download the deploy run\'s content artifact',
+        if: `${go} && ${fromDeploy}`,
+        uses: ACTIONS.downloadArtifact,
+        with: { 'name': CONTENT_ARTIFACT, 'path': 'dist', 'run-id': '${{ github.event.workflow_run.id }}', 'github-token': '${{ github.token }}' },
+      },
+      ...(opts.preBuildSteps ?? []).map(buildStep),
+      buildStep({ name: 'Build', run: 'npx projen build', ...(opts.buildSecrets?.length ? { env: secretsEnv(opts.buildSecrets) } : {}) }),
+      {
+        name: 'Release token (the CRE automation App)',
+        id: RELEASE_TOKEN_STEP,
+        if: go,
+        uses: ACTIONS.createGithubAppToken,
+        with: {
+          'app-id': '${{ secrets.PROJEN_APP_ID }}',
+          'private-key': '${{ secrets.PROJEN_APP_PRIVATE_KEY }}',
+          'permission-contents': 'write',
+          'permission-workflows': 'write',
+        },
+      },
+      { name: 'Tag and release', if: go, run: 'npx projen release', env: { GH_TOKEN: `\${{ steps.${RELEASE_TOKEN_STEP}.outputs.token }}` } },
+    ],
+  });
 }
 
 /** Every deploy-variable reference inside a job value. */
@@ -266,41 +363,6 @@ function addDeployJobs(workflow: GithubWorkflow, opts: DeployWorkflowOptions, se
     ]);
   }
 
-  if (opts.release) {
-    // After every stack job succeeded: the commit the deploy tested, tagged and released (none when
-    // a stack failed). It needs no AWS and no environment; it doesn't wait for the teardown.
-    workflow.addJob(RELEASE_JOB, {
-      needs: [BUILD_JOB, UPLOAD_JOB.github, ...opts.jobs.map((j) => j.githubJob)],
-      runsOn: ['ubuntu-latest'],
-      // The job's own token only reads: the release is made with the CRE automation App's.
-      permissions: { contents: JobPermission.READ },
-      env: { CI: 'true', PROJECT_NAME: opts.projectName },
-      // The whole history and every tag: the next version follows the latest one. The build's
-      // content.zip (what the deploy deployed) goes with the release.
-      steps: [
-        ...releaseCheckout(),
-        { name: 'Download content artifact', uses: ACTIONS.downloadArtifact, with: { name: CONTENT_ARTIFACT, path: 'dist' } },
-        // The App's token, not GITHUB_TOKEN: GitHub refuses a GITHUB_TOKEN a tag on a commit whose
-        // workflow files differ from the branch's head (it would need `workflows`, which that token
-        // never has), so a deploy that waited while a merge changing a workflow landed couldn't
-        // release its own commit. The App has `workflows: write`. Minted here, after `yarn install`,
-        // and given to the release step alone.
-        {
-          name: 'Release token (the CRE automation App)',
-          id: RELEASE_TOKEN_STEP,
-          uses: ACTIONS.createGithubAppToken,
-          with: {
-            'app-id': '${{ secrets.PROJEN_APP_ID }}',
-            'private-key': '${{ secrets.PROJEN_APP_PRIVATE_KEY }}',
-            'permission-contents': 'write',
-            'permission-workflows': 'write',
-          },
-        },
-        { name: 'Tag and release the deployed commit', run: 'npx projen release', env: { GH_TOKEN: `\${{ steps.${RELEASE_TOKEN_STEP}.outputs.token }}` } },
-      ],
-    });
-  }
-
   if (opts.teardownAfterDeploy) {
     // After every job of a deploy that succeeded (a failed one stays up to be diagnosed).
     job(TEARDOWN_JOB, [UPLOAD_JOB.github, ...opts.jobs.map((j) => j.githubJob), ...(opts.pruneAssets !== false ? [PRUNE_JOB.github] : [])], [
@@ -309,12 +371,6 @@ function addDeployJobs(workflow: GithubWorkflow, opts: DeployWorkflowOptions, se
       { name: 'Delete the stacks', run: 'npx projen teardown' },
     ]);
   }
-}
-
-/** The release job's setup: projenJobSetup's, its checkout keeping no credentials. */
-function releaseCheckout(): JobStep[] {
-  const [checkout, ...rest] = projenJobSetup(true);
-  return [{ ...checkout, with: { ...checkout.with, 'persist-credentials': false } }, ...rest];
 }
 
 const RUNNER: StackJob['credentials'] = { kind: 'var', name: RUNNER_ROLE_VARIABLE, optional: false };

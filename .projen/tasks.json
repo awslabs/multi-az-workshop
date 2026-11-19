@@ -446,10 +446,11 @@
     },
     "release": {
       "name": "release",
-      "description": "CI: tag and release the commit the deploy just tested (the deploy runs it; publish sends the latest release)",
+      "description": "CI: tag and release a commit whose code a deploy tested (CRE_RELEASE_TRIGGER deploy, guide or manual; --check only decides). publish sends the latest release",
       "steps": [
         {
-          "exec": "python3 projenrc/cre/scripts/build/release.py"
+          "exec": "python3 projenrc/cre/scripts/build/release.py \"$@\"",
+          "receiveArgs": true
         }
       ]
     },

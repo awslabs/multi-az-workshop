@@ -5,6 +5,14 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "**"
+      - "!content/**"
+      - "!static/**"
+      - "!contentspec.yaml"
+      - "!FACILITATOR_GUIDE.md"
+      - "!docs/**"
+      - "!*.md"
   workflow_dispatch: {}
 concurrency:
   group: deploy-${{ github.repository }}
@@ -226,55 +234,6 @@ jobs:
       - name: Remove old deploy prefixes
         id: remove_old_deploy_prefixes
         run: npx projen deploy:prune
-  release:
-    needs:
-      - build
-      - deploy-upload
-      - deploy-multi-az-workshop
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    env:
-      CI: "true"
-      PROJECT_NAME: multi-az-workshop
-    steps:
-      - name: Checkout
-        id: checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Setup Node.js
-        id: setup_node_js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
-        with:
-          node-version: "22"
-      - name: Enable Corepack
-        id: enable_corepack
-        run: corepack enable
-      - name: Install dependencies
-        id: install_dependencies
-        run: yarn install --immutable
-      - name: Download content artifact
-        id: download_content_artifact
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with:
-          name: demo-content
-          path: dist
-      - name: Release token (the CRE automation App)
-        id: release_token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510
-        with:
-          app-id: ${{ secrets.PROJEN_APP_ID }}
-          private-key: ${{ secrets.PROJEN_APP_PRIVATE_KEY }}
-          permission-contents: write
-          permission-workflows: write
-      - name: Tag and release the deployed commit
-        id: tag_and_release_the_deployed_commit
-        env:
-          GH_TOKEN: ${{ steps.release_token.outputs.token }}
-        run: npx projen release
   teardown:
     needs:
       - deploy-upload
