@@ -60,7 +60,7 @@ const CLEAN = 'rm -rf assets cdk.out && mkdir -p assets dist';
  */
 const POST_SYNTH_CHECKS = ['check:stack-wiring', 'check:stack-plan', 'versions:check'] as const;
 
-/** The version file versions.py reads and the weekly upgrade rewrites (steering cre-versions.md). */
+/** The version file versions.py reads and the daily upgrade rewrites (steering cre-versions.md). */
 export const VERSIONS_FILE = 'build/versions.json';
 
 export function createBuildTasks(
@@ -163,13 +163,13 @@ export function createBuildTasks(
 
   // No check that setup set each variable a stack needs: a CI job can't list the project's
   // variables, and the deploy stops on an unset one before it calls CloudFormation (REQUIRED_VARS).
-  // The version file: only kinds with a lookup (no network), and the weekly upgrade moves each entry
+  // The version file: only kinds with a lookup (no network), and the daily upgrade moves each entry
   // to the newest version its `update` allows, with the read-only versions role's credentials.
   project.addTask('versions:check', {
     description: `Check ${VERSIONS_FILE} (every entry has a lookup) and that no synthesized template takes a version from elsewhere (no network)`,
     exec: `python3 ${CRE_SCRIPTS}/build/versions.py check --file ${VERSIONS_FILE} --templates cdk.out`,
   });
-  // Not part of `upgrade` (post-upgrade): the weekly upgrade runs the lookups apart from the upgraded
+  // Not part of `upgrade` (post-upgrade): the daily upgrade runs the lookups apart from the upgraded
   // npm code, which gets no AWS credentials (GitHub: the `versions` job; GitLab: before the upgrade).
   project.addTask('versions:update', {
     description: `Move each ${VERSIONS_FILE} entry to the newest version its update allows (AWS lookups need credentials)`,

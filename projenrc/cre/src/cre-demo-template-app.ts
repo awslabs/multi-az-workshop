@@ -6,6 +6,7 @@ import { AppPermission, JobPermission } from 'projen/lib/github/workflows-model'
 import type { JobStep } from 'projen/lib/github/workflows-model';
 import { NodePackageManager, UpdateSnapshot, UpgradeDependenciesSchedule } from 'projen/lib/javascript';
 import { createBuildTasks, VERSIONS_FILE } from './components/build-tasks';
+import { CdkVersionEntry, cdkVersion } from './components/cdk-version';
 import { createDeployTasks, DEFAULT_BINDLE_ID } from './components/deploy-tasks';
 import { refuseUnretriedDownloads } from './components/download-check';
 import { createGitTasks } from './components/git-tasks';
@@ -248,7 +249,7 @@ export function guardGithubUpgradeBranch(project: awscdk.AwsCdkTypeScriptApp): v
 }
 
 /**
- * The weekly upgrade's version lookups (versions:update), on GitHub: a job of their own, `versions`,
+ * The daily upgrade's version lookups (versions:update), on GitHub: a job of their own, `versions`,
  * with the read-only versions role (VERSIONS_ROLE_ARN, a repo secret) through OIDC from main, in the
  * partition's control-plane region. It runs versions.py from main's checkout (no npm install), and
  * hands build/versions.json to the `upgrade` job as an artifact. The upgrade job, which runs the
@@ -407,7 +408,7 @@ export interface CreDemoTemplateAppBaseOptions {
    */
   readonly disableDeploy?: boolean;
   /**
-   * Delete the stacks again after every deploy from main that succeeded, the weekly image patch's
+   * Delete the stacks again after every deploy from main that succeeded, the daily image patch's
    * included: the deploy that creates them is the test, and nothing stays running to age into
    * security findings. A failed deploy stays up to be diagnosed. Stacks in another account
    * (`assumeRole`) are not deleted. Without it, the stacks stay up until a manual teardown (`npx
@@ -441,7 +442,7 @@ export interface CreDemoTemplateAppBaseOptions {
    * One approval per run before CI reaches AWS or Workshop Studio: the deploy, and on GitHub the
    * teardown and publish workflows too (src/workflows/approval.ts). GitHub: an `approve` job in the
    * `AWS-approval` environment, whose reviewer setup:repo sets (the person who runs it). GitLab: a
-   * play-button job the deploy waits for. A scheduled deploy (the weekly image patch) waits too.
+   * play-button job the deploy waits for. A scheduled deploy (the daily image patch) waits too.
    * @default true for a public GitHub repo, else false
    */
   readonly deployApproval?: boolean;
@@ -596,6 +597,8 @@ export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
     const devdirs = [...layout.cdkDirs, 'test', '.projenrc.ts', 'projenrc'];
     // GitHub only: a GitLab project merges with GitLab's own auto-merge.
     const mergeMode = isGithub ? githubMergeMode(options.github!) : undefined;
+    // Pinned, from build/versions.json, which the scheduled upgrade moves (components/cdk-version.ts).
+    const cdk = cdkVersion((options as { outdir?: string }).outdir ?? process.cwd());
 
     super({
       // Not a public option: tests construct projects in a scratch directory.
@@ -617,7 +620,7 @@ export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
       defaultReleaseBranch: 'main',
       projenrcTs: true,
       projenVersion: PROJEN_VERSION,
-      cdkVersion: '2.248.0',
+      cdkVersion: cdk,
       cdkVersionPinning: true,
       constructsVersion: '10.5.0',
       typescriptVersion: '~5.6.3',
@@ -683,7 +686,7 @@ export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
           depsUpgradeOptions: {
             workflowOptions: {
               labels: ['auto-approve', 'auto-merge'],
-              schedule: UpgradeDependenciesSchedule.WEEKLY,
+              schedule: UpgradeDependenciesSchedule.DAILY,
               // Named for its branch (upgrade-main, github-actions/upgrade-main) without a release
               // to take the branch from: the guard and BOT_BRANCHES read those names.
               branches: ['main'],
@@ -714,6 +717,7 @@ export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
     this.gitProvider = isGithub ? 'github' : 'gitlab';
     this.deployApproval = options.deployApproval ?? (isGithub && options.github!.visibility === 'public');
     this.layout = layout;
+    new CdkVersionEntry(this, cdk);
     const containerImages = options.containerImages ?? false;
     // The stacks come from the CDK app: a plan-only synth (no bundling, no asset staging) records
     // every CreStack's deploy settings and parameter sources; when the app can't be synthesized yet

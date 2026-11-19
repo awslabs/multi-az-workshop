@@ -6,7 +6,7 @@ import { CreStack } from './cre-stack.js';
 
 /**
  * The project's version file, `build/versions.json`: every externally sourced version the project
- * deploys, which the weekly upgrade moves (projen's `versions:update`; the kinds and their lookups
+ * deploys, which the daily upgrade moves (projen's `versions:update`; the kinds and their lookups
  * are in the steering, cre-versions.md). Code reads a version from here, never from a literal, an
  * SSM-typed parameter or a service default, so a new version arrives only as a reviewed change to
  * this file, which then deploys.

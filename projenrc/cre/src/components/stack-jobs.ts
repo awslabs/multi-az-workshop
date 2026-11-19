@@ -63,7 +63,7 @@ export interface StackJob {
 /** The deploy variable holding the runner role, the role every job deploys as unless its stack names another. */
 export const RUNNER_ROLE_VARIABLE = 'RUNNER_ROLE_ARN';
 /**
- * The weekly upgrade's read-only role (setup-cdk's CreVersions-<project>), which versions:update
+ * The daily upgrade's read-only role (setup-cdk's CreVersions-<project>), which versions:update
  * looks new versions up with. Its job runs in no environment: GitLab every scope, GitHub the repo's.
  */
 export const VERSIONS_ROLE_VARIABLE = 'VERSIONS_ROLE_ARN';

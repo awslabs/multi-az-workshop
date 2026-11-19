@@ -2,7 +2,7 @@
 """versions:check / versions:update — the project's version file, build/versions.json.
 
 Every externally sourced version the project deploys (Kubernetes, EKS add-ons, node and EC2 AMIs,
-database engines, Helm charts, container images, released tools) lives in this one file, so the weekly
+database engines, Helm charts, container images, released tools) lives in this one file, so the daily
 upgrade can move them all, mechanically, with no judgment about where versions hide. An entry is
 tracked only if its kind has a lookup below: a version nothing can look up is a version nothing
 can keep current, so `check` refuses it.
@@ -15,7 +15,7 @@ can keep current, so `check` refuses it.
                       "chart": "istiod", "version": "1.29.10", "update": "patch" }
     }
 
-`update` says how far the weekly upgrade may move an entry, as npm's ranges do: `patch` is `~`
+`update` says how far the daily upgrade may move an entry, as npm's ranges do: `patch` is `~`
 (1.29.0 -> 1.29.10), `minor` is `^` (1.29.0 -> 1.32.0), `major` is `*` (any newer version), `none`
 is an exact pin. A version's parts are its numbers in order (v1.22.4-eksbuild.14 is 1, 22, 4, 14):
 the first is the major, the second the minor, everything after a patch. A candidate must also have
@@ -98,6 +98,10 @@ KINDS = {
     # commit that tag points to, which the workflow pins (a tag can be moved; a commit can't).
     # versions:update fills `sha` in ("" until then) and moves both together.
     "github-action": {"fields": {"repo": r"[A-Za-z0-9-]+/[A-Za-z0-9._-]+", "sha": r"([0-9a-f]{40})?"}, "updates": UPDATES, "aws": False},
+    # An npm package the project type pins (aws-cdk-lib: its `cdkVersion`), from the npm registry:
+    # deprecated versions and prereleases left out. The daily upgrade's npm step never moves a
+    # pinned package, so this entry is how it moves.
+    "npm-package": {"fields": {"package": r"(@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*"}, "updates": UPDATES, "aws": False},
     # The kubectl release for the file's Kubernetes minor (dl.k8s.io).
     "kubectl": {"fields": {}, "updates": ("none", "patch"), "aws": False},
 }
@@ -365,6 +369,13 @@ def tag_commit(src, repo, tag):
     return json.loads(body)["sha"]
 
 
+def npm_versions(src, package):
+    """A package's published versions, without deprecated ones (shape() leaves prereleases out)."""
+    _status, body, _ = src.http(f"https://registry.npmjs.org/{package.replace('/', '%2F')}",
+                                {"Accept": "application/vnd.npm.install-v1+json"})
+    return [v for v, meta in json.loads(body).get("versions", {}).items() if not meta.get("deprecated")]
+
+
 def kubectl_version(src, kubernetes):
     _status, body, _ = src.http(f"https://dl.k8s.io/release/stable-{kubernetes}.txt")
     return body.strip()
@@ -412,6 +423,8 @@ def resolve(name, e, kubernetes, src):
     if kind in ("github-release", "github-action"):
         tags = github_tags(src, e["repo"])
         return like(cur, newest(cur.lstrip("v"), [t.lstrip("v") for t in tags], upd))
+    if kind == "npm-package":
+        return newest(cur, npm_versions(src, e["package"]), upd)
     if kind == "kubectl":
         found = like(cur, kubectl_version(src, kubernetes))
         return found if parts(found) > parts(cur) or minor_of(found) != minor_of(cur) else cur

@@ -70,7 +70,7 @@ export const MANUAL_TEARDOWN_JOB = 'teardown';
 /** A workshop's release, after the deploy jobs (release.py). */
 export const RELEASE_JOB = 'deploy:release';
 
-/** The weekly dependency upgrade job, and the branch its MR comes from. */
+/** The daily dependency upgrade job, and the branch its MR comes from. */
 export const UPGRADE_JOB = 'upgrade:main';
 export const UPGRADE_BRANCH = 'cre/upgrade-main';
 export const UPGRADE_TITLE = 'chore(deps): upgrade dependencies';
@@ -78,15 +78,15 @@ export const UPGRADE_TITLE = 'chore(deps): upgrade dependencies';
 export const UPGRADE_VARIABLE = 'CRE_UPGRADE_TOKEN';
 /** The environment every deploy job runs in; setup scopes the protected variables to it (cresetup/gitlab.py DEPLOY_ENVIRONMENT). */
 export const DEPLOY_ENVIRONMENT = 'AWS';
-/** The weekly schedule's pipeline on main (CRE_UPGRADE=1), which also patches the images (createGitlabWorkflow). */
+/** The daily schedule's pipeline on main (CRE_UPGRADE=1), which also patches the images (createGitlabWorkflow). */
 export const SCHEDULED_PATCH = '$CI_PIPELINE_SOURCE == "schedule" && $CRE_UPGRADE == "1" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH';
 
 /** The upgrade job's exit code for "skipped: a person's commit is on the branch" (a warning in the pipeline). */
 export const UPGRADE_SKIPPED = 75;
 
 /**
- * The weekly upgrade, GitLab's counterpart of projen's GitHub `upgrade-main` workflow. It runs only
- * in a pipeline started by the project's schedule (`cresetup/gitlab.py setup` creates it, weekly, on
+ * The daily upgrade, GitLab's counterpart of projen's GitHub `upgrade-main` workflow. It runs only
+ * in a pipeline started by the project's schedule (`cresetup/gitlab.py setup` creates it, daily, on
  * main, with CRE_UPGRADE=1): `npx projen upgrade`, and when anything changed, a commit pushed to
  * UPGRADE_BRANCH with push options that open the MR, set it to merge when its pipeline succeeds,
  * squash and delete the branch. The MR pipeline builds it; the merge deploys, like any MR.
@@ -224,7 +224,7 @@ export function createGitlabWorkflow(
   },
 ): gitlab.GitlabConfiguration {
   const TOOLCHAIN_INSTALL = toolchainInstall(opts.pythonTests);
-  // The weekly schedule (CRE_UPGRADE=1) runs the upgrade (UPGRADE_JOB). In a project with container
+  // The daily schedule (CRE_UPGRADE=1) runs the upgrade (UPGRADE_JOB). In a project with container
   // images that deploys, it also patches main: every image rebuilt with no cache (OS updates
   // applied), tagged by its packages (build:image-tags) and deployed, so ECS redeploys only an image
   // whose packages changed. No MR: nothing is committed, and the image build is the check. Otherwise
@@ -446,7 +446,7 @@ export function createGitlabWorkflow(
     script: ['npx projen teardown'],
   });
   if (opts.teardownAfterDeploy) {
-    // At once in every pipeline that deploys (a merge to main, the weekly image patch), once every
+    // At once in every pipeline that deploys (a merge to main, the daily image patch), once every
     // stack job and the prune succeeded: a failed deploy stays up to be diagnosed.
     deployJobs[TEARDOWN_JOB] = deployJob(TEARDOWN_JOB, {
       rules: [{ if: onMain, variables: teardown }],

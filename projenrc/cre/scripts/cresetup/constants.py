@@ -11,7 +11,7 @@ import re
 # import this file, never that one.
 DEPLOY_ENVIRONMENT = "AWS"   # the environment every deploy job declares on GitLab, and on a public GitHub repo
 APPROVAL_ENVIRONMENT = "AWS-approval"   # GitHub's deploy approval job's (src/workflows/approval.ts)
-# The weekly upgrade's read-only role (versions:update). Its job runs in no environment, so the
+# The daily upgrade's read-only role (versions:update). Its job runs in no environment, so the
 # variable is the repo's / every scope's, never the deploy environment's.
 VERSIONS_ROLE_VARIABLE = "VERSIONS_ROLE_ARN"
 

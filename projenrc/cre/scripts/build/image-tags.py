@@ -2,7 +2,7 @@
 """build:image-tags — tag every built container image by what it contains.
 
 CDK tags an image with its asset hash, a hash of the Dockerfile and build context. That never
-changes when only the OS packages inside the image do (a weekly rebuild that applied updates), so
+changes when only the OS packages inside the image do (a daily rebuild that applied updates), so
 the push skipped the existing tag and ECS never redeployed. This replaces each image's tag with
 
     <asset hash>-<first 16 hex of sha256(installed package list)>

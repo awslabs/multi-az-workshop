@@ -21,7 +21,7 @@ export function unknownRegion(region: string): string | undefined {
     .filter(([, d]) => d <= 2)
     .sort((a, b) => a[1] - b[1])[0];
   return `'${region}' is not an AWS region${near ? ` (did you mean ${near[0]}?)` : ''}. A region newer than this aws-cdk-lib ` +
-    'is added by upgrading it (npx projen upgrade, only when the user agrees: CI opens a weekly upgrade MR/PR too).';
+    'is added by upgrading it (npx projen upgrade, only when the user agrees: CI opens a daily upgrade MR/PR too).';
 }
 
 /** Edits between two names, a swap of neighbours counting as one (us-esat-2 is one from us-east-2). */

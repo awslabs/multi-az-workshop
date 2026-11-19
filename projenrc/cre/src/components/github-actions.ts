@@ -6,7 +6,7 @@ import { VERSIONS_FILE } from './build-tasks';
 /**
  * A project's own workflow steps name an action without a version (`uses: 'actions/setup-dotnet'`);
  * its version lives in build/versions.json as a `github-action` entry (`repo`, `version` the release
- * tag, `sha` the commit it points to), which the weekly upgrade moves. The step is written pinned
+ * tag, `sha` the commit it points to), which the daily upgrade moves. The step is written pinned
  * to that commit, so a tag moved later can't change what runs. A step that names its own `@ref` is
  * left as it is.
  */
