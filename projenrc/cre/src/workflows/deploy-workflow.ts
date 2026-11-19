@@ -109,6 +109,8 @@ export const TEARDOWN_JOB = 'teardown';
 export const TEARDOWN_WORKFLOW = 'teardown';
 /** A workshop's release job, after the deploy (both providers). */
 export const RELEASE_JOB = 'release';
+/** The release job's step that mints the App's token. */
+const RELEASE_TOKEN_STEP = 'release_token';
 
 /** Days a deploy artifact is kept: 1 in a public or internal repo (anyone can read it), else 7. One
  * value for the content and the outputs artifacts, so neither outlives the other (review 10c G10). */
@@ -270,16 +272,31 @@ function addDeployJobs(workflow: GithubWorkflow, opts: DeployWorkflowOptions, se
     workflow.addJob(RELEASE_JOB, {
       needs: [BUILD_JOB, UPLOAD_JOB.github, ...opts.jobs.map((j) => j.githubJob)],
       runsOn: ['ubuntu-latest'],
-      permissions: { contents: JobPermission.WRITE },
+      // The job's own token only reads: the release is made with the CRE automation App's.
+      permissions: { contents: JobPermission.READ },
       env: { CI: 'true', PROJECT_NAME: opts.projectName },
       // The whole history and every tag: the next version follows the latest one. The build's
-      // content.zip (what the deploy deployed) goes with the release. The token that may write tags
-      // and releases reaches the release step alone: not kept in .git/config by the checkout, and
-      // not in the environment of `yarn install` (its packages' install scripts).
+      // content.zip (what the deploy deployed) goes with the release.
       steps: [
         ...releaseCheckout(),
         { name: 'Download content artifact', uses: ACTIONS.downloadArtifact, with: { name: CONTENT_ARTIFACT, path: 'dist' } },
-        { name: 'Tag and release the deployed commit', run: 'npx projen release', env: { GH_TOKEN: '${{ github.token }}' } },
+        // The App's token, not GITHUB_TOKEN: GitHub refuses a GITHUB_TOKEN a tag on a commit whose
+        // workflow files differ from the branch's head (it would need `workflows`, which that token
+        // never has), so a deploy that waited while a merge changing a workflow landed couldn't
+        // release its own commit. The App has `workflows: write`. Minted here, after `yarn install`,
+        // and given to the release step alone.
+        {
+          name: 'Release token (the CRE automation App)',
+          id: RELEASE_TOKEN_STEP,
+          uses: ACTIONS.createGithubAppToken,
+          with: {
+            'app-id': '${{ secrets.PROJEN_APP_ID }}',
+            'private-key': '${{ secrets.PROJEN_APP_PRIVATE_KEY }}',
+            'permission-contents': 'write',
+            'permission-workflows': 'write',
+          },
+        },
+        { name: 'Tag and release the deployed commit', run: 'npx projen release', env: { GH_TOKEN: `\${{ steps.${RELEASE_TOKEN_STEP}.outputs.token }}` } },
       ],
     });
   }

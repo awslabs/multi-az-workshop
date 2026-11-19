@@ -55,7 +55,27 @@ def create_github(tag, sha, notes):
     r = subprocess.run(["gh", "release", "create", tag, "--repo", repo, "--target", sha, "--title", tag, "--notes-file", notes, CONTENT],
                        capture_output=True, text=True)
     if r.returncode != 0:
-        raise Stop(f"gh release create {tag} failed: {r.stderr.strip()[-400:]}")
+        raise Stop(f"gh release create {tag} failed: {r.stderr.strip()[-400:]}\n{github_refusal(repo, tag, sha)}")
+
+
+# What a refusal's answer says beyond its message: which permissions GitHub would have accepted, and
+# the ids GitHub support traces it by. `gh release create` prints only the message.
+REFUSAL_HEADERS = ("x-accepted-github-permissions", "x-github-request-id", "x-oauth-scopes", "x-github-sso")
+
+
+def github_refusal(repo, tag, sha):
+    """The same create, as a draft (deleted at once if it succeeds), with GitHub's answer headers:
+    what to know about a refusal before changing anything."""
+    r = subprocess.run(["gh", "api", "-i", "-X", "POST", f"repos/{repo}/releases", "-f", f"tag_name={tag}", "-f", f"target_commitish={sha}",
+                        "-F", "draft=true", "-f", f"name={tag} (diagnostic)"], capture_output=True, text=True)
+    head = [ln for ln in r.stdout.splitlines() if ln.lower().startswith(("http/",) + REFUSAL_HEADERS)]
+    body = r.stdout.split("\r\n\r\n", 1)[-1].split("\n\n", 1)[-1].strip()[:300]
+    if r.returncode == 0:
+        rid = json.loads(body or "{}").get("id") if body.startswith("{") else None
+        if rid:
+            subprocess.run(["gh", "api", "-X", "DELETE", f"repos/{repo}/releases/{rid}"], capture_output=True)
+        return "The same create as a draft was accepted (and deleted): the refusal was of the asset or the published release."
+    return "GitHub's answer to the same create (a draft):\n  " + "\n  ".join(head + ([body] if body else []))
 
 
 def gitlab_call(what, url, data, content_type, timeout=TIMEOUT):
