@@ -167,8 +167,14 @@ def upload(a, say):
         b = bucket_name(project, acct, r)
         say(f"Syncing dist/content/ → s3://{b}/{prefix}")
         # --region explicit: no auto-discovery HEAD call, which a scoped policy needn't allow.
-        p = subprocess.run(["aws", "s3", "sync", "--no-progress", "--region", r, "--exclude", "containers/*", "dist/content",
-                            f"s3://{b}/{prefix}"], stdin=subprocess.DEVNULL, env=awscli.cli_env())
+        cmd = ["aws", "s3", "sync", "--no-progress", "--region", r, "--exclude", "containers/*", "dist/content", f"s3://{b}/{prefix}"]
+        p = subprocess.run(cmd, stdin=subprocess.DEVNULL, env=awscli.cli_env())
+        if p.returncode < 0:
+            # The CLI itself killed by a signal (Alpine's aws-cli 2.34.63 segfaulted once mid-sync,
+            # request-router-metadata-app, Nov 2026), not an answer from S3. A sync is idempotent:
+            # once more, said out loud. Any failure S3 or the CLI reports fails at once.
+            say(f"⚠  aws s3 sync was killed by signal {-p.returncode} (the CLI crashed, not S3): syncing once more")
+            p = subprocess.run(cmd, stdin=subprocess.DEVNULL, env=awscli.cli_env())
         if p.returncode:
             raise Fail(f"Syncing to s3://{b}/{prefix} failed (exit {p.returncode})")
 
