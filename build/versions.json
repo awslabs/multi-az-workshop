@@ -8,7 +8,7 @@
   "VPC_CNI": {
     "kind": "eks-addon",
     "addon": "vpc-cni",
-    "version": "v1.23.3-eksbuild.1",
+    "version": "v1.23.3-eksbuild.2",
     "update": "minor"
   },
   "KUBE_PROXY": {
@@ -38,29 +38,29 @@
   "EC2_AMI_ARM64": {
     "kind": "ec2-ami",
     "parameter": "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64",
-    "version": "al2023-ami-2023.12.20261118.0-kernel-6.18-arm64",
+    "version": "al2023-ami-2023.12.20261119.0-kernel-6.18-arm64",
     "update": "patch",
     "ids": {
-      "ap-southeast-1": "ami-0656e5e54e3d304f7",
-      "ap-southeast-2": "ami-08e304f4f3188ea13",
-      "eu-west-1": "ami-069a350601192714b",
-      "us-east-1": "ami-0d4200be4e2666bf6",
-      "us-east-2": "ami-06bdac96dbe9ab8dc",
-      "us-west-2": "ami-0c3004d580cfdb450"
+      "ap-southeast-1": "ami-0e52f6d65fbb72d37",
+      "ap-southeast-2": "ami-02ed5bbbc03fb1d8d",
+      "eu-west-1": "ami-00e93f49cc45e8c19",
+      "us-east-1": "ami-08826491adc1beb60",
+      "us-east-2": "ami-0c0de96e5c04b184a",
+      "us-west-2": "ami-07dea9af8011417ab"
     }
   },
   "EC2_AMI_X86_64": {
     "kind": "ec2-ami",
     "parameter": "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64",
-    "version": "al2023-ami-2023.12.20261118.0-kernel-6.18-x86_64",
+    "version": "al2023-ami-2023.12.20261119.0-kernel-6.18-x86_64",
     "update": "patch",
     "ids": {
-      "ap-southeast-1": "ami-022c3bc9ff7cf2ba7",
-      "ap-southeast-2": "ami-052190d76c25f66d1",
-      "eu-west-1": "ami-05f39dc88efe6b9a0",
-      "us-east-1": "ami-06f98347e4f9c7328",
-      "us-east-2": "ami-013b3bd3f98d8c046",
-      "us-west-2": "ami-062e367aff5bc494b"
+      "ap-southeast-1": "ami-0e1371087c81d3cb2",
+      "ap-southeast-2": "ami-07dda9b417427b196",
+      "eu-west-1": "ami-0e79f34008343c12a",
+      "us-east-1": "ami-0add9dc62cfab3c11",
+      "us-east-2": "ami-0e3ea3dc6b356c29a",
+      "us-west-2": "ami-001ef1bfba93a59ab"
     }
   },
   "KUBECTL": {
