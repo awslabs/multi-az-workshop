@@ -32,35 +32,35 @@
   "EKS_NODE_AMI": {
     "kind": "eks-node-ami",
     "ami": "amazon-linux-2023/arm64/standard",
-    "version": "1.35.9-20261112",
+    "version": "1.35.9-20261119",
     "update": "patch"
   },
   "EC2_AMI_ARM64": {
     "kind": "ec2-ami",
     "parameter": "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64",
-    "version": "al2023-ami-2023.12.20261119.0-kernel-6.18-arm64",
+    "version": "al2023-ami-2023.12.20261120.0-kernel-6.18-arm64",
     "update": "patch",
     "ids": {
-      "ap-southeast-1": "ami-0e52f6d65fbb72d37",
-      "ap-southeast-2": "ami-02ed5bbbc03fb1d8d",
-      "eu-west-1": "ami-00e93f49cc45e8c19",
-      "us-east-1": "ami-08826491adc1beb60",
-      "us-east-2": "ami-0c0de96e5c04b184a",
-      "us-west-2": "ami-07dea9af8011417ab"
+      "ap-southeast-1": "ami-0895858ce99e82a9f",
+      "ap-southeast-2": "ami-0f9d69ac19d6dd660",
+      "eu-west-1": "ami-0e1a7181278e95240",
+      "us-east-1": "ami-04af8b6fff5606f81",
+      "us-east-2": "ami-0e0dc3e6fb1778218",
+      "us-west-2": "ami-0a63bc26aeb544e31"
     }
   },
   "EC2_AMI_X86_64": {
     "kind": "ec2-ami",
     "parameter": "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64",
-    "version": "al2023-ami-2023.12.20261119.0-kernel-6.18-x86_64",
+    "version": "al2023-ami-2023.12.20261120.0-kernel-6.18-x86_64",
     "update": "patch",
     "ids": {
-      "ap-southeast-1": "ami-0e1371087c81d3cb2",
-      "ap-southeast-2": "ami-07dda9b417427b196",
-      "eu-west-1": "ami-0e79f34008343c12a",
-      "us-east-1": "ami-0add9dc62cfab3c11",
-      "us-east-2": "ami-0e3ea3dc6b356c29a",
-      "us-west-2": "ami-001ef1bfba93a59ab"
+      "ap-southeast-1": "ami-026b70e9abd9fa20f",
+      "ap-southeast-2": "ami-09a2f74ce8538e414",
+      "eu-west-1": "ami-04060762724eee84a",
+      "us-east-1": "ami-0aacbf72109c53c0c",
+      "us-east-2": "ami-01e4a7224fcbfe81f",
+      "us-west-2": "ami-09f6e62a9fe578f92"
     }
   },
   "KUBECTL": {
@@ -121,7 +121,7 @@
   "aws-cdk-lib": {
     "kind": "npm-package",
     "package": "aws-cdk-lib",
-    "version": "2.277.0",
+    "version": "2.278.0",
     "update": "minor",
     "note": "the project type pins aws-cdk-lib to this version (cdkVersion); the scheduled upgrade moves it"
   }
