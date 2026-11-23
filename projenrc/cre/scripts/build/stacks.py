@@ -427,8 +427,8 @@ def main(argv):
     if command in ("outputs", "teardown"):
         p.add_argument("--stack", action="append", help="only this stack (repeatable); with --orphans, only this orphan" if command == "teardown" else "only this stack (repeatable)")
     if command == "teardown":
-        p.add_argument("--orphans", action="store_true", help="only the stacks main's plan no longer has, newest first")
-        p.add_argument("--dry-run", dest="dry_run", action="store_true", help="print what would be deleted, in order, and delete nothing")
+        p.add_argument("--orphans", action="store_true", help="only the stacks main's plan no longer has (a plain teardown leaves them)")
+        p.add_argument("--dry-run", dest="dry_run", action="store_true", help="print what would be deleted, and delete nothing")
     args = p.parse_args(argv)
     for k in ("stack", "orphans", "dry_run"):
         if not hasattr(args, k):

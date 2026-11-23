@@ -162,6 +162,14 @@ export class CreStack extends cdk.Stack {
       type: 'String',
       description: 'Key prefix inside AssetsBucketName (trailing slash required).',
     });
+    // Every deploy passes both. Stated as a Rule, which also references them in a stack with no file
+    // asset: newer aws-cdk-lib warns on every build for a parameter nothing references (W2001).
+    new cdk.CfnRule(this, 'AssetsLocation', {
+      assertions: [this.assetsBucketName, this.assetsBucketPrefix].map((p) => ({
+        assert: cdk.Fn.conditionNot(cdk.Fn.conditionEquals(p.valueAsString, '')),
+        assertDescription: `${p.node.id} is empty: the deploy passes the assets bucket and prefix.`,
+      })),
+    });
   }
 
   /** Deploy this stack after `stack` (CreCfnParameter calls it for the stacks it takes outputs from). */

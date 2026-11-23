@@ -130,7 +130,7 @@ function upgradeJob(credentialsRegion: string): gitlab.Job {
     variables: { GIT_DEPTH: '0', AWS_REGION: credentialsRegion, AWS_DEFAULT_REGION: credentialsRegion },
     script: [
       `test -n "\${${UPGRADE_VARIABLE}:-}" || { echo "${UPGRADE_VARIABLE} is not set: run npx projen setup:repo" >&2; exit 1; }`,
-      `test -n "\${${VERSIONS_ROLE_VARIABLE}:-}" || { echo "${VERSIONS_ROLE_VARIABLE} is not set: run npx projen setup:repo" >&2; exit 1; }`,
+      `test -n "\${${VERSIONS_ROLE_VARIABLE}:-}" || { echo "${VERSIONS_ROLE_VARIABLE} is not set: npx projen setup:aws prints it, then npx projen setup:repo --var ${VERSIONS_ROLE_VARIABLE}=<arn>" >&2; exit 1; }`,
       // The token lasts a year; an expired one would fail at the push with a bare auth error (review 10c C9).
       `git ls-remote ${remote} HEAD >/dev/null 2>&1 || { echo "${UPGRADE_VARIABLE} is expired or revoked: rotate it with npx projen setup:repo" >&2; exit 1; }`,
       // A person's commit on the upgrade branch (a fix to make it build) is never force-pushed away:

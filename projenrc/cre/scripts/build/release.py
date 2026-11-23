@@ -20,8 +20,8 @@ release it will make.
      conventional commits since it, commit-and-tag-version), which writes dist/releasetag.txt and
      dist/changelog.md. Nothing is committed: the version lives in the tag alone.
   3. The tag and the release at this commit, with that changelog and dist/content.zip (the build
-     the deploy deployed, from its CI artifact): GitHub through `gh` with the job's token
-     (contents: write), the zip a release asset; GitLab with the job's own CI_JOB_TOKEN, the zip
+     the deploy deployed, from its CI artifact): GitHub through `gh` with the CRE automation
+     App's token (contents and workflows: write), the zip a release asset; GitLab with the job's own CI_JOB_TOKEN, the zip
      uploaded to the project's generic package registry (`<project>/<version>/content.zip`), then
      the release through the Releases API, which creates the tag at `ref` and links the zip.
 

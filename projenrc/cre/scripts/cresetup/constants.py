@@ -42,6 +42,11 @@ def dns_deploy_role(project):
     return f"CreDnsDeploy-{project}"
 
 
+def versions_role(project):
+    """The daily upgrade's read-only role (setup-cdk names.ts versionsRole), in the setup stack."""
+    return f"CreVersions-{project}"
+
+
 def assets_stack(project):
     return f"CreAssets-{project}"
 

@@ -18,7 +18,14 @@ CHART_STRINGS = ("apiVersion", "name", "version", "kubeVersion", "description", 
 
 
 def run(*cmd, stdin=None):
-    return subprocess.run(cmd, check=True, capture_output=True, text=True, input=stdin).stdout
+    try:
+        return subprocess.run(cmd, check=True, capture_output=True, text=True, input=stdin).stdout
+    except subprocess.CalledProcessError as e:
+        # The error itself (access denied, a missing object, a bad manifest): CalledProcessError's
+        # message is only the command and its exit. stderr only: a command's stdout can be a secret
+        # (get-login-password).
+        print(f"{' '.join(cmd[:3])} failed (exit {e.returncode}):\n{(e.stderr or '').strip()}", flush=True)
+        raise
 
 
 def ecr(*args):
