@@ -43,7 +43,7 @@ import { GITHUB, PRUNE_JOB, render, RUNNER_ROLE_VARIABLE, UPLOAD_JOB } from '../
 import type { JobValue, StackJob } from '../components/stack-jobs';
 
 /** The build job's artifact carrying dist/content.zip. */
-const CONTENT_ARTIFACT = 'demo-content';
+const CONTENT_ARTIFACT = 'content';
 /** The build job, which every deploy job needs. */
 export const BUILD_JOB = 'build';
 

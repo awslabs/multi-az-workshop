@@ -294,6 +294,16 @@
         }
       ]
     },
+    "github:login": {
+      "name": "github:login",
+      "description": "Sign the gh CLI in to github.com again, authorized for the repo's organization (SAML single sign-on): gh's device login with its one-time code printed and its page opened, then gh auth setup-git.",
+      "steps": [
+        {
+          "exec": "python3 projenrc/cre/scripts/cresetup/github_login.py '--repo' 'awslabs/multi-az-workshop' \"$@\"",
+          "receiveArgs": true
+        }
+      ]
+    },
     "install": {
       "name": "install",
       "description": "Install project dependencies and update lockfile (non-frozen)",

@@ -68,7 +68,7 @@ jobs:
         if: steps.release_check.outputs.release == 'true' && github.event_name == 'workflow_run'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          name: demo-content
+          name: content
           path: dist
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ github.token }}

@@ -28,6 +28,7 @@
     "eject": "projen eject",
     "eslint": "projen eslint",
     "git:status": "projen git:status",
+    "github:login": "projen github:login",
     "package": "projen package",
     "package:assets": "projen package:assets",
     "package:content": "projen package:content",

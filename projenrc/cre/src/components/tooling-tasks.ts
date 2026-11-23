@@ -150,6 +150,11 @@ function createSetupTasks(project: awscdk.AwsCdkTypeScriptApp, provider: GitProv
         + 'set github.visibility in .projenrc.ts and merge the regenerated workflows as a PR.',
       steps: [{ exec: `python3 ${CRE_SCRIPTS}/cresetup/github_public.py ${quoted('setup:github-public', githubPublicArgs(setup))} "$@"`, receiveArgs: true }],
     });
+    project.addTask('github:login', {
+      description: 'Sign the gh CLI in to github.com again, authorized for the repo\'s organization (SAML single sign-on): '
+        + 'gh\'s device login with its one-time code printed and its page opened, then gh auth setup-git.',
+      steps: [{ exec: `python3 ${CRE_SCRIPTS}/cresetup/github_login.py ${quoted('github:login', ['--repo', repositoryPath(setup.repository).join('/')])} "$@"`, receiveArgs: true }],
+    });
     project.addTask('setup:github-app', {
       description: 'Create (once) or check your CRE automation GitHub App, aws-cre-automation-<alias>, and its key in ~/.cre.',
       steps: [{ exec: `python3 ${CRE_SCRIPTS}/cresetup/github_app.py "$@"`, receiveArgs: true }],
