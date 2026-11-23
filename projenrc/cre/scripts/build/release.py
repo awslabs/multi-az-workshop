@@ -4,11 +4,13 @@
 CI runs it (the `release` task) on the commit it releases; CRE_RELEASE_TRIGGER says why:
 
   deploy  the deploy of this commit succeeded (GitHub's `release` workflow after the `deploy` run,
-          GitLab's deploy:release job): release it.
+          GitLab's deploy:release job): release it, when a path CRE_RELEASE_PATHS names changed
+          since the latest release (else skip: a workflow or tooling change deploys, unreleased).
   guide   a push to main changed the guide (content/, static/, ...): release it when its code (every
           path but CRE_RELEASE_IGNORE's) is the latest release's, which a deploy tested; else skip,
-          because the deploy of this commit releases it.
-  manual  run by hand on main's head: release it under the same code check, else refused.
+          because the deploy of this commit releases it. The same CRE_RELEASE_PATHS check first.
+  manual  run by hand on main's head: release it under the same code check, else refused. No
+          CRE_RELEASE_PATHS check: a manual run is how a release is made for anything else.
 
 The release is how a publish knows which commit to send: `npx projen publish` sends the latest
 release (or the one `--version` names), never main's head. `--check` only decides: it prints
@@ -133,6 +135,23 @@ def code_changed(since, sha):
     return r.returncode == 1
 
 
+def release_paths():
+    """The paths an automatic release is made for (CRE_RELEASE_PATHS: the guide, the code, the
+    dependencies, the pinned versions), as git glob pathspecs; [] when unset: every path."""
+    return [f":(glob){p}" for p in os.environ.get("CRE_RELEASE_PATHS", "").split()]
+
+
+def releasable(since, sha):
+    """Whether a path an automatic release is made for differs between `since` and `sha`."""
+    paths = release_paths()
+    if not paths:
+        return True
+    r = git("diff", "--quiet", since, sha, "--", *paths)
+    if r.returncode not in (0, 1):
+        raise Stop(f"git diff {since} {sha[:9]} failed: {r.stderr.strip()}")
+    return r.returncode == 1
+
+
 def decide(sha, trigger):
     """Whether to release `sha` (True), or nothing to do (False); a refusal raises Stop."""
     done = release_tags(sha)
@@ -144,6 +163,13 @@ def decide(sha, trigger):
     tags = release_tags()
     if tags and git("merge-base", "--is-ancestor", tags[0], sha).returncode != 0:
         raise Stop(f"{sha[:9]} isn't after the latest release {tags[0]}: an older commit is never released.", REFUSED)
+    # Automatic releases only for what the workshop's content or its deployed assets come from: a
+    # change to the workflows, the build tooling or the docs alone deploys, and isn't released. The
+    # next releasable change's release carries it; a manual run releases whatever is there.
+    if trigger != "manual" and tags and not releasable(tags[0], sha):
+        say(f"ℹ  Not releasing {sha[:9]}: nothing a release is made from (CRE_RELEASE_PATHS) changed since {tags[0]}. "
+            "Run the release by hand to make one anyway.")
+        return False
     if trigger == "deploy":
         return True
     # Code a deploy tested: the latest release's (every release's code was deployed: a deploy's

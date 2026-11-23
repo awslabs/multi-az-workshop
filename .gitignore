@@ -143,6 +143,7 @@ junit.xml
 !/.github/workflows/teardown.yml
 !/.github/workflows/release.yml
 /static/multi-az-workshop.json
+/FACILITATOR_GUIDE.md
 /dist/changelog.md
 /dist/version.txt
 !/.github/workflows/publish.yml

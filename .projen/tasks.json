@@ -281,6 +281,26 @@
         }
       ]
     },
+    "facilitator-guide:publish": {
+      "name": "facilitator-guide:publish",
+      "description": "Send FACILITATOR_GUIDE.md alone to the workshop repository (nothing else changes); refused when it changed there since the pull",
+      "steps": [
+        {
+          "exec": "python3 projenrc/cre/scripts/build/facilitator_guide.py publish \"$@\"",
+          "receiveArgs": true
+        }
+      ]
+    },
+    "facilitator-guide:pull": {
+      "name": "facilitator-guide:pull",
+      "description": "Bring the workshop repository's FACILITATOR_GUIDE.md here to edit (gitignored; it lives only in Workshop Studio). --force replaces a local copy that differs",
+      "steps": [
+        {
+          "exec": "python3 projenrc/cre/scripts/build/facilitator_guide.py pull \"$@\"",
+          "receiveArgs": true
+        }
+      ]
+    },
     "git:status": {
       "name": "git:status",
       "description": "Classify the repo state and say what `push` would do. Changes nothing (it only fetches).",

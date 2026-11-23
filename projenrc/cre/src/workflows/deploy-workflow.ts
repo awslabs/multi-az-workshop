@@ -100,6 +100,8 @@ export interface DeployWorkflowOptions {
   readonly nonDeployPaths?: readonly string[];
   /** Paths whose change on main runs the release workflow (a workshop's guide). @default none */
   readonly guidePaths?: readonly string[];
+  /** Paths an automatic release is made for (CRE_RELEASE_PATHS; release.py). @default every path */
+  readonly releasePaths?: readonly string[];
   /** One approval before the deploy, and before a teardown (src/workflows/approval.ts). @default false */
   readonly approval?: boolean;
   /**
@@ -180,7 +182,8 @@ export function createDeployWorkflow(github: GitHub, opts: DeployWorkflowOptions
 /**
  * The `release` workflow (release.py). Three ways in, one job:
  *  - `workflow_run`: a `deploy` run on main succeeded. It releases the commit that run deployed,
- *    with that run's own content artifact (what the deploy deployed).
+ *    with that run's own content artifact (what the deploy deployed), when `releasePaths` changed
+ *    since the latest release (a workflow or tooling change alone deploys, unreleased).
  *  - `push` to main changing `guidePaths`: it releases main's commit when its code (all but
  *    `nonDeployPaths`) is a deployed commit's, building content.zip there; otherwise the deploy
  *    this push started releases it.
@@ -219,6 +222,7 @@ function addReleaseWorkflow(github: GitHub, opts: DeployWorkflowOptions): void {
       PROJECT_NAME: opts.projectName,
       CRE_RELEASE_TRIGGER: `\${{ ${fromDeploy} && 'deploy' || github.event_name == 'push' && 'guide' || 'manual' }}`,
       CRE_RELEASE_IGNORE: (opts.nonDeployPaths ?? []).join(' '),
+      CRE_RELEASE_PATHS: (opts.releasePaths ?? []).join(' '),
     },
     steps: [
       // The deployed commit (a workflow_run's github.sha is main's head, not the run's), with every

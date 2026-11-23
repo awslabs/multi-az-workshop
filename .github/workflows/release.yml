@@ -16,7 +16,6 @@ on:
       - content/**
       - static/**
       - contentspec.yaml
-      - FACILITATOR_GUIDE.md
   workflow_dispatch: {}
 concurrency:
   group: release-${{ github.repository }}
@@ -31,7 +30,8 @@ jobs:
       CI: "true"
       PROJECT_NAME: multi-az-workshop
       CRE_RELEASE_TRIGGER: ${{ github.event_name == 'workflow_run' && 'deploy' || github.event_name == 'push' && 'guide' || 'manual' }}
-      CRE_RELEASE_IGNORE: content/** static/** contentspec.yaml FACILITATOR_GUIDE.md docs/** *.md
+      CRE_RELEASE_IGNORE: content/** static/** contentspec.yaml docs/** *.md
+      CRE_RELEASE_PATHS: content/** static/** contentspec.yaml src/** cre-constructs/** build/versions.json package.json yarn.lock
     if: (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || (!(github.event_name == 'workflow_run') && github.ref == 'refs/heads/main')
     steps:
       - name: Checkout

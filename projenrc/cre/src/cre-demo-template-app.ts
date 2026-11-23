@@ -493,6 +493,8 @@ export interface ProjectTypeExtras {
   readonly nonDeployPaths?: readonly string[];
   /** Paths whose change on main releases without a deploy, the code being the latest release's (the guide). */
   readonly guidePaths?: readonly string[];
+  /** Paths an automatic release is made for (release.py's CRE_RELEASE_PATHS): a change to none of them since the latest release isn't released. @default every path */
+  readonly releasePaths?: readonly string[];
 }
 
 const BASE_GITIGNORE = [
@@ -814,6 +816,7 @@ export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
           release: typeOptions.release,
           nonDeployPaths: typeOptions.nonDeployPaths,
           guidePaths: typeOptions.guidePaths,
+          releasePaths: typeOptions.releasePaths,
           teardownAfterDeploy: options.teardownAfterDeploy,
           containerImages,
           projectName: this.name,
@@ -834,6 +837,7 @@ export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
         defaults: jobDefaults,
         release: typeOptions.release,
         nonDeployPaths: typeOptions.nonDeployPaths,
+        releasePaths: typeOptions.releasePaths,
         pruneAssets: options.pruneAssets,
         disableDeploy: options.disableDeploy,
         teardownAfterDeploy: options.teardownAfterDeploy,

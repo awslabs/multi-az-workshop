@@ -101,9 +101,17 @@ export type CreWorkshopStudioOptions = CreDemoTemplateAppOptions & {
 };
 
 /** The guide: a change here on main releases without a deploy (its code is the latest release's). */
-export const WORKSHOP_GUIDE_PATHS = ['content/**', 'static/**', 'contentspec.yaml', 'FACILITATOR_GUIDE.md'];
+export const WORKSHOP_GUIDE_PATHS = ['content/**', 'static/**', 'contentspec.yaml'];
 /** What a workshop's deploy doesn't depend on: the guide, and the docs. Everything else deploys. */
 export const WORKSHOP_NON_DEPLOY_PATHS = [...WORKSHOP_GUIDE_PATHS, 'docs/**', '*.md'];
+/**
+ * What an automatic release is made for: only what obviously changes the workshop's content or its
+ * deployed assets (the guide, the code, the dependencies, the pinned versions, the constructs). A
+ * change to anything else alone (the workflows, the build tooling, the docs)
+ * deploys without a release; the next release carries it, or a manual run makes one.
+ */
+export const WORKSHOP_RELEASE_PATHS = ['content/**', 'static/**', 'contentspec.yaml', 'src/**', 'cre-constructs/**',
+  'build/versions.json', 'package.json', 'yarn.lock'];
 
 /**
  * A workshop for AWS Workshop Studio: the CDK app is the infrastructure Workshop Studio deploys into
@@ -118,12 +126,21 @@ export class CreWorkshopStudio extends CreDemoTemplateApp {
     }
     // The build tool's location, one secret per platform: the PR build and the deploy's build read it.
     super(options, STANDARD_LAYOUT, 'workshop-studio.md', ['workshop-content.md'], [],
-      { buildSecrets: BUILD_TOOL_SECRETS, release: true, nonDeployPaths: WORKSHOP_NON_DEPLOY_PATHS, guidePaths: WORKSHOP_GUIDE_PATHS });
+      {
+        buildSecrets: BUILD_TOOL_SECRETS,
+        release: true,
+        nonDeployPaths: WORKSHOP_NON_DEPLOY_PATHS,
+        releasePaths: WORKSHOP_RELEASE_PATHS,
+        guidePaths: WORKSHOP_GUIDE_PATHS,
+      });
     // The build stages each top-level template into static/ (built, never committed), and checks the
     // whole workshop with Workshop Studio's own build before anything is zipped or deployed.
     // The templates: every top-level stack.
     const ids = this.plannedStacks.map((s) => s.id);
     for (const id of ids) this.gitignore.exclude(`/static/${id}.json`);
+    // The facilitator guide is internal: it lives only in the workshop's Workshop Studio repository
+    // (publish keeps it there), never in this one, which may be public.
+    this.gitignore.exclude('/FACILITATOR_GUIDE.md');
     const stage = this.addTask('workshop:stage', {
       description: 'Copy each top-level template the build staged to static/<stack>.json (contentspec.yaml points there)',
       exec: `python3 ${CRE_SCRIPTS}/build/workshop.py stage ${ids.join(' ')}`,
@@ -168,6 +185,16 @@ export class CreWorkshopStudio extends CreDemoTemplateApp {
     // build its deploy deployed) as assets/, the zip itself at assets/content.zip for the guide's
     // download; `workshop:stage` copies the templates into static/; then publish.py sends them with
     // its inputs from the CI job's secrets, or with --local from the laptop's Midway session.
+    // The facilitator guide lives only in the workshop repository: these bring it here to edit
+    // (gitignored) and send it back alone, from a laptop (the Midway session's credentials).
+    this.addTask('facilitator-guide:pull', {
+      description: "Bring the workshop repository's FACILITATOR_GUIDE.md here to edit (gitignored; it lives only in Workshop Studio). --force replaces a local copy that differs",
+      steps: [{ exec: `python3 ${CRE_SCRIPTS}/build/facilitator_guide.py pull "$@"`, receiveArgs: true }],
+    });
+    this.addTask('facilitator-guide:publish', {
+      description: 'Send FACILITATOR_GUIDE.md alone to the workshop repository (nothing else changes); refused when it changed there since the pull',
+      steps: [{ exec: `python3 ${CRE_SCRIPTS}/build/facilitator_guide.py publish "$@"`, receiveArgs: true }],
+    });
     const publish = this.addTask('publish', {
       description: "Publish the latest release (or --version v<x.y.z>'s) to Workshop Studio, from its content.zip (no build): the S3 assets, "
         + "then the guide to the workshop's repository. --local: the credentials from your Midway session; else (CI) from the pasted secrets",
