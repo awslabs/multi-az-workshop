@@ -663,7 +663,13 @@ export abstract class CreDemoTemplateApp extends awscdk.AwsCdkTypeScriptApp {
         devdirs, // formerly MUST-HONOR rule 4
         ignorePatterns: ['*.d.ts', '*.js', 'node_modules/', 'lib/'],
       },
-      gitignore: [...BASE_GITIGNORE, ...localOnlyIgnores(), ...(options.additionalGitignore ?? [])],
+      gitignore: [...BASE_GITIGNORE, ...localOnlyIgnores({
+        github: isGithub,
+        containerImages: options.containerImages ?? false,
+        disableDeploy: options.disableDeploy ?? false,
+        workshop: typeOptions.release ?? false,
+        failureScenario: typeSteering === 'failure-scenario.md',
+      }), ...(options.additionalGitignore ?? [])],
       // A CDK app is never published to npm: no .npmignore in every project (review 10d G7).
       npmignoreEnabled: false,
 

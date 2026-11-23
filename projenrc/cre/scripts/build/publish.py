@@ -110,8 +110,11 @@ def ci_inputs():
 def check_inputs(inp):
     missing = [k for k in INPUTS if not inp.get(k, "").strip()]
     if missing:
-        raise Stop(REFUSED, f"Missing {', '.join(missing)}: setup sets them (npx projen setup:repo), and the credentials are pasted "
-                            "from the workshop's Repository credentials in Workshop Studio before a CI publish.")
+        raise Stop(REFUSED, f"Missing {', '.join(missing)}: setup (/cre-demo-init) stores them for the publish, as the repository's "
+                            "secrets on GitHub (Settings > Secrets and variables > Actions) or its CI/CD variables on GitLab. Set a "
+                            "missing one there by hand: setup:repo --var stores a value for the deploy jobs, where the publish "
+                            "can't read it. The credentials are pasted there from the workshop's Repository credentials in "
+                            "Workshop Studio before a CI publish.")
     held = [k for k in CREDENTIALS if inp[k].startswith("PLACEHOLDER")]
     if held:
         raise Stop(REFUSED, f"{', '.join(held)} still hold setup's placeholder: paste the workshop's Repository credentials from "

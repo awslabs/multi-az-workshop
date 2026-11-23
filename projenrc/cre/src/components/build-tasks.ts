@@ -6,8 +6,8 @@ import { CRE_SCRIPTS } from '../paths';
  *
  * Part of the cre-projen package (vendored into each demo at projenrc/cre/), called by
  * CreDemoTemplateApp for both providers. CI in both families only ever invokes
- * the projen tasks registered here (`npx projen <task>`) — this is the PROJEN_PATTERN
- * "CI ↔ task parity" principle that keeps the GitHub/GitLab seam narrow.
+ * the projen tasks registered here (`npx projen <task>`): CI and a laptop run the same tasks,
+ * which keeps the GitHub/GitLab seam narrow.
  *
  * The lifecycle:
  *

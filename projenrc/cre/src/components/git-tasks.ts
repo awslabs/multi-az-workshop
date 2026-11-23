@@ -13,7 +13,7 @@ export type GitProvider = 'gitlab' | 'github';
  *   npx projen watch [<n> | --branch <b> | --sha <s>] [--until checks|merged|deployed]
  *                                              read-only: one MR/PR from checks to its deploy
  *
- * The logic is in `scripts/git/` (Python 3.9+, standard library; bundled with this package,
+ * The logic is in `scripts/git/` (Python 3.12+, standard library; bundled with this package,
  * vendored to projenrc/cre/scripts/git) and pinned by the scenario harness in `test/git/run.sh`.
  * Exit codes: 0 done, 10 refused with nothing changed, 20 validation/hook failed, 30 conflict with
  * the repo restored, 40 incomplete (this run committed, branched or pushed, then stopped; a re-run

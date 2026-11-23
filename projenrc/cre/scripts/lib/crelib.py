@@ -1,6 +1,6 @@
 """Helpers the CRE project's own scripts share: the git tasks (scripts/git), the build and deploy
 scripts (scripts/build), the template scripts (scripts/template) and CloudFront Signer (scripts/cfs).
-Python 3.9+, standard library only. The setup the template runs is scripts/cresetup, which has its
+Python 3.12+, standard library only. The setup the template runs is scripts/cresetup, which has its
 own small modules; this file was the old setup's library, trimmed to what these scripts use.
 
   - Printers (ok, info, warn, say) and Step, which ends a script with its exit code and a last

@@ -22,8 +22,10 @@ from aws import lapsed
 from result import CREDS, FAILED, OK, REFUSED, Failed, must  # noqa: F401 (account.py reads them here)
 
 # A first create that failed: CloudFormation can only delete the stack. It never existed
-# successfully, so deleting it loses nothing (`cdk deploy` does the same).
-FIRST_CREATE_FAILED = ("ROLLBACK_COMPLETE", "ROLLBACK_FAILED")
+# successfully, so deleting it loses nothing (`cdk deploy` does the same). A delete that failed
+# (a teardown that doesn't wait, then a stack still in use when it ran) is treated the same: someone
+# already asked to delete it, and CloudFormation can't update it, only delete it again.
+FIRST_CREATE_FAILED = ("ROLLBACK_COMPLETE", "ROLLBACK_FAILED", "DELETE_FAILED")
 
 
 def failure(err, what, code):
@@ -96,10 +98,11 @@ def clear_failed_create(call, region, name, st, say):
     it again: returns "" then, else `st` unchanged. Failed when the delete fails."""
     if st not in FIRST_CREATE_FAILED:
         return st
-    say(f"Stack {name} ({region}) is {st} from a failed first create; deleting it before retrying.")
+    left = "a delete that failed (a teardown)" if st == "DELETE_FAILED" else "a failed first create"
+    say(f"Stack {name} ({region}) is {st}, left by {left}; deleting it before creating it again.")
     why = delete(call, region, name)
     if why:
-        raise Failed(CREDS if lapsed(why) else FAILED, f"Could not delete {name} ({region}), left by a failed first create: {why}")
+        raise Failed(CREDS if lapsed(why) else FAILED, f"Could not delete {name} ({region}), left by {left}: {why}")
     return ""
 
 
