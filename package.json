@@ -27,6 +27,8 @@
     "deploy:upload": "projen deploy:upload",
     "eject": "projen eject",
     "eslint": "projen eslint",
+    "facilitator-guide:publish": "projen facilitator-guide:publish",
+    "facilitator-guide:pull": "projen facilitator-guide:pull",
     "git:status": "projen git:status",
     "github:login": "projen github:login",
     "package": "projen package",

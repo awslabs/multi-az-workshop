@@ -221,6 +221,8 @@ export function createGitlabWorkflow(
     release?: boolean;
     /** Paths a release's code check leaves out (a workshop's guide and docs). GitLab deploys every change. */
     nonDeployPaths?: readonly string[];
+    /** Paths an automatic release is made for (CRE_RELEASE_PATHS; release.py). */
+    releasePaths?: readonly string[];
     /** A play-button approval before the deploy (src/workflows/approval.ts). */
     approval?: boolean;
     /** The project's own build setup (buildSetup.gitlab): build:cdk runs it after the toolchain install. */
@@ -436,20 +438,32 @@ export function createGitlabWorkflow(
       needs: [{ job: 'build:package', artifacts: true },
         ...[UPLOAD_JOB.gitlab, ...opts.jobs.map((j) => j.gitlabJob)].map((job) => ({ job, artifacts: false }))],
       // The whole history and every tag: the next version follows the latest one.
-      variables: { GIT_DEPTH: '0', CRE_RELEASE_TRIGGER: 'deploy', CRE_RELEASE_IGNORE: (opts.nonDeployPaths ?? []).join(' ') },
+      variables: {
+        GIT_DEPTH: '0',
+        CRE_RELEASE_TRIGGER: 'deploy',
+        CRE_RELEASE_IGNORE: (opts.nonDeployPaths ?? []).join(' '),
+        CRE_RELEASE_PATHS: (opts.releasePaths ?? []).join(' '),
+      },
       script: ['npx projen release'],
     };
-    // By hand: the pipeline's commit, released when its code is the latest release's (a deploy
-    // tested it), else refused. Every change on main deploys here, so a guide change releases after
-    // its deploy: `rules:changes` can leave paths out only with `regexp` (GitLab 19.2), newer than
-    // gitlab.aws.dev's GitLab.
+    // By hand: the pipeline's commit, once this pipeline's deploy succeeded (its needs), so the
+    // commit is a deployed one (CRE_DEPLOYED_SHA): the way to release a change deploy:release left
+    // out (a workflow or tooling change alone). Every change on main deploys here, so a guide change
+    // releases after its deploy: `rules:changes` can leave paths out only with `regexp` (GitLab
+    // 19.2), newer than gitlab.aws.dev's GitLab.
     deployJobs[MANUAL_RELEASE_JOB] = {
       stage: 'deploy',
       rules: [{ if: onMain, when: gitlab.JobWhen.MANUAL, allowFailure: true }],
       interruptible: false,
       resourceGroup: 'release',
-      needs: [{ job: 'build:package', artifacts: true }],
-      variables: { GIT_DEPTH: '0', CRE_RELEASE_TRIGGER: 'manual', CRE_RELEASE_IGNORE: (opts.nonDeployPaths ?? []).join(' ') },
+      needs: [{ job: 'build:package', artifacts: true },
+        ...[UPLOAD_JOB.gitlab, ...opts.jobs.map((j) => j.gitlabJob)].map((job) => ({ job, artifacts: false }))],
+      variables: {
+        GIT_DEPTH: '0',
+        CRE_RELEASE_TRIGGER: 'manual',
+        CRE_RELEASE_IGNORE: (opts.nonDeployPaths ?? []).join(' '),
+        CRE_DEPLOYED_SHA: '$CI_COMMIT_SHA',
+      },
       script: ['npx projen release'],
     };
   }

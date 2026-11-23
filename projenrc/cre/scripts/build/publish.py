@@ -11,8 +11,9 @@
      repository's variable. Either way they are given only to the commands below.
   2. The publish, the same whatever the source: the S3 assets first (assets/ to ASSETS_LOCATION, so
      Workshop Studio's build finds every one the templates name), then content/, static/,
-     contentspec.yaml (and FACILITATOR_GUIDE.md) as the workshop repository's whole `mainline`, in one
-     commit naming this repository and commit.
+     contentspec.yaml as the workshop repository's whole `mainline` (but FACILITATOR_GUIDE.md, which
+     lives only there: an internal document, kept by every publish), in one commit naming this
+     repository and commit.
 
 Only a release is published: the latest (release.py makes one after every deploy from main that
 succeeded, on the commit it tested, with that build's content.zip), or the one `--version v<x.y.z>`
@@ -52,7 +53,10 @@ INPUTS = (*CREDENTIALS, "REMOTE_REPO", "ASSETS_LOCATION", "GIT_PLUGIN_LOCATION",
 LOCAL_MODULE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "cresetup", "workshop_studio.py")
 TOOLS = os.path.join(".cre", "tools")
 # What the workshop repository holds: the guide and Workshop Studio's own files, nothing else.
-REPO_PATHS = ("content", "static", "contentspec.yaml", "FACILITATOR_GUIDE.md")
+REPO_PATHS = ("content", "static", "contentspec.yaml")
+# What lives only in the workshop repository, never in this one (which may be public), and so is
+# kept there by every publish: the facilitator guide, an internal document.
+KEPT = ("FACILITATOR_GUIDE.md",)
 REGION = "us-east-1"
 
 
@@ -354,9 +358,9 @@ def push_content(env, remote, tag, head):
             err = r.stderr.strip()
             raise Stop(CREDS if "expired" in err.lower() or "denied" in err.lower() else FAILED, f"Cloning the workshop repository failed: {err[-400:]}")
         # Its whole tree becomes this commit's guide: what this repository doesn't have goes. Its own
-        # dotfiles stay (.git, and Workshop Studio's .version).
+        # dotfiles stay (.git, and Workshop Studio's .version), and what lives only there (KEPT).
         for name in os.listdir(repo):
-            if not name.startswith("."):
+            if not name.startswith(".") and name not in KEPT:
                 p = os.path.join(repo, name)
                 shutil.rmtree(p) if os.path.isdir(p) and not os.path.islink(p) else os.remove(p)
         for p in REPO_PATHS:
