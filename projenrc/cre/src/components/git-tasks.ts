@@ -8,7 +8,7 @@ export type GitProvider = 'gitlab' | 'github';
  *
  *   npx projen branch <type>/<description>     start new work from a fresh origin/main
  *   npx projen git:status                      read-only: classify the repo, say what push would do
- *   npx projen commit --message "<msg>"        validate (synth + build), stage, commit; no push
+ *   npx projen commit --message "<msg>"        validate (synth + changed tests; --full: build), stage, commit; no push
  *   npx projen push --message "<msg>" [--title "<t>"] [--branch <new>] [--files "<paths>"]
  *   npx projen watch [<n> | --branch <b> | --sha <s>] [--until checks|merged|deployed]
  *                                              read-only: one MR/PR from checks to its deploy
@@ -35,7 +35,7 @@ export function createGitTasks(project: awscdk.AwsCdkTypeScriptApp, provider: Gi
 
   add('branch', 'branch.py', "Start new work: create <name> from origin's default branch (just fetched), carrying uncommitted changes.");
   add('git:status', 'status.py', 'Classify the repo state and say what `push` would do. Changes nothing (it only fetches).');
-  add('commit', 'commit.py', 'Validate (synth + build), stage and commit. Never pushes. Needs --message.');
+  add('commit', 'commit.py', 'Validate (synth + the changed tests; --full: the build), stage and commit. Never pushes. Needs --message.');
   add(
     'push',
     'push.py',
