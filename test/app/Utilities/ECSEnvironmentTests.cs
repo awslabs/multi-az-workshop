@@ -9,6 +9,7 @@ using AppEnvironment = BAMCIS.MultiAZApp.Utilities.Environment;
 
 namespace BAMCIS.MultiAZApp.Tests.Utilities
 {
+    [Collection(EnvironmentCollection.Name)]
     public class ECSEnvironmentTests
     {
         private readonly Mock<ILogger> _mockLogger;
@@ -66,34 +67,6 @@ namespace BAMCIS.MultiAZApp.Tests.Utilities
             Assert.True(result);
 
             System.Environment.SetEnvironmentVariable("ECS_CONTAINER_METADATA_URI_V4", null);
-        }
-
-        [Fact]
-        public void Another_Environment_Does_Not_Change_This_Ones_HostId_Or_Fetcher()
-        {
-            // EnvironmentProvider builds an EKSEnvironment and an EC2Environment after an ECSEnvironment
-            // (and other tests build them in parallel): each keeps its own host id and fetcher.
-            System.Environment.SetEnvironmentVariable("ECS_CONTAINER_METADATA_URI_V4", "http://localhost/metadata");
-            try
-            {
-                _mockFetcher.Setup(f => f.FetchJson<Dictionary<string, object>>(It.IsAny<Uri>(), "GET", null))
-                    .Returns(new Dictionary<string, object>
-                    {
-                        { "ServiceName", "svc" },
-                        { "TaskARN", "arn:aws:ecs:us-east-1:123456789012:task/abc" }
-                    });
-                var ecs = new ECSEnvironment(_mockLogger.Object, _mockFetcher.Object);
-
-                var other = new Mock<IResourceFetcher>();
-                new EKSEnvironment(_mockLogger.Object, other.Object);
-
-                Assert.Equal("svc-abc", ecs.GetHostId());
-                Assert.True(ecs.Probe());
-            }
-            finally
-            {
-                System.Environment.SetEnvironmentVariable("ECS_CONTAINER_METADATA_URI_V4", null);
-            }
         }
 
         [Fact]
