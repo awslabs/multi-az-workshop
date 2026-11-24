@@ -146,7 +146,7 @@
     },
     "commit": {
       "name": "commit",
-      "description": "Validate (synth + build), stage and commit. Never pushes. Needs --message.",
+      "description": "Validate (synth + the changed tests; --full: the build), stage and commit. Never pushes. Needs --message.",
       "env": {
         "CRE_GIT_PROVIDER": "github"
       },
