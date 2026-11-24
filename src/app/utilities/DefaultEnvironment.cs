@@ -7,8 +7,8 @@ namespace BAMCIS.MultiAZApp.Utilities
 {
     public class DefaultEnvironment : IEnvironment
     {
-        private static ILogger _logger;
-        private static IResourceFetcher _fetcher;
+        private ILogger _logger;
+        private IResourceFetcher _fetcher;
 
         public DefaultEnvironment(ILogger logger) : this(logger, new ResourceFetcher())
         {
