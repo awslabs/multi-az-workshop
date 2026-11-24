@@ -9,6 +9,7 @@ using AppEnvironment = BAMCIS.MultiAZApp.Utilities.Environment;
 
 namespace BAMCIS.MultiAZApp.Tests.Utilities
 {
+    [Collection(EnvironmentCollection.Name)]
     public class EKSEnvironmentTests
     {
         private readonly Mock<ILogger> _mockLogger;

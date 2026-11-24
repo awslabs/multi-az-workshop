@@ -9,6 +9,7 @@ using AppEnvironment = BAMCIS.MultiAZApp.Utilities.Environment;
 
 namespace BAMCIS.MultiAZApp.Tests.Utilities
 {
+    [Collection(EnvironmentCollection.Name)]
     public class EC2EnvironmentTests
     {
         private readonly Mock<ILogger> _mockLogger;

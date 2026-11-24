@@ -11,11 +11,9 @@ namespace BAMCIS.MultiAZApp.Utilities
         private static string _instanceid;
         private static bool _onebox;
 
-        // Per instance: EnvironmentProvider builds several environments in turn, and a shared host
-        // id or fetcher let the last one built overwrite the one it returns.
-        internal string _hostid;
-        internal ILogger _logger;
-        internal IResourceFetcher _fetcher;
+        internal static string _hostid;
+        internal static ILogger _logger;
+        internal static IResourceFetcher _fetcher;
 
         public BaseEnvironment(ILogger logger, IResourceFetcher fetcher) 
         {

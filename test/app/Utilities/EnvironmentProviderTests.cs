@@ -9,6 +9,7 @@ using AppEnvironment = BAMCIS.MultiAZApp.Utilities.Environment;
 
 namespace BAMCIS.MultiAZApp.Tests.Utilities
 {
+    [Collection(EnvironmentCollection.Name)]
     public class EnvironmentProviderTests
     {
         private readonly Mock<ILoggerFactory> _mockLoggerFactory;
