@@ -87,7 +87,7 @@
     "kind": "helm-chart",
     "repo": "https://aws.github.io/eks-charts",
     "chart": "aws-load-balancer-controller",
-    "version": "3.6.3",
+    "version": "3.7.0",
     "update": "minor",
     "note": "the chart and its image (v<version>-linux_arm64) share this version"
   },
