@@ -38,29 +38,29 @@
   "EC2_AMI_ARM64": {
     "kind": "ec2-ami",
     "parameter": "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64",
-    "version": "al2023-ami-2023.12.20261120.0-kernel-6.18-arm64",
+    "version": "al2023-ami-2023.12.20261127.0-kernel-6.18-arm64",
     "update": "patch",
     "ids": {
-      "ap-southeast-1": "ami-0895858ce99e82a9f",
-      "ap-southeast-2": "ami-0f9d69ac19d6dd660",
-      "eu-west-1": "ami-0e1a7181278e95240",
-      "us-east-1": "ami-04af8b6fff5606f81",
-      "us-east-2": "ami-0e0dc3e6fb1778218",
-      "us-west-2": "ami-0a63bc26aeb544e31"
+      "ap-southeast-1": "ami-028e9a97970c94f21",
+      "ap-southeast-2": "ami-066d7af73f2fc48cb",
+      "eu-west-1": "ami-045c7b3c3ad6e4cc1",
+      "us-east-1": "ami-0358f644d7299878d",
+      "us-east-2": "ami-0764618e562d41deb",
+      "us-west-2": "ami-04a40498014ca416b"
     }
   },
   "EC2_AMI_X86_64": {
     "kind": "ec2-ami",
     "parameter": "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64",
-    "version": "al2023-ami-2023.12.20261120.0-kernel-6.18-x86_64",
+    "version": "al2023-ami-2023.12.20261127.0-kernel-6.18-x86_64",
     "update": "patch",
     "ids": {
-      "ap-southeast-1": "ami-026b70e9abd9fa20f",
-      "ap-southeast-2": "ami-09a2f74ce8538e414",
-      "eu-west-1": "ami-04060762724eee84a",
-      "us-east-1": "ami-0aacbf72109c53c0c",
-      "us-east-2": "ami-01e4a7224fcbfe81f",
-      "us-west-2": "ami-09f6e62a9fe578f92"
+      "ap-southeast-1": "ami-09b1f4c7613f17e6c",
+      "ap-southeast-2": "ami-07300d93018670078",
+      "eu-west-1": "ami-08ac456738a92e157",
+      "us-east-1": "ami-000d209a4fc9822c4",
+      "us-east-2": "ami-07c7e8b60dec8165c",
+      "us-west-2": "ami-0fd83bac0b1385118"
     }
   },
   "KUBECTL": {
